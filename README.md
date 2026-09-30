@@ -18,6 +18,7 @@ You can choose one of three rates:
 ## Features
 
 - **Advanced settings** (collapsed by default, so the basic form stays simple):
+  - **Day count basis** (Actual/Actual by default) and **rounding** (round the total only, by default).
   - **Compounding:** None (simple interest, the default), monthly, quarterly, yearly, daily or continuous.
     - **Monthly / quarterly / yearly:** unpaid interest is added to principal on each anniversary of the start date. For a start on 31 Jan, monthly dates are 28/29 Feb, 31 Mar, and so on.
     - **Daily:** `principal × ((1 + rate ÷ year days)^days − 1)` within each period.

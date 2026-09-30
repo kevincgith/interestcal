@@ -23,6 +23,7 @@ test('changing inputs does not recalculate until Calculate is pressed', async ({
   await page.goto(WORKBOOK);
   await expect(total(page)).toHaveText('4,434.64');
 
+  await page.locator('#advanced summary').click();
   await page.locator('#basis').selectOption('act/360');
   await page.locator('#rounding').selectOption('period');
   await page.getByLabel('HSBC prime rate (HKMA)').check();
@@ -201,11 +202,15 @@ test('icons and the link-preview image are served', async ({ page, request }) =>
 
 test('advanced settings are closed by default and compounding defaults to simple interest', async ({ page }) => {
   await page.goto('./');
+  await expect(page.locator('#basis')).toBeHidden();
+  await expect(page.locator('#rounding')).toBeHidden();
   await expect(page.locator('#advanced')).not.toHaveAttribute('open', '');
   await expect(page.locator('#compounding')).toHaveValue('none');
   await expect(page.locator('#compareLine')).toBeHidden();
   await page.locator('#advanced summary').click();
   await expect(page.locator('#compounding')).toBeVisible();
+  await expect(page.locator('#basis')).toHaveValue('act/act');
+  await expect(page.locator('#rounding')).toHaveValue('total');
   await expect(page.locator('#switchFields')).toBeHidden();
 });
 
@@ -244,4 +249,10 @@ test('downloads work with compounding and a rate switch', async ({ page }) => {
     if (button === 'Download CSV') expect(bytes.toString('utf8')).toContain('Compounding,Daily');
   }
   await expect(page.locator('#error')).toBeHidden();
+});
+
+test('a shared link with a non-default day count opens Advanced settings', async ({ page }) => {
+  await page.goto('?src=judgment&p=1000&from=2026-01-01&to=2026-02-01&basis=act%2F360');
+  await expect(page.locator('#advanced')).toHaveAttribute('open', '');
+  await expect(page.locator('#basis')).toHaveValue('act/360');
 });

@@ -483,7 +483,13 @@ function readQuery() {
     const f2 = Number(q.get('rate2'));
     if (q.has('rate2') && Number.isFinite(f2)) $('fixedRate2').value = String(f2);
   }
-  if ((q.get('comp') && q.get('comp') !== 'none') || $('switchOn').checked) $('advanced').open = true;
+  // Open Advanced settings when the link uses anything other than the defaults there
+  const nonDefault =
+    (q.get('comp') && q.get('comp') !== 'none') ||
+    $('switchOn').checked ||
+    (q.get('basis') && q.get('basis') !== 'act/act') ||
+    (q.get('round') && q.get('round') !== 'total');
+  if (nonDefault) $('advanced').open = true;
   const rate = Number(q.get('rate'));
   if (q.has('rate') && Number.isFinite(rate)) $('fixedRate').value = String(rate);
   showSourceFields();

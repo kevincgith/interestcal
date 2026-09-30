@@ -45,19 +45,6 @@
       <label>End date
         <input id="end" type="date" required>
       </label>
-      <label>Day count basis
-        <select id="basis">
-          <option value="act/act" selected>Actual/Actual (365 or 366)</option>
-          <option value="act/365">Actual/365</option>
-          <option value="act/360">Actual/360</option>
-        </select>
-      </label>
-      <label>Rounding
-        <select id="rounding">
-          <option value="total" selected>Round the total only</option>
-          <option value="period">Round each period</option>
-        </select>
-      </label>
       <label id="fixedField" for="fixedRate" hidden>Fixed rate (% p.a.)
         <div class="stepper">
           <button type="button" class="step" data-step="-1" aria-label="Decrease fixed rate by 1%">−</button>
@@ -73,8 +60,21 @@
         </div>
       </label>
       <details id="advanced" class="advanced">
-        <summary>Advanced settings <span class="muted">(compounding, switching rate on a date)</span></summary>
+        <summary>Advanced settings <span class="muted">(day count, rounding, compounding, rate switch)</span></summary>
         <div class="advanced-body">
+          <label>Day count basis
+            <select id="basis">
+              <option value="act/act" selected>Actual/Actual (365 or 366)</option>
+              <option value="act/365">Actual/365</option>
+              <option value="act/360">Actual/360</option>
+            </select>
+          </label>
+          <label>Rounding
+            <select id="rounding">
+              <option value="total" selected>Round the total only</option>
+              <option value="period">Round each period</option>
+            </select>
+          </label>
           <label>Compounding
             <select id="compounding">
               <option value="none" selected>None (simple interest)</option>
