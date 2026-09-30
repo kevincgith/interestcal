@@ -23,8 +23,9 @@ const pdfText = (s) =>
  * @param {string[]} ctx.warnings
  * @param {{text: string, linkText: string, url: string} | null} ctx.crossCheck  sentence containing linkText
  * @param {{text: string, linkText?: string, url?: string}} [ctx.summaryLine]  line under the summary, e.g. latest rate
- * @param {string} ctx.ratesHeading                    e.g. "HSBC prime rates (3 of 191 rates, used from ...)"
- * @param {{name: string, url: string}} ctx.source
+ * @param {string} [ctx.perDiem]                     e.g. "219.18 (at 8.000% ÷ 365)"
+ * @param {string} [ctx.ratesHeading]                  e.g. "HSBC prime rates (3 of 191 rates, used from ...)"
+ * @param {{name: string, url: string}} [ctx.source]   omitted for a fixed rate: no "rates used" section
  * @param {{effective: string, rate: number, source?: string}[]} ctx.rates  rates used, newest first
  * @param {object} ctx.fmt  { money, date, rate, rateWithSpread, formula }
  * @param {string} ctx.generatedOn
@@ -102,6 +103,7 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
     headStyles: { fillColor: false, textColor: MUTED, fontStyle: 'normal', fontSize: 8, lineWidth: 0 },
     bodyStyles: { fontStyle: 'bold', fontSize: 13, lineWidth: { bottom: 0.75 } },
   });
+  if (ctx.perDiem) linkedLine({ text: `Interest per day after end date: HK$${ctx.perDiem}` });
   if (ctx.summaryLine) linkedLine(ctx.summaryLine);
 
   // ---- Period breakdown ----
@@ -128,26 +130,28 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
     },
   });
 
-  // ---- Rates used ----
-  if (y > doc.internal.pageSize.getHeight() - 160) {
-    doc.addPage();
-    y = MARGIN;
+  // ---- Rates used (not for a fixed rate, which has no published source) ----
+  if (ctx.source) {
+    if (y > doc.internal.pageSize.getHeight() - 160) {
+      doc.addPage();
+      y = MARGIN;
+    }
+    heading(ctx.ratesHeading, 11);
+    doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(...MUTED);
+    doc.text('Source:', MARGIN, y + 9);
+    y += 15;
+    linkedLine({ text: ctx.source.name, linkText: ctx.source.name, url: ctx.source.url });
+    if (ctx.crossCheck) linkedLine(ctx.crossCheck);
+    const withSource = ctx.rates.some((rt) => rt.source);
+    table({
+      head: [['Effective date', 'Rate (% p.a.)', ...(withSource ? ['Source'] : [])]],
+      body: ctx.rates.map((rt) => [fmt.date(rt.effective), rt.rate.toFixed(3), ...(withSource ? [rt.source ?? 'HKMA'] : [])]),
+      columnStyles: { 1: { halign: 'right' } },
+      didParseCell: ({ section, column, cell }) => {
+        if (section === 'head' && column.index === 1) cell.styles.halign = 'right';
+      },
+    });
   }
-  heading(ctx.ratesHeading, 11);
-  doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(...MUTED);
-  doc.text('Source:', MARGIN, y + 9);
-  y += 15;
-  linkedLine({ text: ctx.source.name, linkText: ctx.source.name, url: ctx.source.url });
-  if (ctx.crossCheck) linkedLine(ctx.crossCheck);
-  const withSource = ctx.rates.some((rt) => rt.source);
-  table({
-    head: [['Effective date', 'Rate (% p.a.)', ...(withSource ? ['Source'] : [])]],
-    body: ctx.rates.map((rt) => [fmt.date(rt.effective), rt.rate.toFixed(3), ...(withSource ? [rt.source ?? 'HKMA'] : [])]),
-    columnStyles: { 1: { halign: 'right' } },
-    didParseCell: ({ section, column, cell }) => {
-      if (section === 'head' && column.index === 1) cell.styles.halign = 'right';
-    },
-  });
 
   // ---- Footer on every page ----
   const pages = doc.getNumberOfPages();

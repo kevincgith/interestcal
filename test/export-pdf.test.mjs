@@ -45,3 +45,22 @@ test('PDF report: text content, named source links, no raw URLs in the text', ()
   assert.match(pdf, /\/URI \(https:\/\/www\.hsbc\.com\.hk\//);
   assert.ok(!/\(https:\/\/www\.hkma[^)]*\) Tj/.test(pdf), 'URL should not be printed as text');
 });
+
+test('PDF report: fixed rate has no rates section; daily interest is shown', () => {
+  const fixed = [{ effective: '1900-01-01', rate: 8 }];
+  const r = calculateInterest({ principal: 365000, start: '2026-01-01', end: '2026-02-01', rates: fixed });
+  const doc = buildPdf({ jsPDF, autoTable }, { ...r, source: 'fixed' }, {
+    inputs: [['Interest rate', 'Fixed rate of 8.000% p.a.']],
+    warnings: [],
+    crossCheck: null,
+    summaryLine: { text: 'Fixed rate of 8.000% p.a.' },
+    perDiem: '80.00 (at 8.000% ÷ 365)',
+    fmt: { ...fmt, rateWithSpread: (p) => `${(p.rate * 100).toFixed(3)}%` },
+    generatedOn: '30-Sep-2026',
+  });
+  const pdf = doc.output();
+  assert.ok(pdf.includes('Interest per day after end date: HK$80.00'));
+  assert.ok(pdf.includes('Fixed rate of 8.000% p.a.'));
+  assert.ok(!pdf.includes('Source:'));
+  assert.ok(!pdf.includes('Effective date'));
+});

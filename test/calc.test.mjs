@@ -154,6 +154,35 @@ test('rejects an unknown rounding mode', () => {
   assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, rounding: 'up' }), /rounding/);
 });
 
+test('daily interest after the end date uses the rate in force on the end date', () => {
+  const r = calculateInterest({ principal: 1000000, start: '2025-11-24', end: '2026-04-20', rates });
+  assert.equal(pct(r.perDiem), 8);
+  assert.equal(r.perDiem.yearDays, 365);
+  close(r.perDiem.amount, (1000000 * 0.08) / 365);
+});
+
+test('daily interest follows the day count basis and leap years', () => {
+  const leap = calculateInterest({ principal: 366000, start: '2024-01-01', end: '2024-03-01', rates });
+  assert.equal(leap.perDiem.yearDays, 366);
+  close(leap.perDiem.amount, 366000 * 0.08875 / 366);
+  const a360 = calculateInterest({ principal: 360000, start: '2024-01-01', end: '2024-03-01', rates, basis: 'act/360' });
+  close(a360.perDiem.amount, 360000 * 0.08875 / 360);
+});
+
+test('daily interest includes the spread, and is null before the first rate', () => {
+  const r = calculateInterest({ principal: 365000, start: '2026-05-01', end: '2026-06-01', rates, spread: 2 });
+  close(r.perDiem.amount, 365000 * 0.10 / 365);
+  const early = calculateInterest({ principal: 1, start: '2020-01-01', end: '2020-02-01', rates });
+  assert.equal(early.perDiem, null);
+});
+
+test('a fixed rate is a single rate from the start of time', () => {
+  const fixed = [{ effective: '1900-01-01', rate: 8 }];
+  const r = calculateInterest({ principal: 100000, start: '2023-12-01', end: '2024-02-01', rates: fixed });
+  assert.equal(r.uncoveredDays, 0);
+  assert.deepEqual(r.periods.map((p) => [p.days, p.yearDays, pct(p)]), [[31, 365, 8], [31, 366, 8]]);
+});
+
 test('leap year rule', () => {
   assert.equal(isLeapYear(2024), true);
   assert.equal(isLeapYear(1900), false);

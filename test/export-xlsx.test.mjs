@@ -89,3 +89,27 @@ test('Excel export with a spread: base rate + spread = interest rate as a formul
   assert.equal(calc[findRow(calc, 'Spread over prime (% p.a.)')][1], 1);
   assert.match(rows('Rates').find((x) => x[0] === 'Note')[1], /spread of 1% p\.a\./);
 });
+
+test('Excel export: daily interest row is a live formula', () => {
+  const r = calculateInterest({ principal: 135436.48, start: '2025-11-24', end: '2026-04-20', rates: judgment });
+  const { out, rows } = roundTrip(r, judgment, 'judgment');
+  const calc = rows('Calculation');
+  const i = calc.findIndex((x) => String(x[0]).startsWith('Interest per day after end date'));
+  assert.ok(i >= 0);
+  assert.equal(calc[i][0], 'Interest per day after end date (at 8.000% ÷ 365)');
+  const cell = out.Sheets.Calculation[`B${i + 1}`];
+  assert.match(cell.f, /^\$B\$\d+\*0\.08\/365$/);
+  assert.ok(Math.abs(cell.v - (135436.48 * 0.08) / 365) < 1e-9);
+});
+
+test('Excel export: a fixed rate has no source rows or rate table', () => {
+  const fixed = [{ effective: '1900-01-01', rate: 8 }];
+  const r = calculateInterest({ principal: 1000, start: '2026-01-01', end: '2026-02-01', rates: fixed });
+  const wb = buildWorkbook(XLSX, { ...r, source: 'fixed' }, {
+    rateBasis: 'Fixed rate of 8.000% p.a.', dayCount: 'Actual/Actual', rounding: 'x', ratesTitle: 'Fixed rate', rates: [], formulaText: () => '',
+  });
+  const rates = XLSX.utils.sheet_to_json(wb.Sheets.Rates, { header: 1, defval: null });
+  assert.equal(rates.findIndex((x) => x[0] === 'Source'), -1);
+  assert.equal(rates.findIndex((x) => x[0] === 'Effective Date'), -1);
+  assert.deepEqual(rates.find((x) => x[0] === 'Rate'), ['Rate', 'Fixed rate of 8.000% p.a. (no published rate source)']);
+});

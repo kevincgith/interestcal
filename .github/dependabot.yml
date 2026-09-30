@@ -1,0 +1,23 @@
+# Weekly pull requests for library and GitHub Actions updates.
+# The test workflow re-copies updated export libraries into site/vendor on Dependabot's PRs,
+# then runs the unit and browser tests; merge the PR when it is green.
+# Note: xlsx (SheetJS) is installed from cdn.sheetjs.com, which Dependabot cannot track; see README.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Hong_Kong
+    groups:
+      libraries:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Hong_Kong

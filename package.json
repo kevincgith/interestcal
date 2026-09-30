@@ -8,12 +8,15 @@
   "scripts": {
     "test": "node --test \"test/*.test.mjs\"",
     "fetch-rates": "node scripts/fetch-rates.mjs",
-    "start": "npx --yes serve site"
+    "start": "npx --yes serve site",
+    "vendor": "node scripts/vendor.mjs",
+    "test:e2e": "playwright test"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"

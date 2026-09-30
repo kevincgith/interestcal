@@ -80,6 +80,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      # Browser tests (desktop Chrome + iPhone Safari engine) must pass before the page goes live
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e
       - name: Stamp asset URLs with the commit so browsers fetch fresh CSS/JS after each deploy
         run: sed -i "s/__BUILD__/${GITHUB_SHA::7}/g" site/index.html site/app.js
       - uses: actions/configure-pages@v5

@@ -27,6 +27,7 @@
         <legend>Interest rate</legend>
         <label class="radio"><input type="radio" name="source" value="judgment" checked> Judgment debt rate (HK Judiciary)</label>
         <label class="radio"><input type="radio" name="source" value="prime"> HSBC prime rate (HKMA)</label>
+        <label class="radio"><input type="radio" name="source" value="fixed"> Fixed rate</label>
       </fieldset>
       <label>Principal (HK$)
         <input id="principal" type="text" inputmode="decimal" autocomplete="off" required value="1,000,000.00" placeholder="1,000,000.00">
@@ -49,6 +50,9 @@
           <option value="total" selected>Round the total only</option>
           <option value="period">Round each period</option>
         </select>
+      </label>
+      <label id="fixedField" hidden>Fixed rate (% p.a.)
+        <input id="fixedRate" type="text" inputmode="decimal" autocomplete="off" value="8" placeholder="8">
       </label>
       <label id="spreadField" for="spread" hidden>Spread over prime (% p.a.)
         <div class="stepper">
@@ -73,6 +77,7 @@
         <div><dt>Total interest</dt><dd id="totalInterest"></dd></div>
         <div><dt>Total amount due</dt><dd id="totalDue"></dd></div>
         <div><dt>Total no. of days</dt><dd id="totalDays"></dd></div>
+        <div><dt>Interest per day after end date</dt><dd id="perDiem"></dd></div>
       </dl>
       <p id="verified" class="verified"></p>
       <div class="table-wrap">
@@ -92,7 +97,7 @@
       </div>
     </section>
 
-    <details class="card">
+    <details id="rateCard" class="card">
       <summary><span id="rateTitle">Rate table</span> <span id="rateMeta" class="muted"></span></summary>
       <div id="rateSource" class="rate-source"></div>
       <label class="radio filter"><input type="checkbox" id="relevantOnly" checked disabled> Show only rates used in this calculation

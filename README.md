@@ -4,7 +4,7 @@
 
 This tool calculates simple interest on Hong Kong debts. It is a web version of the `Interest Calculator.xlsm` workbook.
 
-You can choose one of two rates:
+You can choose one of three rates:
 
 - **Judgment debt rate**, as [published by the HK Judiciary](https://www.judiciary.hk/en/court_services_facilities/interest_rate.html). This is the default.
 - **HSBC best lending (prime) rate**, taken from [HKMA Monthly Statistical Bulletin table 6.4.1](https://www.hkma.gov.hk/media/eng/doc/market-data-and-statistics/monthly-statistical-bulletin/T060401.xls). You can add a spread over prime, e.g. prime + 2%.
@@ -13,7 +13,11 @@ You can choose one of two rates:
   - **HSBC has a newer change:** the HKMA table is updated monthly, so HSBC can be ahead. The newer change is added and marked "HSBC".
   - **Disagreement:** the HKMA data is kept, the page shows a warning, and the daily workflow fails so you get an email.
 
+- **Fixed rate**, e.g. 8% p.a., for contract rates not tied to a published rate.
+
 ## Features
+
+- **Interest per day after end date:** principal × the rate in force on the end date ÷ that day's year days. Use it for wording like "…plus HK$219.18 per day until payment". It appears on the page and in the PDF, Excel and CSV files; in Excel it's a live formula.
 
 - **Download PDF:** downloads a report straight away (built in the browser with [jsPDF](https://github.com/parallax/jsPDF)): inputs, results, the formula for each period, the rates used, and the sources as named, clickable links. No raw URLs are printed.
 - **Sortable rate table:** click **Effective date** or **Rate** to sort; click again to reverse. The PDF and Excel exports use the same order.
@@ -59,11 +63,19 @@ The website has no build step. [SheetJS](https://sheetjs.com) is used by the rat
 ## Development
 
 ```bash
-npm install          # install SheetJS for the updater
-npm test             # run the tests
+npm install          # install dev tools (SheetJS, jsPDF, Playwright)
+npm test             # unit tests: calculation, parsers, exports, vendored libraries
+npm run test:e2e     # browser tests (desktop Chrome + iPhone Safari engine); first run: npx playwright install chromium webkit
 npm run fetch-rates  # refresh both rate files
+npm run vendor       # re-copy the export libraries into site/vendor after updating them
 npm start            # serve site/ locally
 ```
+
+The browser tests check the page itself: the sample calculation, shared links, no recalculation before **Calculate**, the fixed rate, field layout (one height, no overlap, no sideways scrolling, including on iPhone), rate sorting, and the three downloads. Every deploy runs them first, so a broken page is not published.
+
+### Library updates
+
+Dependabot opens a weekly pull request when jsPDF, jsPDF-AutoTable, Playwright or a GitHub Action has a new version. On those PRs the test workflow re-copies the updated libraries into `site/vendor` and runs all tests; merge when it's green. SheetJS (`xlsx`) is installed from `cdn.sheetjs.com`, which Dependabot can't track. To update it, change the version in `package.json`, then run `npm install && npm run vendor`.
 
 ## Deployment
 

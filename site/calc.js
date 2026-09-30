@@ -109,6 +109,14 @@ export function calculateInterest({ principal, start, end, rates, spread = 0, ba
   // Days before the earliest known rate earn nothing; report them rather than hide them.
   const uncoveredDays = Math.max(0, Math.min(loanEnd, sorted[0].day) - loanStart);
 
+  // Daily interest from the end date onwards: principal x rate in force on the end date / that day's year days.
+  // Used for "...plus HK$X per day until payment". null if no rate applies on the end date.
+  const atEnd = sorted.filter((r) => r.day <= loanEnd).at(-1);
+  const endYearDays = basis === 'act/360' ? 360 : basis === 'act/365' ? 365 : isLeapYear(yearOf(loanEnd)) ? 366 : 365;
+  const perDiem = atEnd
+    ? { amount: (principal * atEnd.rate) / endYearDays, rate: atEnd.rate, baseRate: atEnd.baseRate, yearDays: endYearDays }
+    : null;
+
   return {
     principal,
     start,
@@ -121,6 +129,7 @@ export function calculateInterest({ principal, start, end, rates, spread = 0, ba
     totalDue: principal + totalInterest,
     totalDays,
     uncoveredDays,
+    perDiem,
     earliestRateDate: fromDay(sorted[0].day),
     latestRateDate: fromDay(sorted[sorted.length - 1].day),
   };

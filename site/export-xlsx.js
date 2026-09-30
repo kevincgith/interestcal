@@ -76,7 +76,7 @@ export function buildWorkbook(XLSX, r, ctx) {
 
   const totalsRow = rows.length;
   // Placeholders; filled once we know where the period table lands
-  rows.push([], [], []);
+  rows.push([], [], [], []);
   rows.push([]);
 
   // With a spread, show Base Rate + Spread = Interest Rate (a live formula); otherwise just the rate.
@@ -121,6 +121,13 @@ export function buildWorkbook(XLSX, r, ctx) {
   rows[totalsRow] = ['Total interest', formula(hasPeriods ? `SUM(${INT}${first}:${INT}${last})` : '0', r.totalInterest, MONEY)];
   rows[totalsRow + 1] = ['Total amount due', formula(`${P}+B${totalsRow + 1}`, r.totalDue, MONEY)];
   rows[totalsRow + 2] = ['Total no. of days', formula(hasPeriods ? `SUM(${DAYS}${first}:${DAYS}${last})` : '0', r.totalDays)];
+  // Daily interest after the end date: principal x rate in force on the end date / year days (live formula)
+  rows[totalsRow + 3] = r.perDiem
+    ? [
+        `Interest per day after end date (at ${(r.perDiem.rate * 100).toFixed(3)}% ÷ ${r.perDiem.yearDays})`,
+        formula(`${P}*${tidy(r.perDiem.rate)}/${r.perDiem.yearDays}`, r.perDiem.amount, MONEY),
+      ]
+    : ['Interest per day after end date', '–'];
 
   const widths = withSpread ? [34, 44, 12, 12, 10, 14, 11, 40, 16] : [34, 44, 12, 14, 11, 40, 16];
   const calc = sheetFrom(XLSX, rows, widths);
@@ -129,8 +136,9 @@ export function buildWorkbook(XLSX, r, ctx) {
   const rateRows = [
     [text(`${ctx.ratesTitle} used in this calculation`)],
     [],
-    ['Source', hyperlink(ctx.sourceUrl)],
-    ['Rates as at', date(ctx.updatedAt)],
+    ...(ctx.sourceUrl
+      ? [['Source', hyperlink(ctx.sourceUrl)], ['Rates as at', date(ctx.updatedAt)]]
+      : [['Rate', `${ctx.rateBasis} (no published rate source)`]]),
     ['Calculation period', `${fmtDate(r.start)} to ${fmtDate(r.end)} (end date excluded)`],
   ];
   if (ctx.crossCheck) {
@@ -142,7 +150,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   }
   // Rates added from HSBC (not yet in the HKMA table) are labelled in a Source column
   const withSource = ctx.rates.some((rt) => rt.source);
-  rateRows.push([], ['Effective Date', 'Rate (% p.a.)', ...(withSource ? ['Source'] : [])]);
+  if (ctx.rates.length) rateRows.push([], ['Effective Date', 'Rate (% p.a.)', ...(withSource ? ['Source'] : [])]);
   ctx.rates.forEach((rt) =>
     rateRows.push([date(rt.effective), num(tidy(rt.rate / 100), PCT), ...(withSource ? [rt.source ?? 'HKMA'] : [])]),
   );

@@ -3,14 +3,40 @@ name: Test
 on:
   pull_request:
 
+permissions:
+  contents: write # lets the job push re-copied vendor files to Dependabot's PR branch
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref }}
       - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
       - run: npm ci
+
+      # Dependabot bumps the libraries in node_modules; the site serves copies in site/vendor, so refresh them.
+      - name: Re-copy export libraries (Dependabot PRs)
+        if: github.actor == 'dependabot[bot]'
+        run: |
+          npm run vendor
+          if ! git diff --quiet site/vendor; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "Re-copy updated export libraries into site/vendor"
+            git push
+          fi
+
       - run: npm test
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: test-results/
+          retention-days: 7

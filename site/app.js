@@ -58,6 +58,11 @@ const CROSS_CHECK = {
 
 const HSBC_PAGE = 'HSBC’s official prime rate page';
 
+// A fixed rate has no published table: it is one rate from the start of time. Published sources are in SOURCES.
+const FIXED_FROM = '1900-01-01';
+const isFixed = (r) => r.source === 'fixed';
+const fmtPct = (n) => `${Number(n.toFixed(6)).toLocaleString('en', { minimumFractionDigits: 3, maximumFractionDigits: 6 })}%`;
+
 // The cross-check sentence with "HSBC’s official prime rate page" as a link (named, so no raw URL is shown or printed)
 function crossCheckLine(cc) {
   const [before, after = ''] = CROSS_CHECK[cc.status].split(HSBC_PAGE);
@@ -66,6 +71,7 @@ function crossCheckLine(cc) {
 
 // "Latest effective rate is 5.000% (from 31-Oct-2025), cross-checked with HSBC." (HSBC linked to its official page)
 function latestRateLine(r) {
+  if (isFixed(r)) return { before: `Fixed rate of ${fmtPct(r.fixedRate)} p.a.`, text: `Fixed rate of ${fmtPct(r.fixedRate)} p.a.` };
   const data = rateData[r.source];
   const latest = data.rates[0];
   const before = `Latest effective rate is ${latest.rate.toFixed(3)}% (from ${fmtDate(latest.effective)})`;
@@ -148,6 +154,8 @@ function renderRateSource(key) {
 function renderRateTable() {
   // Follows the last calculation while results are showing, otherwise the selected source
   const key = lastResult?.source ?? currentSource();
+  $('rateCard').hidden = !(key in SOURCES);
+  if (!(key in SOURCES)) return;
   const data = rateData[key];
   $('rateTitle').textContent = SOURCES[key].title;
   $('relevantOnly').disabled = !lastResult;
@@ -194,7 +202,13 @@ function warning(text) {
 }
 
 const rateBasisLabel = (r) =>
-  SOURCES[r.source].label + (r.source === 'prime' && r.spread ? ` ${r.spread < 0 ? '−' : '+'} ${Math.abs(r.spread)}%` : '');
+  isFixed(r)
+    ? `Fixed rate of ${fmtPct(r.fixedRate)} p.a.`
+    : SOURCES[r.source].label + (r.source === 'prime' && r.spread ? ` ${r.spread < 0 ? '−' : '+'} ${Math.abs(r.spread)}%` : '');
+
+// "HK$219.18 (at 8.000% ÷ 365)", or a dash when no rate applies on the end date
+const perDiemText = (r) =>
+  r.perDiem ? `${money.format(r.perDiem.amount)} (at ${fmtRate(r.perDiem.rate)} ÷ ${r.perDiem.yearDays})` : '–';
 
 // Inputs block, shown only when printing / saving as PDF (the form itself is hidden there)
 const printInputItems = (r) => [
@@ -204,7 +218,7 @@ const printInputItems = (r) => [
   ['End date (does not earn interest)', fmtDate(r.end)],
   ['Day count basis', BASES[r.basis]],
   ['Rounding', ROUNDINGS[r.rounding]],
-  ['Rates as at', fmtDate(asAt(r.source))],
+  ...(isFixed(r) ? [] : [['Rates as at', fmtDate(asAt(r.source))]]),
   ['Calculated on', fmtDate(new Date().toLocaleDateString('en-CA'))],
 ];
 
@@ -230,7 +244,7 @@ function render(r) {
       `${r.uncoveredDays} day${r.uncoveredDays === 1 ? '' : 's'} before that date earn no interest in this calculation.`,
     ));
   }
-  if (rateData[r.source].crossCheck?.status === 'mismatch') {
+  if (rateData[r.source]?.crossCheck?.status === 'mismatch') {
     warnings.push(warning(`${CROSS_CHECK.mismatch} See the rate table below for details.`));
   }
   $('warnings').replaceChildren(...warnings);
@@ -243,6 +257,8 @@ function render(r) {
   $('totalInterest').textContent = money.format(r.totalInterest);
   $('totalDue').textContent = money.format(r.totalDue);
   $('totalDays').textContent = r.totalDays;
+  $('perDiem').textContent = r.perDiem ? money.format(r.perDiem.amount) : '–';
+  $('perDiem').title = r.perDiem ? `${fmtRate(r.perDiem.rate)} × principal ÷ ${r.perDiem.yearDays}` : '';
   $('periods').replaceChildren(
     ...r.periods.map((p) =>
       row(
@@ -261,13 +277,14 @@ function render(r) {
 function writeQuery(r) {
   const q = new URLSearchParams({ src: r.source, p: String(r.principal), from: r.start, to: r.end, basis: r.basis, round: r.rounding });
   if (r.source === 'prime') q.set('spread', String(r.spread));
+  if (isFixed(r)) q.set('rate', String(r.fixedRate));
   history.replaceState(null, '', `${location.pathname}?${q}`);
 }
 
 function readQuery() {
   const q = new URLSearchParams(location.search);
   const src = q.get('src');
-  if (src in SOURCES) document.querySelector(`input[name="source"][value="${src}"]`).checked = true;
+  if (src in SOURCES || src === 'fixed') document.querySelector(`input[name="source"][value="${src}"]`).checked = true;
   const p = Number(q.get('p'));
   if (q.has('p') && Number.isFinite(p)) $('principal').value = money.format(p);
   if (isIsoDate(q.get('from'))) $('start').value = q.get('from');
@@ -276,7 +293,15 @@ function readQuery() {
   if (q.get('round') in ROUNDINGS) $('rounding').value = q.get('round');
   const spread = Number(q.get('spread'));
   if (q.has('spread') && Number.isFinite(spread)) $('spread').value = String(spread);
+  const rate = Number(q.get('rate'));
+  if (q.has('rate') && Number.isFinite(rate)) $('fixedRate').value = String(rate);
+  showSourceFields();
+}
+
+// Spread only applies to prime; the fixed rate field only to a fixed rate
+function showSourceFields() {
   $('spreadField').hidden = currentSource() !== 'prime';
+  $('fixedField').hidden = currentSource() !== 'fixed';
 }
 
 function flash(msg) {
@@ -338,7 +363,7 @@ function clearResults() {
 
 document.querySelectorAll('input[name="source"]').forEach((el) =>
   el.addEventListener('change', () => {
-    $('spreadField').hidden = currentSource() !== 'prime';
+    showSourceFields();
     if (!lastResult) renderRateTable();
   }),
 );
@@ -370,17 +395,23 @@ $('form').addEventListener('submit', (e) => {
   const end = $('end').value;
   const basis = $('basis').value;
   const rounding = $('rounding').value;
+  const fixedRate = source === 'fixed' ? parseNumber($('fixedRate').value) : null;
 
   if (!$('principal').value.trim() || !Number.isFinite(principal)) return showError('Please enter a valid principal amount.');
   if (!start) return showError('Please enter a valid start date.');
   if (!end) return showError('Please enter a valid end date.');
   if (!Number.isFinite(spread)) return showError('Please enter a valid spread, e.g. 2 for prime + 2%.');
-  if (!rateData[source]) return showError('Interest rates have not loaded yet.');
+  if (source === 'fixed' && (!$('fixedRate').value.trim() || !Number.isFinite(fixedRate))) {
+    return showError('Please enter a valid fixed rate, e.g. 8 for 8% p.a.');
+  }
+  if (source !== 'fixed' && !rateData[source]) return showError('Interest rates have not loaded yet.');
+  const rates = source === 'fixed' ? [{ effective: FIXED_FROM, rate: fixedRate }] : rateData[source].rates;
 
   try {
     lastResult = {
-      ...calculateInterest({ principal, start, end, spread, basis, rounding, rates: rateData[source].rates }),
+      ...calculateInterest({ principal, start, end, spread, basis, rounding, rates }),
       source,
+      fixedRate,
     };
     writeQuery(lastResult);
     render(lastResult);
@@ -402,7 +433,7 @@ function setDefaultDates() {
 
 $('clear').addEventListener('click', () => {
   $('form').reset();
-  $('spreadField').hidden = currentSource() !== 'prime';
+  showSourceFields();
   clearResults();
   showError('');
   history.replaceState(null, '', location.pathname);
@@ -464,12 +495,17 @@ $('xlsx').addEventListener('click', () => {
       rateBasis: rateBasisLabel(r),
       dayCount: BASES[r.basis],
       rounding: ROUNDINGS[r.rounding],
-      ratesTitle: SOURCES[r.source].title,
-      sourceUrl: data.source,
-      updatedAt: asAt(r.source),
-      crossCheck: data.crossCheck && { ...data.crossCheck, summary: CROSS_CHECK[data.crossCheck.status] },
-      rates: sortRates(relevantRates(data.rates, r)),
       formulaText: formula,
+      // A fixed rate has no published source: the Rates sheet just states the rate
+      ...(isFixed(r)
+        ? { ratesTitle: 'Fixed rate', rates: [] }
+        : {
+            ratesTitle: SOURCES[r.source].title,
+            sourceUrl: data.source,
+            updatedAt: asAt(r.source),
+            crossCheck: data.crossCheck && { ...data.crossCheck, summary: CROSS_CHECK[data.crossCheck.status] },
+            rates: sortRates(relevantRates(data.rates, r)),
+          }),
     });
     const bytes = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), exportName(r, 'xlsx'));
@@ -482,16 +518,22 @@ $('pdf').addEventListener('click', () => {
   busy($('pdf'), async () => {
     const lib = await loadPdf();
     const data = rateData[r.source];
-    const used = relevantRates(data.rates, r);
-    const cc = data.crossCheck;
+    const used = isFixed(r) ? [] : relevantRates(data.rates, r);
+    const cc = data?.crossCheck;
     const doc = buildPdf(lib, r, {
       inputs: printInputItems(r),
       warnings: [...$('warnings').querySelectorAll('.warning')].map((el) => el.textContent),
       crossCheck: cc && cc.status !== 'mismatch' ? { text: CROSS_CHECK[cc.status], linkText: HSBC_PAGE, url: cc.source } : null,
       summaryLine: latestRateLine(r),
-      ratesHeading: `${SOURCES[r.source].title} (${used.length} of ${data.rates.length} rates, used from ${fmtDate(r.start)} to ${fmtDate(r.end)})`,
-      source: { name: SOURCES[r.source].sourceName, url: data.source },
-      rates: sortRates(used),
+      perDiem: perDiemText(r),
+      // No "rates used" section for a fixed rate
+      ...(isFixed(r)
+        ? {}
+        : {
+            ratesHeading: `${SOURCES[r.source].title} (${used.length} of ${data.rates.length} rates, used from ${fmtDate(r.start)} to ${fmtDate(r.end)})`,
+            source: { name: SOURCES[r.source].sourceName, url: data.source },
+            rates: sortRates(used),
+          }),
       fmt: { money: (n) => money.format(n), date: fmtDate, rate: fmtRate, rateWithSpread: fmtRateWithSpread, formula },
       generatedOn: fmtDate(new Date().toLocaleDateString('en-CA')),
     });
@@ -512,8 +554,9 @@ $('csv').addEventListener('click', () => {
     ['Total Interest', money.format(r.totalInterest)],
     ['Total Amount Due', money.format(r.totalDue)],
     ['Total No. of Days', r.totalDays],
-    ['Rates As At', asAt(r.source)],
-    ...(rateData[r.source].crossCheck
+    ['Interest Per Day After End Date', perDiemText(r)],
+    ...(isFixed(r) ? [] : [['Rates As At', asAt(r.source)]]),
+    ...(rateData[r.source]?.crossCheck
       ? [['Cross-check', `${CROSS_CHECK[rateData[r.source].crossCheck.status]} ${rateData[r.source].crossCheck.source}`]]
       : []),
     [],
@@ -530,7 +573,7 @@ $('csv').addEventListener('click', () => {
   ];
   const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
   // BOM so Excel reads the × and ÷ in the formula column as UTF-8
-  const csv = '﻿' + lines.map((l) => l.map(cell).join(',')).join('\n') + '\n';
+  const csv = '\uFEFF' + lines.map((l) => l.map(cell).join(',')).join('\n') + '\n';
   download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), exportName(r, 'csv'));
 });
 
