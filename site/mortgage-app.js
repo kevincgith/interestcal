@@ -82,7 +82,7 @@ function updateHints() {
       const name = TENOR_NAME[currentTenor()];
       const hist = hibor[currentTenor()]?.rates;
       hint = `Rate = the lower of ${name} HIBOR + ${pct(m)} and prime − ${pct(c)} (now ${pct(p.rate - c)}), ` +
-        `reset ${currentTenor() === '1m' ? 'monthly' : 'every 3 months'} from drawdown. ` +
+        'reset at every monthly due date. ' +
         (hist?.length
           ? `Past resets use actual ${name} HIBOR fixings (HKMA, ${fmtDate(hist.at(-1).effective)} to ${fmtDate(hist[0].effective)}); later ones use ${pct(h)}.`
           : `Every reset uses ${pct(h)} (no HIBOR history loaded).`);
@@ -206,7 +206,6 @@ $('mform').addEventListener('submit', async (e) => {
           hiborHistory: (await loadHibor(p.tenor))?.rates ?? [],
           start: inputs.start,
           years: inputs.years,
-          resetMonths: p.tenor === '3m' ? 3 : 1,
         }
       : {};
     const rates = mortgageRates({ ...p, ...extra, prime: prime?.rates ?? [] });

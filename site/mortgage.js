@@ -161,14 +161,15 @@ export function mortgageSummary(input, { stressAdd = 2, monthlyIncome = null } =
  * Rate table for a mortgage, % p.a., oldest first.
  *   prime: P - discount, from the prime history.
  *   fixed: one rate.
- *   hibor: min(H + margin, P - capDiscount). With `start` (the drawdown date) the HIBOR leg resets every
- *     `resetMonths` months from drawdown (1 for 1-month HIBOR, 3 for 3-month) using the actual fixing on or before each
- *     reset date from `hiborHistory`; resets after the latest fixing use `hibor`. The prime cap follows prime changes.
+ *   hibor: min(H + margin, P - capDiscount). With `start` (the drawdown date) the HIBOR leg resets on the drawdown
+ *     date and every monthly due date, whichever tenor is used (1-month or 3-month HIBOR only decides which fixings
+ *     `hiborHistory` holds), using the actual fixing on or before each reset date; resets after the latest fixing use
+ *     `hibor`. The prime cap follows prime changes.
  *     Without `start`, HIBOR is simply `hibor` throughout.
  */
 export function mortgageRates({
   type, prime = [], discount = 0, fixedRate = 0,
-  hibor = 0, hiborHistory = [], margin = 0, capDiscount = 0, start = null, years = 30, resetMonths = 1,
+  hibor = 0, hiborHistory = [], margin = 0, capDiscount = 0, start = null, years = 30,
 }) {
   const primeAsc = [...prime].sort((a, b) => a.effective.localeCompare(b.effective));
   if (type === 'fixed') return [{ effective: '1900-01-01', rate: fixedRate }];
@@ -189,7 +190,7 @@ export function mortgageRates({
   const end = addMonths(start, Math.round(years * 12));
   const resets = [];
   for (let k = 0; ; k++) {
-    const d = addMonths(start, k * resetMonths);
+    const d = addMonths(start, k); // drawdown and every monthly due date
     if (d > end) break;
     resets.push(d);
   }

@@ -126,3 +126,17 @@ test('warns when a HIBOR loan starts before the saved HIBOR history', async ({ p
   await expect(page.locator('#mPayment')).not.toHaveText('');
   await expect(page.locator('#mWarn')).toBeHidden();
 });
+
+test('3-month HIBOR still resets at every monthly due date, using 3-month fixings', async ({ page }) => {
+  const url = (ht) => `?tab=mortgage&mt=hibor&mg=0&cap=0&price=5000000&yrs=20&from=2023-01-15${ht}`;
+  const firstRates = async () => (await page.locator('#mSchedule tr td:nth-child(3)').allTextContents()).slice(0, 12);
+  await page.goto(url('&ht=3m'));
+  await expect(page.locator('#mRateHint')).toContainText('3-month HIBOR');
+  await expect(page.locator('#mRateHint')).toContainText('reset at every monthly due date');
+  const threeM = await firstRates();
+  // The rate can change from one month to the next (not only every third month)
+  const changes = threeM.slice(1).filter((r, i) => r !== threeM[i]).length;
+  expect(changes).toBeGreaterThan(3);
+  await page.goto(url(''));
+  expect(await firstRates()).not.toEqual(threeM); // 1-month fixings differ from 3-month ones
+});

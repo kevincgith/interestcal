@@ -87,7 +87,7 @@ test('HIBOR-based with history: past resets use actual fixings, later ones the a
     { effective: '2026-03-13', rate: 3.0 },
   ];
   const monthly = mortgageRates({
-    type: 'hibor', prime, hiborHistory, hibor: 0.5, margin: 1.3, capDiscount: 1.75, start: '2026-01-15', years: 1, resetMonths: 1,
+    type: 'hibor', prime, hiborHistory, hibor: 0.5, margin: 1.3, capDiscount: 1.75, start: '2026-01-15', years: 1,
   });
   assert.deepEqual(monthly.slice(0, 5).map((r) => [r.effective, Number(r.rate.toFixed(6))]), [
     ['2026-01-15', 2.3], // 1.0 + 1.3
@@ -96,10 +96,8 @@ test('HIBOR-based with history: past resets use actual fixings, later ones the a
     ['2026-04-15', 1.8], // after the history: assumed 0.5 + 1.3
     ['2026-05-15', 1.8],
   ]);
-  const quarterly = mortgageRates({
-    type: 'hibor', prime, hiborHistory, hibor: 0.5, margin: 1.3, capDiscount: 1.75, start: '2026-01-15', years: 1, resetMonths: 3,
-  });
-  assert.deepEqual(quarterly.map((r) => r.effective), ['2026-01-15', '2026-04-15', '2026-07-15', '2026-10-15', '2027-01-15']);
+  // Resets are monthly whichever tenor's fixings are used (3-month HIBOR still resets at every due date)
+  assert.equal(monthly.length, 13);
 });
 
 test('HIBOR cap follows a prime change between resets', () => {
