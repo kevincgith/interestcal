@@ -58,6 +58,8 @@ export const ALLOCATIONS = ['interest', 'principal'];
  *   'period': round each period's interest to cents, total = sum of the rounded amounts
  * @param {{date: string, amount: number}[]} [input.payments]  partial payments; a payment on a date counts from that
  *   day (like the end date, the payment date itself no longer earns interest on the amount paid)
+ * @param {{date: string, amount: number, label?: string}[]} [input.additions]  further sums (e.g. costs) that join the
+ *   principal from their date and earn interest from that day. On a day with both, sums are added before payments.
  * @param {'interest' | 'principal'} [input.allocation]  what a payment pays off first: accrued unpaid interest
  *   ('interest', the usual rule) or principal. Interest is always simple: unpaid interest never earns interest.
  */
@@ -70,6 +72,7 @@ export function calculateInterest({
   basis = 'act/act',
   rounding = 'total',
   payments = [],
+  additions = [],
   allocation = 'interest',
 }) {
   if (!Number.isFinite(principal)) throw new Error('Principal must be a number');
@@ -96,6 +99,15 @@ export function calculateInterest({
   const applied = pays.filter((p) => p.day >= loanStart && p.day < loanEnd);
   const ignoredPayments = pays.filter((p) => !applied.includes(p)).map(({ date, amount }) => ({ date, amount }));
 
+  const adds = additions
+    .map((a, i) => {
+      if (!(Number.isFinite(a.amount) && a.amount > 0)) throw new Error(`Added sum ${i + 1}: amount must be more than 0`);
+      return { day: toDay(a.date), date: a.date, amount: a.amount, label: a.label ?? '' };
+    })
+    .sort((a, b) => a.day - b.day);
+  const added = adds.filter((a) => a.day >= loanStart && a.day < loanEnd);
+  const ignoredAdditions = adds.filter((a) => !added.includes(a)).map(({ date, amount, label }) => ({ date, amount, label }));
+
   // Split [start, end) at every rate change, every 1 January (Actual/Actual only) and every payment date
   const cuts = new Set([loanStart, loanEnd]);
   for (const r of sorted) if (r.day > loanStart && r.day < loanEnd) cuts.add(r.day);
@@ -103,6 +115,7 @@ export function calculateInterest({
     for (let y = yearOf(loanStart) + 1; jan1(y) < loanEnd; y++) cuts.add(jan1(y));
   }
   for (const p of applied) cuts.add(p.day);
+  for (const a of added) cuts.add(a.day);
   const points = [...cuts].sort((a, b) => a - b);
 
   let balance = principal; // principal still owed
@@ -112,6 +125,8 @@ export function calculateInterest({
   const totals = { paid: 0, toInterest: 0, toPrincipal: 0, excess: 0 };
   const periods = [];
   const paymentRows = [];
+  const additionRows = [];
+  let totalAdded = 0;
 
   // In 'period' rounding everything is kept in whole cents, so floating point dust never shows
   const cents = (x) => (rounding === 'period' ? round2(x) : x);
@@ -148,9 +163,18 @@ export function calculateInterest({
     }
   };
 
+  const applyAdditions = (day) => {
+    for (const a of added.filter((x) => x.day === day)) {
+      balance = cents(balance + a.amount);
+      totalAdded += a.amount;
+      additionRows.push({ date: a.date, amount: a.amount, label: a.label, principalAfter: balance });
+    }
+  };
+
   for (let i = 0; i < points.length - 1; i++) {
     const segStart = points[i];
     const segEnd = points[i + 1];
+    applyAdditions(segStart);
     applyPayments(segStart);
 
     const r = sorted.filter((x) => x.day <= segStart).at(-1);
@@ -206,6 +230,9 @@ export function calculateInterest({
     periods,
     payments: paymentRows,
     ignoredPayments,
+    additions: additionRows,
+    ignoredAdditions,
+    totalAdded,
     totalInterest,
     totalPaid: totals.paid,
     interestPaid: totals.toInterest,

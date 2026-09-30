@@ -166,3 +166,34 @@ test('footer shows the licence and links to the GitHub repo', async ({ page }) =
   await expect(footer.getByRole('link', { name: 'MIT License' })).toHaveAttribute('href', 'https://github.com/kevincgith/interestcal/blob/main/LICENSE');
   await expect(footer.getByRole('link', { name: 'Source code on GitHub' })).toHaveAttribute('href', 'https://github.com/kevincgith/interestcal');
 });
+
+test('sums added later: from the form and from a shared link', async ({ page }) => {
+  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-12-31');
+  await page.getByRole('button', { name: '+ Add sum' }).click();
+  await page.getByLabel('Added sum date').fill('2026-07-01');
+  await page.getByLabel('Added sum amount').fill('20000');
+  await page.getByLabel('Added sum description').fill('Costs, fixed');
+  await page.getByRole('button', { name: 'Calculate' }).click();
+
+  await expect(page.locator('#totalAdded')).toHaveText('20,000.00');
+  await expect(page.locator('#additionsTable tr td')).toHaveText(['01-Jul-2026', 'Costs, fixed', '20,000.00', '120,000.00']);
+  // 100,000 x 8% x 181/365 + 120,000 x 8% x 183/365
+  await expect(total(page)).toHaveText('8,780.27');
+  await expect(page.locator('#totalDue')).toHaveText('128,780.27');
+
+  // The link carries the sum (description included) and restores it
+  const url = page.url();
+  expect(url).toContain('add=2026-07-01%3A20000%3ACosts%252C%2520fixed');
+  await page.goto(url);
+  await expect(page.getByLabel('Added sum description')).toHaveValue('Costs, fixed');
+  await expect(total(page)).toHaveText('8,780.27');
+});
+
+test('icons and the link-preview image are served', async ({ page, request }) => {
+  await page.goto('./');
+  for (const href of ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png', 'og-image.png']) {
+    const res = await request.get(href);
+    expect(res.status(), href).toBe(200);
+  }
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://app.kevinlhc.com/interestcal/og-image.png');
+});

@@ -76,24 +76,32 @@ export function buildWorkbook(XLSX, r, ctx) {
   rows.push(['End date (does not earn interest)', date(r.end)]);
 
   const payments = r.payments ?? [];
+  const additions = r.additions ?? [];
   const withPayments = payments.length > 0;
+  const withAdditions = additions.length > 0;
+  const withEvents = withPayments || withAdditions; // the principal changes during the calculation
   if (withPayments) rows.push(['Payments applied', ctx.allocation]);
 
   // Totals: placeholders, filled once we know where the tables land
   const totalsRow = rows.length;
-  const totalLabels = withPayments
-    ? ['Total interest', 'Payments received', 'Outstanding principal', 'Unpaid interest', 'Total amount due', 'Total no. of days', 'perDiem']
+  const totalLabels = withEvents
+    ? [
+        'Total interest',
+        ...(withAdditions ? ['Sums added'] : []),
+        ...(withPayments ? ['Payments received'] : []),
+        'Outstanding principal', 'Unpaid interest', 'Total amount due', 'Total no. of days', 'perDiem',
+      ]
     : ['Total interest', 'Total amount due', 'Total no. of days', 'perDiem'];
   const totalAt = (label) => totalsRow + 1 + totalLabels.indexOf(label); // 1-based Excel row
   totalLabels.forEach(() => rows.push([]));
   rows.push([]);
 
   // With a spread, show Base Rate + Spread = Interest Rate (a live formula); otherwise just the rate.
-  // With payments, each period has its own principal balance (a Principal column).
+  // With payments or added sums, each period has its own principal balance (a Principal column).
   const withSpread = r.spread !== 0;
   const cols = [
     'Period Start', 'Period End', 'No. of Days',
-    ...(withPayments ? ['Principal'] : []),
+    ...(withEvents ? ['Principal'] : []),
     ...(withSpread ? ['Base Rate', 'Spread'] : []),
     'Interest Rate', 'Year Days', 'Formula', 'Interest Amount',
   ];
@@ -105,7 +113,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   const first = headerRow + 2; // 1-based Excel row of the first period
   r.periods.forEach((p, i) => {
     const n = first + i;
-    const base = withPayments ? `${col('Principal')}${n}` : P;
+    const base = withEvents ? `${col('Principal')}${n}` : P;
     const rate = withSpread
       ? [
           num(tidy(p.baseRate), PCT),
@@ -118,7 +126,7 @@ export function buildWorkbook(XLSX, r, ctx) {
       date(p.start),
       date(p.end),
       formula(`B${n}-A${n}`, p.days),
-      ...(withPayments ? [num(p.principal, MONEY)] : []),
+      ...(withEvents ? [num(p.principal, MONEY)] : []),
       ...rate,
       num(p.yearDays),
       ctx.formulaText(p),
@@ -128,7 +136,16 @@ export function buildWorkbook(XLSX, r, ctx) {
   const last = first + r.periods.length - 1;
   const hasPeriods = r.periods.length > 0;
 
-  // Payments table below the periods
+  // Added sums table below the periods
+  let addFirst = 0;
+  if (withAdditions) {
+    rows.push([], [text('Sums added later')], ['Date', 'Description', 'Amount', 'Principal After']);
+    addFirst = rows.length + 1;
+    for (const a of additions) rows.push([date(a.date), a.label || '', num(a.amount, MONEY), num(a.principalAfter, MONEY)]);
+  }
+  const addLast = addFirst + additions.length - 1;
+
+  // Payments table
   let payFirst = 0;
   if (withPayments) {
     rows.push([], [text('Payments')], ['Date', 'Amount', 'To Interest', 'To Principal', 'Principal After', 'Unpaid Interest After']);
@@ -148,8 +165,9 @@ export function buildWorkbook(XLSX, r, ctx) {
 
   const set = (label, cells) => (rows[totalAt(label) - 1] = cells);
   set('Total interest', ['Total interest', formula(hasPeriods ? `SUM(${INT}${first}:${INT}${last})` : '0', r.totalInterest, MONEY)]);
-  if (withPayments) {
-    set('Payments received', ['Payments received', formula(`SUM(B${payFirst}:B${payLast})`, r.totalPaid, MONEY)]);
+  if (withAdditions) set('Sums added', ['Sums added', formula(`SUM(C${addFirst}:C${addLast})`, r.totalAdded, MONEY)]);
+  if (withPayments) set('Payments received', ['Payments received', formula(`SUM(B${payFirst}:B${payLast})`, r.totalPaid, MONEY)]);
+  if (withEvents) {
     set('Outstanding principal', ['Outstanding principal', num(r.outstandingPrincipal, MONEY)]);
     set('Unpaid interest', ['Unpaid interest', num(r.outstandingInterest, MONEY)]);
     set('Total amount due', [
@@ -161,7 +179,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   }
   set('Total no. of days', ['Total no. of days', formula(hasPeriods ? `SUM(${DAYS}${first}:${DAYS}${last})` : '0', r.totalDays)]);
   // Daily interest after the end date: principal still owed x rate in force on the end date / year days
-  const owed = withPayments ? `B${totalAt('Outstanding principal')}` : P;
+  const owed = withEvents ? `B${totalAt('Outstanding principal')}` : P;
   set('perDiem', r.perDiem
     ? [
         `Interest per day after end date (at ${(r.perDiem.rate * 100).toFixed(3)}% ÷ ${r.perDiem.yearDays})`,
@@ -169,7 +187,7 @@ export function buildWorkbook(XLSX, r, ctx) {
       ]
     : ['Interest per day after end date', '–']);
 
-  const widths = [34, 44, 12, ...(withPayments ? [14] : []), ...(withSpread ? [12, 10] : []), 14, 11, 40, 16];
+  const widths = [34, 44, 12, ...(withEvents ? [14] : []), ...(withSpread ? [12, 10] : []), 14, 11, 40, 16];
   const calc = sheetFrom(XLSX, rows, widths);
 
   // ---- Sheet 2: Rates ----

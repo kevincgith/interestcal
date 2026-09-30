@@ -4,7 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HK Interest Calculator</title>
-  <meta name="description" content="Simple interest on Hong Kong debts at the HK Judiciary judgment debt rate or the HSBC prime rate.">
+  <meta name="description" content="Simple interest on Hong Kong debts at the HK judgment debt rate, HSBC prime rate or a fixed rate, with partial payments, daily interest, and PDF and Excel export.">
+  <meta name="theme-color" content="#1f5f8b">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <!-- Link previews (WhatsApp, email, Slack, social) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="HK Interest Calculator">
+  <meta property="og:title" content="HK Interest Calculator">
+  <meta property="og:description" content="Simple interest on Hong Kong debts at the HK judgment debt rate, HSBC prime rate or a fixed rate, with partial payments, daily interest, and PDF and Excel export.">
+  <meta property="og:url" content="https://app.kevinlhc.com/interestcal/">
+  <meta property="og:image" content="https://app.kevinlhc.com/interestcal/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="HK Interest Calculator: simple interest at the HK judgment debt rate, HSBC prime rate or a fixed rate">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="style.css?v=__BUILD__">
 </head>
 <body>
@@ -58,8 +73,15 @@
         </div>
       </label>
       <fieldset class="payments">
+        <legend>Sums added later <span class="muted">(optional, e.g. costs)</span></legend>
+        <div id="additionRows" class="event-rows"></div>
+        <div class="payments-actions">
+          <button type="button" id="addSum" class="secondary">+ Add sum</button>
+        </div>
+      </fieldset>
+      <fieldset class="payments">
         <legend>Payments received <span class="muted">(optional)</span></legend>
-        <div id="paymentRows"></div>
+        <div id="paymentRows" class="event-rows"></div>
         <div class="payments-actions">
           <button type="button" id="addPayment" class="secondary">+ Add payment</button>
           <label id="allocationField" class="inline" hidden>Apply payments to
@@ -84,6 +106,7 @@
       <dl class="summary">
         <div><dt>Principal</dt><dd id="summaryPrincipal"></dd></div>
         <div><dt>Total interest</dt><dd id="totalInterest"></dd></div>
+        <div id="addedTile" hidden><dt>Sums added</dt><dd id="totalAdded"></dd></div>
         <div id="paidTile" hidden><dt>Payments received</dt><dd id="totalPaid"></dd></div>
         <div><dt>Total amount due</dt><dd id="totalDue"></dd></div>
         <div><dt>Total no. of days</dt><dd id="totalDays"></dd></div>
@@ -98,6 +121,15 @@
           <tbody id="periods"></tbody>
         </table>
       </div>
+      <section id="additionsResult" hidden>
+        <h2>Sums added later</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Principal after</th></tr></thead>
+            <tbody id="additionsTable"></tbody>
+          </table>
+        </div>
+      </section>
       <section id="paymentsResult" hidden>
         <h2>Payments</h2>
         <p id="outstandingLine" class="muted"></p>
@@ -138,7 +170,7 @@
         <a href="https://www.hkma.gov.hk/eng/data-publications-and-research/data-and-statistics/monthly-statistical-bulletin/" target="_blank" rel="noopener">HKMA</a>
         and cross-checked daily against
         <a href="https://www.hsbc.com.hk/investments/market-information/hk/lending-rate/" target="_blank" rel="noopener">HSBC’s official prime rate page</a>,
-        or a fixed rate, with optional partial payments.
+        or a fixed rate, with optional sums added later and partial payments.
         The start date earns interest and the end date does not.
         Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.</p>
       <p class="license">

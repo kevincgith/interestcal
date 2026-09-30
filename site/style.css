@@ -106,13 +106,20 @@ label[hidden] { display: none; }
 .actions { grid-column: 1 / -1; display: flex; gap: 12px; }
 .payments { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; min-width: 0; }
 .payments legend { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; padding: 0; }
-#paymentRows { display: grid; gap: 8px; margin-bottom: 8px; }
+.event-rows { display: grid; gap: 8px; margin-bottom: 8px; }
+.event-rows:empty { margin: 0; }
 .payment-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; gap: 8px; }
+.payment-row.with-label { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 44px; }
+@media (max-width: 600px) {
+  /* Phones: description goes on its own line under date and amount */
+  .payment-row.with-label { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; }
+  .payment-row.with-label .pay-label { grid-column: 1 / 3; grid-row: 2; }
+}
 .payment-row .remove { width: 44px; height: 44px; padding: 0; font-size: 1.2rem; line-height: 1; }
 .payments-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 label.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 label.inline select { width: auto; }
-#paymentsResult h2 { font-size: 1.05rem; margin: 8px 0 4px; }
+#additionsResult h2, #paymentsResult h2 { font-size: 1.05rem; margin: 8px 0 4px; }
 
 button {
   font: inherit;

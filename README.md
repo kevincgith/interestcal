@@ -17,6 +17,9 @@ You can choose one of three rates:
 
 ## Features
 
+- **Sums added later:** further amounts such as costs, each with a date, an amount and an optional description. From its date, each sum joins the principal and earns interest at the same rate. On a day with both, the sum is added before any payment, so the payment can clear it. Sums dated outside the calculation period are ignored with a warning.
+- **Icon and link preview:** a calculator icon for browser tabs and the iPhone home screen, plus a preview card (title, description, image) when the link is shared. After changing `site/favicon.svg` or the preview wording, run `npm run images`.
+
 - **Partial payments:** add any number of payments (date + amount). Choose how they're applied:
   - **Interest first, then principal** (default): each payment clears accrued unpaid interest, and the rest reduces the principal.
   - **Principal first, then interest.**

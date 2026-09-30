@@ -105,12 +105,20 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
 
   // ---- Summary ----
   const payments = r.payments ?? [];
+  const additions = r.additions ?? [];
   const paid = payments.length > 0;
+  const addedAny = additions.length > 0;
   table({
-    head: [['Principal', 'Total interest', ...(paid ? ['Payments received'] : []), 'Total amount due', 'Total no. of days']],
+    head: [[
+      'Principal', 'Total interest',
+      ...(addedAny ? ['Sums added'] : []),
+      ...(paid ? ['Payments received'] : []),
+      'Total amount due', 'Total no. of days',
+    ]],
     body: [[
       fmt.money(r.principal),
       fmt.money(r.totalInterest),
+      ...(addedAny ? [fmt.money(r.totalAdded)] : []),
       ...(paid ? [fmt.money(r.totalPaid)] : []),
       fmt.money(r.totalDue),
       String(r.totalDays),
@@ -141,6 +149,16 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
       5: { halign: 'right', cellWidth: 62 },
     },
   });
+
+  // ---- Sums added later ----
+  if (addedAny) {
+    heading('Sums added later', 11);
+    table({
+      head: [['Date', 'Description', 'Amount', 'Principal after']],
+      body: additions.map((a) => [fmt.date(a.date), pdfText(a.label || '-'), fmt.money(a.amount), fmt.money(a.principalAfter)]),
+      columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } },
+    });
+  }
 
   // ---- Payments ----
   if (paid) {

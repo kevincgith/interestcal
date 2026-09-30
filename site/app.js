@@ -226,6 +226,9 @@ const printInputItems = (r) => [
   ['End date (does not earn interest)', fmtDate(r.end)],
   ['Day count basis', BASES[r.basis]],
   ['Rounding', ROUNDINGS[r.rounding]],
+  ...(r.additions.length || r.ignoredAdditions.length
+    ? [['Sums added later', String(r.additions.length + r.ignoredAdditions.length)]]
+    : []),
   ...(r.payments.length || r.ignoredPayments.length
     ? [['Payments', `${r.payments.length + r.ignoredPayments.length} (${ALLOCATIONS[r.allocation].toLowerCase()})`]]
     : []),
@@ -262,6 +265,13 @@ function render(r) {
         .join(', ')}.`,
     ));
   }
+  if (r.ignoredAdditions.length) {
+    warnings.push(warning(
+      `Added sums outside the calculation period were ignored: ${r.ignoredAdditions
+        .map((a) => `${fmtDate(a.date)} (${money.format(a.amount)})`)
+        .join(', ')}.`,
+    ));
+  }
   if (r.excessPaid > 0.005) {
     warnings.push(warning(`Payments exceed the amount owed by HK$${money.format(r.excessPaid)}.`));
   }
@@ -277,6 +287,15 @@ function render(r) {
   $('summaryPrincipal').textContent = money.format(r.principal);
   $('totalInterest').textContent = money.format(r.totalInterest);
   $('totalDue').textContent = money.format(r.totalDue);
+  const hasAdditions = r.additions.length > 0;
+  $('addedTile').hidden = !hasAdditions;
+  $('totalAdded').textContent = money.format(r.totalAdded);
+  $('additionsResult').hidden = !hasAdditions;
+  $('additionsTable').replaceChildren(
+    ...r.additions.map((a) =>
+      row([fmtDate(a.date), a.label || '–', money.format(a.amount), money.format(a.principalAfter)], ['', '', 'num', 'num']),
+    ),
+  );
   const hasPayments = r.payments.length > 0;
   $('paidTile').hidden = !hasPayments;
   $('totalPaid').textContent = money.format(r.totalPaid);
@@ -321,6 +340,9 @@ function writeQuery(r) {
     q.set('pay', pays.map(([d, a]) => `${d}:${a}`).join(','));
     q.set('alloc', r.allocation);
   }
+  // Added sums as date:amount:description, e.g. add=2026-03-01:5000:Costs (description URI-encoded)
+  const adds = [...r.additions, ...r.ignoredAdditions];
+  if (adds.length) q.set('add', adds.map((a) => `${a.date}:${a.amount}:${encodeURIComponent(a.label)}`).join(','));
   history.replaceState(null, '', `${location.pathname}?${q}`);
 }
 
@@ -339,6 +361,10 @@ function readQuery() {
   for (const pair of (q.get('pay') ?? '').split(',').filter(Boolean)) {
     const [date, amount] = pair.split(':');
     if (isIsoDate(date) && Number(amount) > 0) addPaymentRow(date, Number(amount));
+  }
+  for (const item of (q.get('add') ?? '').split(',').filter(Boolean)) {
+    const [date, amount, label = ''] = item.split(':');
+    if (isIsoDate(date) && Number(amount) > 0) addEventRow('addition', date, Number(amount), decodeURIComponent(label));
   }
   if (q.get('alloc') in ALLOCATIONS) $('allocation').value = q.get('alloc');
   const rate = Number(q.get('rate'));
@@ -389,24 +415,31 @@ window.addEventListener('afterprint', () => {
   document.querySelector('details').open = detailsWasOpen;
 });
 
-// ---- Payments received: rows of date + amount ----
+// ---- Payments received and sums added later: rows of date + amount (+ description for sums) ----
 
-function addPaymentRow(date = '', amount = '') {
+const EVENT_ROWS = {
+  payment: { container: 'paymentRows', noun: 'Payment', aria: 'Payment', withLabel: false },
+  addition: { container: 'additionRows', noun: 'Added sum', aria: 'Added sum', withLabel: true },
+};
+
+function input(type, cls, aria, value = '') {
+  const el = document.createElement('input');
+  el.type = type;
+  el.className = cls;
+  el.value = value;
+  el.setAttribute('aria-label', aria);
+  return el;
+}
+
+function addEventRow(kind, date = '', amount = '', label = '') {
+  const cfg = EVENT_ROWS[kind];
   const row = document.createElement('div');
-  row.className = 'payment-row';
-  const d = document.createElement('input');
-  d.type = 'date';
-  d.className = 'pay-date';
-  d.value = date;
-  d.setAttribute('aria-label', 'Payment date');
-  const a = document.createElement('input');
-  a.type = 'text';
+  row.className = cfg.withLabel ? 'payment-row with-label' : 'payment-row';
+  const d = input('date', 'pay-date', `${cfg.aria} date`, date);
+  const a = input('text', 'pay-amount', `${cfg.aria} amount`, amount === '' ? '' : money.format(amount));
   a.inputMode = 'decimal';
   a.autocomplete = 'off';
-  a.className = 'pay-amount';
   a.placeholder = 'Amount (HK$)';
-  a.value = amount === '' ? '' : money.format(amount);
-  a.setAttribute('aria-label', 'Payment amount');
   a.addEventListener('blur', () => {
     const n = parseNumber(a.value);
     if (a.value.trim() && Number.isFinite(n)) a.value = money.format(n);
@@ -415,40 +448,53 @@ function addPaymentRow(date = '', amount = '') {
   remove.type = 'button';
   remove.className = 'secondary remove';
   remove.textContent = '×';
-  remove.setAttribute('aria-label', 'Remove payment');
+  remove.setAttribute('aria-label', `Remove ${cfg.noun.toLowerCase()}`);
   remove.addEventListener('click', () => {
     row.remove();
     updatePaymentFields();
     markStale();
   });
-  row.append(d, a, remove);
-  $('paymentRows').append(row);
+  row.append(d, a);
+  if (cfg.withLabel) {
+    const l = input('text', 'pay-label', `${cfg.aria} description`, label);
+    l.placeholder = 'Description, e.g. Costs (optional)';
+    row.append(l);
+  }
+  row.append(remove);
+  $(cfg.container).append(row);
   updatePaymentFields();
   return row;
 }
+const addPaymentRow = (date, amount) => addEventRow('payment', date, amount);
 
 function updatePaymentFields() {
   $('allocationField').hidden = !$('paymentRows').children.length;
 }
 
-/** @returns {{date: string, amount: number}[]} throws a user-facing message for half-filled rows */
-function readPayments() {
+/** Reads payment or added-sum rows. Throws a user-facing message for half-filled rows; empty rows are ignored. */
+function readEventRows(kind) {
+  const cfg = EVENT_ROWS[kind];
   const out = [];
-  [...$('paymentRows').children].forEach((row, i) => {
+  [...$(cfg.container).children].forEach((row, i) => {
     const date = row.querySelector('.pay-date').value;
     const raw = row.querySelector('.pay-amount').value.trim();
-    if (!date && !raw) return; // empty row: ignore
+    const label = row.querySelector('.pay-label')?.value.trim() ?? '';
+    if (!date && !raw) return;
     const amount = parseNumber(raw);
     if (!date || !raw || !Number.isFinite(amount) || amount <= 0) {
-      throw new Error(`Payment ${i + 1}: enter a date and an amount above 0.`);
+      throw new Error(`${cfg.noun} ${i + 1}: enter a date and an amount above 0.`);
     }
-    out.push({ date, amount });
+    out.push(cfg.withLabel ? { date, amount, label } : { date, amount });
   });
   return out;
 }
 
 $('addPayment').addEventListener('click', () => {
-  addPaymentRow().querySelector('.pay-date').focus();
+  addEventRow('payment').querySelector('.pay-date').focus();
+  markStale();
+});
+$('addSum').addEventListener('click', () => {
+  addEventRow('addition').querySelector('.pay-date').focus();
   markStale();
 });
 
@@ -512,8 +558,10 @@ $('form').addEventListener('submit', (e) => {
   const fixedRate = source === 'fixed' ? parseNumber($('fixedRate').value) : null;
   const allocation = $('allocation').value;
   let payments;
+  let additions;
   try {
-    payments = readPayments();
+    additions = readEventRows('addition');
+    payments = readEventRows('payment');
   } catch (err) {
     return showError(err.message);
   }
@@ -530,7 +578,7 @@ $('form').addEventListener('submit', (e) => {
 
   try {
     lastResult = {
-      ...calculateInterest({ principal, start, end, spread, basis, rounding, rates, payments, allocation }),
+      ...calculateInterest({ principal, start, end, spread, basis, rounding, rates, payments, additions, allocation }),
       source,
       fixedRate,
     };
@@ -555,6 +603,7 @@ function setDefaultDates() {
 $('clear').addEventListener('click', () => {
   $('form').reset();
   $('paymentRows').replaceChildren();
+  $('additionRows').replaceChildren();
   updatePaymentFields();
   showSourceFields();
   clearResults();
@@ -680,6 +729,7 @@ $('csv').addEventListener('click', () => {
     ['Start Date', r.start],
     ['End Date', r.end],
     ['Total Interest', money.format(r.totalInterest)],
+    ...(r.additions.length ? [['Sums Added', money.format(r.totalAdded)]] : []),
     ...(r.payments.length
       ? [
           ['Payments Received', money.format(r.totalPaid)],
@@ -698,16 +748,23 @@ $('csv').addEventListener('click', () => {
     [],
     [
       'Period Start', 'Period End', 'No. of Days',
-      ...(r.payments.length ? ['Principal'] : []),
+      ...(r.payments.length || r.additions.length ? ['Principal'] : []),
       ...(r.spread ? ['Base Rate', 'Spread'] : []),
       'Interest Rate', 'Year Days', 'Formula', 'Interest Amount',
     ],
     ...r.periods.map((p) => [
       p.start, p.end, p.days,
-      ...(r.payments.length ? [money.format(p.principal)] : []),
+      ...(r.payments.length || r.additions.length ? [money.format(p.principal)] : []),
       ...(r.spread ? [fmtRate(p.baseRate), fmtRate(r.spread / 100)] : []),
       fmtRate(p.rate), p.yearDays, formula(p), money.format(p.interest),
     ]),
+    ...(r.additions.length
+      ? [
+          [],
+          ['Added Sum Date', 'Description', 'Amount', 'Principal After'],
+          ...r.additions.map((a) => [a.date, a.label, money.format(a.amount), money.format(a.principalAfter)]),
+        ]
+      : []),
     ...(r.payments.length
       ? [
           [],
