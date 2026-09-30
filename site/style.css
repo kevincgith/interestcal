@@ -255,4 +255,4 @@ details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
   a { color: inherit; text-decoration: none; }
   .warning { border: 1px solid #d8b24a; }
 }
-.no-extra .m-extra-col { display: none; }
+.no-extra .m-extra-col, .no-cap .m-cap-col { display: none; }

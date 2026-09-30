@@ -22,7 +22,7 @@ test('fixed-rate mortgage from a link: standard instalment and actual/365 intere
   await expect(page.locator('#mPayment')).toHaveText('4,216.04');
   await expect(page.locator('#mSchedule tr')).toHaveCount(360);
   await expect(page.locator('#mSchedule tr').first().locator('td')).toHaveText(
-    ['1', '15-Feb-2026', '3.000%', '4,216.04', '2,547.95', '1,668.09', '', '998,331.91'],
+    ['1', '15-Feb-2026', '3.000%', '', '4,216.04', '2,547.95', '1,668.09', '', '998,331.91'], // Cap cell empty (not HIBOR)
   );
   await expect(page.locator('#mEnds')).toHaveText('15-Jan-2056 (30 yrs)');
 });
@@ -100,7 +100,7 @@ test('textbook interest method: rate / 12 each month, from the Advanced settings
   await page.locator('#mAdvanced summary').click();
   await page.locator('#mMethod').selectOption('monthly');
   await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
-  await expect(page.locator('#mSchedule tr').first().locator('td').nth(4)).toHaveText('2,500.00');
+  await expect(page.locator('#mSchedule tr').first().locator('td').nth(5)).toHaveText('2,500.00');
   await expect(page.locator('#mRateLine')).toContainText('balance × rate ÷ 12 (textbook method)');
   await expect(page).toHaveURL(/meth=monthly/);
   await page.goto(page.url());
@@ -139,4 +139,13 @@ test('3-month HIBOR still resets at every monthly due date, using 3-month fixing
   expect(changes).toBeGreaterThan(3);
   await page.goto(url(''));
   expect(await firstRates()).not.toEqual(threeM); // 1-month fixings differ from 3-month ones
+});
+
+test('HIBOR plans show the cap (prime - x%) for each due date; other plans do not', async ({ page }) => {
+  await page.goto('?tab=mortgage&mt=hibor&h=2.85&mg=1.3&cap=1.75&price=8000000&yrs=30&from=2035-01-15');
+  await expect(page.getByRole('columnheader', { name: 'Cap' })).toBeVisible();
+  await expect(page.locator('#mSchedule tr').first().locator('td').nth(3)).toHaveText('3.250%');
+  await page.goto('?tab=mortgage&mt=prime&disc=1.75&price=8000000&yrs=30&from=2035-01-15');
+  await expect(page.locator('#mPayment')).not.toHaveText('');
+  await expect(page.getByRole('columnheader', { name: 'Cap' })).toBeHidden();
 });

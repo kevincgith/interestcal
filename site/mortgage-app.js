@@ -219,6 +219,12 @@ $('mform').addEventListener('submit', async (e) => {
       ? `HIBOR history on this site starts on ${fmtDate(earliest)}. Resets before then use that first fixing, ` +
         'so rates before it are estimates.'
       : '';
+    // HIBOR plans: the cap (prime - x%) in force on each due date, shown next to the rate
+    if (p.type === 'hibor') {
+      const primeAsc = [...prime.rates].sort((a, b) => a.effective.localeCompare(b.effective));
+      const primeOn = (iso) => (primeAsc.filter((x) => x.effective <= iso).at(-1) ?? primeAsc[0]).rate;
+      for (const r of summary.rows) r.cap = (primeOn(r.date) - p.capDiscount) / 100;
+    }
     last = { ...summary, inputs, warning };
   } catch (err) {
     showError(err.message);
@@ -285,13 +291,15 @@ function render(m) {
   $('mSavedLine').hidden = !lines.saved;
   $('mSavedLine').textContent = lines.saved;
   const hasExtra = m.totalExtra > 0;
+  const hasCap = m.inputs.type === 'hibor';
   $('mSchedule').closest('table').classList.toggle('no-extra', !hasExtra);
+  $('mSchedule').closest('table').classList.toggle('no-cap', !hasCap);
   $('mSchedule').replaceChildren(
     ...m.rows.map((r) =>
       row(
-        [r.no, fmtDate(r.date), fmtRate(r.rate), money.format(r.payment), money.format(r.interest), money.format(r.principal),
-          r.extra ? money.format(r.extra) : '', money.format(r.balance)],
-        ['num', '', 'num', 'num', 'num', 'num', 'num m-extra-col', 'num'],
+        [r.no, fmtDate(r.date), fmtRate(r.rate), hasCap ? fmtRate(r.cap) : '', money.format(r.payment), money.format(r.interest),
+          money.format(r.principal), r.extra ? money.format(r.extra) : '', money.format(r.balance)],
+        ['num', '', 'num', 'num m-cap-col', 'num', 'num', 'num', 'num m-extra-col', 'num'],
       ),
     ),
   );
@@ -428,8 +436,8 @@ $('mCsv').addEventListener('click', () => {
     ...(m.monthlyIncome ? [['Debt-Servicing Ratio', `${(m.dsr * 100).toFixed(1)}%`], ['Stressed Debt-Servicing Ratio', `${(m.stressedDsr * 100).toFixed(1)}%`]] : []),
     ...(m.totalExtra > 0 ? [['Interest Saved By Extra Repayments', money.format(m.interestSaved)], ['Months Saved', m.monthsSaved]] : []),
     [],
-    ['No.', 'Due Date', 'Rate', 'Instalment', 'Interest', 'Principal', 'Extra Repayment', 'Balance'],
-    ...m.rows.map((r) => [r.no, r.date, fmtRate(r.rate), money.format(r.payment), money.format(r.interest), money.format(r.principal), money.format(r.extra), money.format(r.balance)]),
+    ['No.', 'Due Date', 'Rate', ...(m.inputs.type === 'hibor' ? ['Cap'] : []), 'Instalment', 'Interest', 'Principal', 'Extra Repayment', 'Balance'],
+    ...m.rows.map((r) => [r.no, r.date, fmtRate(r.rate), ...(m.inputs.type === 'hibor' ? [fmtRate(r.cap)] : []), money.format(r.payment), money.format(r.interest), money.format(r.principal), money.format(r.extra), money.format(r.balance)]),
   ];
   const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
   const csv = '﻿' + lines.map((l) => l.map(cell).join(',')).join('\n') + '\n';

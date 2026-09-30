@@ -145,3 +145,19 @@ test('mortgage exports: PDF has the schedule on every page; Excel totals are liv
   close(ws[`B${at('Total interest')}`].v, m.totalInterest);
   assert.equal(rows.filter((r) => typeof r[0] === 'number').length, m.rows.length);
 });
+
+test('mortgage Excel: a Cap column shifts the total formulas to the right columns', async () => {
+  const XLSX = (await import('xlsx')).default;
+  const { buildMortgageWorkbook } = await import('../site/mortgage-export.js');
+  const m = { ...mortgageSummary({ loan: 100_000, start: '2026-01-15', years: 1, rates: fixed(3) }), inputs: {} };
+  for (const r of m.rows) r.cap = 0.0325;
+  const out = XLSX.read(XLSX.write(buildMortgageWorkbook(XLSX, m, { inputs: [], lines: [] }), { bookType: 'xlsx', type: 'buffer' }), { type: 'buffer', cellFormula: true });
+  const ws = out.Sheets.Mortgage;
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+  const head = rows.findIndex((r) => r[0] === 'No.');
+  assert.deepEqual(rows[head].slice(0, 5), ['No.', 'Due Date', 'Rate', 'Cap', 'Instalment']);
+  const at = (label) => rows.findIndex((r) => r[0] === label) + 1;
+  assert.match(ws[`B${at('Total interest')}`].f, /^SUM\(F\d+:F\d+\)$/);
+  assert.match(ws[`B${at('Total repaid')}`].f, /^SUM\(E\d+:E\d+\)\+SUM\(H\d+:H\d+\)$/);
+  close(ws[`B${at('Total interest')}`].v, m.totalInterest);
+});

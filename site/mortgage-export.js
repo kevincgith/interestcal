@@ -59,14 +59,15 @@ export function buildMortgagePdf({ jsPDF, autoTable }, m, ctx) {
   y += 4;
 
   const hasExtra = m.totalExtra > 0;
+  const hasCap = m.rows.some((r) => r.cap != null); // HIBOR plans: prime - x% on each due date
   table({
-    head: [['No.', 'Due date', 'Rate', 'Instalment', 'Interest', 'Principal', ...(hasExtra ? ['Extra'] : []), 'Balance']],
+    head: [['No.', 'Due date', 'Rate', ...(hasCap ? ['Cap'] : []), 'Instalment', 'Interest', 'Principal', ...(hasExtra ? ['Extra'] : []), 'Balance']],
     body: m.rows.map((r) => [
-      String(r.no), fmt.date(r.date), fmt.rate(r.rate), fmt.money(r.payment), fmt.money(r.interest), fmt.money(r.principal),
+      String(r.no), fmt.date(r.date), fmt.rate(r.rate), ...(hasCap ? [fmt.rate(r.cap)] : []), fmt.money(r.payment), fmt.money(r.interest), fmt.money(r.principal),
       ...(hasExtra ? [r.extra ? fmt.money(r.extra) : ''] : []), fmt.money(r.balance),
     ]),
     styles: { font: 'helvetica', fontSize: 8, cellPadding: 3, textColor: 20, lineColor: BORDER },
-    columnStyles: Object.fromEntries([0, 2, 3, 4, 5, 6, 7].map((i) => [i, { halign: 'right' }])),
+    columnStyles: Object.fromEntries([0, 2, 3, 4, 5, 6, 7, 8].map((i) => [i, { halign: 'right' }])),
     showHead: 'everyPage',
   });
 
@@ -108,13 +109,17 @@ export function buildMortgageWorkbook(XLSX, m, ctx) {
   rows.push([]);
 
   const head = rows.length;
-  rows.push(['No.', 'Due Date', 'Rate', 'Instalment', 'Interest', 'Principal', 'Extra Repayment', 'Balance']);
+  const hasCap = m.rows.some((r) => r.cap != null);
+  rows.push(['No.', 'Due Date', 'Rate', ...(hasCap ? ['Cap'] : []), 'Instalment', 'Interest', 'Principal', 'Extra Repayment', 'Balance']);
   const first = head + 2;
+  // Column letters shift by one when the Cap column is present
+  const col = (name) => String.fromCharCode('A'.charCodeAt(0) + ['No.', 'Due Date', 'Rate', ...(hasCap ? ['Cap'] : []), 'Instalment', 'Interest', 'Principal', 'Extra Repayment', 'Balance'].indexOf(name));
   for (const r of m.rows) {
     rows.push([
       r.no,
       { t: 'n', v: serial(r.date), z: DATE },
       { t: 'n', v: r.rate, z: PCT },
+      ...(hasCap ? [{ t: 'n', v: r.cap, z: PCT }] : []),
       { t: 'n', v: r.payment, z: MONEY },
       { t: 'n', v: r.interest, z: MONEY },
       { t: 'n', v: r.principal, z: MONEY },
@@ -125,8 +130,9 @@ export function buildMortgageWorkbook(XLSX, m, ctx) {
   const last = first + m.rows.length - 1;
   const f = (formula, v) => ({ t: 'n', f: formula, v, z: MONEY });
   rows[summaryAt] = ['Monthly instalment', { t: 'n', v: m.firstPayment, z: MONEY }];
-  rows[summaryAt + 1] = ['Total interest', f(`SUM(E${first}:E${last})`, m.totalInterest)];
-  rows[summaryAt + 2] = ['Total repaid', f(`SUM(D${first}:D${last})+SUM(G${first}:G${last})`, m.totalPaid)];
+  const [I, P, X] = [col('Interest'), col('Instalment'), col('Extra Repayment')];
+  rows[summaryAt + 1] = ['Total interest', f(`SUM(${I}${first}:${I}${last})`, m.totalInterest)];
+  rows[summaryAt + 2] = ['Total repaid', f(`SUM(${P}${first}:${P}${last})+SUM(${X}${first}:${X}${last})`, m.totalPaid)];
   rows[summaryAt + 3] = ['Loan ends', { t: 'n', v: serial(m.payoffDate), z: DATE }];
   rows[summaryAt + 4] = [`Stress test instalment (+${m.stressAdd}%)`, { t: 'n', v: m.stressedPayment, z: MONEY }];
 
@@ -140,7 +146,7 @@ export function buildMortgageWorkbook(XLSX, m, ctx) {
     }),
   );
   ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: maxCol } });
-  ws['!cols'] = [30, 40, 10, 14, 14, 14, 16, 16].map((wch) => ({ wch }));
+  ws['!cols'] = [30, 40, 10, ...(hasCap ? [10] : []), 14, 14, 14, 16, 16].map((wch) => ({ wch }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Mortgage');
   return wb;
