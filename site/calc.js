@@ -40,18 +40,18 @@ const jan1 = (y) => Date.UTC(y, 0, 1) / MS_PER_DAY;
  * @param {string} input.start  "YYYY-MM-DD", earns interest
  * @param {string} input.end    "YYYY-MM-DD", does not earn interest
  * @param {{effective: string, rate: number}[]} input.rates  rate in % per annum (8.107 = 8.107%)
- * @param {number} [input.margin]  % per annum added to every rate, e.g. 2 for "prime + 2%"
+ * @param {number} [input.spread]  % per annum added to every rate, e.g. 2 for "prime + 2%"
  */
-export function calculateInterest({ principal, start, end, rates, margin = 0 }) {
+export function calculateInterest({ principal, start, end, rates, spread = 0 }) {
   if (!Number.isFinite(principal)) throw new Error('Principal must be a number');
   const loanStart = toDay(start);
   const loanEnd = toDay(end);
   if (loanEnd < loanStart) throw new Error('End date cannot be earlier than start date');
   if (!rates?.length) throw new Error('No interest rates available');
-  if (!Number.isFinite(margin)) throw new Error('Margin must be a number');
+  if (!Number.isFinite(spread)) throw new Error('Spread must be a number');
 
   const sorted = rates
-    .map((r) => ({ day: toDay(r.effective), rate: (r.rate + margin) / 100 }))
+    .map((r) => ({ day: toDay(r.effective), rate: (r.rate + spread) / 100 }))
     .sort((a, b) => a.day - b.day);
 
   const periods = [];
@@ -92,7 +92,7 @@ export function calculateInterest({ principal, start, end, rates, margin = 0 }) 
     principal,
     start,
     end,
-    margin,
+    spread,
     periods,
     totalInterest,
     totalDue: principal + totalInterest,

@@ -108,7 +108,7 @@ function render(r) {
 }
 
 function onSourceChange() {
-  $('marginField').hidden = currentSource() !== 'prime';
+  $('spreadField').hidden = currentSource() !== 'prime';
   $('results').hidden = true;
   lastResult = null;
   renderRateTable();
@@ -121,18 +121,18 @@ $('form').addEventListener('submit', (e) => {
   showError('');
   const source = currentSource();
   const principal = parseNumber($('principal').value);
-  const margin = source === 'prime' ? parseNumber($('margin').value || '0') : 0;
+  const spread = source === 'prime' ? parseNumber($('spread').value || '0') : 0;
   const start = $('start').value;
   const end = $('end').value;
 
   if (!$('principal').value.trim() || !Number.isFinite(principal)) return showError('Please enter a valid principal amount.');
   if (!start) return showError('Please enter a valid start date.');
   if (!end) return showError('Please enter a valid end date.');
-  if (!Number.isFinite(margin)) return showError('Please enter a valid margin, e.g. 2 for prime + 2%.');
+  if (!Number.isFinite(spread)) return showError('Please enter a valid spread, e.g. 2 for prime + 2%.');
   if (!rateData[source]) return showError('Interest rates have not loaded yet.');
 
   try {
-    lastResult = { ...calculateInterest({ principal, start, end, margin, rates: rateData[source].rates }), source };
+    lastResult = { ...calculateInterest({ principal, start, end, spread, rates: rateData[source].rates }), source };
     render(lastResult);
   } catch (err) {
     $('results').hidden = true;
@@ -149,7 +149,7 @@ $('clear').addEventListener('click', () => {
 $('csv').addEventListener('click', () => {
   if (!lastResult) return;
   const r = lastResult;
-  const basis = SOURCES[r.source].label + (r.source === 'prime' ? ` + ${r.margin}%` : '');
+  const basis = SOURCES[r.source].label + (r.source === 'prime' ? ` + ${r.spread}%` : '');
   const lines = [
     ['Rate Basis', `"${basis}"`],
     ['Principal', r.principal.toFixed(2)],
