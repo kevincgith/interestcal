@@ -205,3 +205,15 @@ test('mortgage result tables fit without sideways scrolling on a laptop screen',
   const fits = await page.locator('#mResults .table-wrap:not([hidden])').evaluateAll((els) => els.map((e) => e.scrollWidth <= e.clientWidth));
   expect(fits.every(Boolean), JSON.stringify(fits)).toBe(true);
 });
+
+test('both tabs lay out their form the same way', async ({ page }) => {
+  await page.goto('./');
+  const look = (sel) => page.locator(sel).evaluate((e) => {
+    const r = e.getBoundingClientRect();
+    const cs = getComputedStyle(e);
+    return { top: Math.round(r.top), left: Math.round(r.left), width: Math.round(r.width), radius: cs.borderTopLeftRadius };
+  });
+  const interest = await look('#form');
+  await page.getByRole('tab', { name: 'Mortgage' }).click();
+  expect(await look('#mform')).toEqual(interest);
+});
