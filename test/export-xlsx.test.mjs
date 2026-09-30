@@ -19,7 +19,6 @@ function roundTrip(result, rates, source) {
     rateBasis: 'test basis',
     dayCount: 'Actual/Actual',
     rounding: 'test rounding',
-    link: 'https://example.com/?p=1',
     ratesTitle: 'Test rates',
     sourceUrl: 'https://example.com/rates',
     updatedAt: '2026-09-30',
@@ -71,8 +70,7 @@ test('Excel export rounding each period uses ROUND in the interest formula', () 
   assert.match(out.Sheets.Calculation[`G${first}`].f, /^ROUND\(.*,2\)$/);
   assert.equal(out.Sheets.Calculation[`G${first}`].v, 1163.27);
   assert.equal(calc[findRow(calc, 'Rounding')][1], 'test rounding');
-  const linkRow = findRow(calc, 'Link to this calculation');
-  assert.equal(out.Sheets.Calculation[`B${linkRow + 1}`].l.Target, 'https://example.com/?p=1');
+  assert.equal(findRow(calc, 'Link to this calculation'), -1);
 });
 
 test('Excel export with a spread: base rate + spread = interest rate as a formula', () => {

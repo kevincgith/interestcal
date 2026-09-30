@@ -50,7 +50,6 @@ function sheetFrom(XLSX, rows, widths) {
  * @param {string} ctx.rateBasis     e.g. "HSBC best lending rate (HKMA table 6.4.1) + 1%"
  * @param {string} ctx.dayCount      e.g. "Actual/Actual"
  * @param {string} ctx.rounding      rounding description
- * @param {string} [ctx.link]        shareable link that reopens this calculation
  * @param {{status: string, summary: string, source: string, notes: string[]}} [ctx.crossCheck]  HSBC cross-check (prime)
  * @param {string} ctx.ratesTitle    e.g. "HSBC prime rates"
  * @param {string} ctx.sourceUrl
@@ -74,7 +73,6 @@ export function buildWorkbook(XLSX, r, ctx) {
   rows.push(['Principal (HK$)', num(r.principal, MONEY)]);
   rows.push(['Start date', date(r.start)]);
   rows.push(['End date (does not earn interest)', date(r.end)]);
-  if (ctx.link) rows.push(['Link to this calculation', hyperlink(ctx.link)]);
 
   const totalsRow = rows.length;
   // Placeholders; filled once we know where the period table lands

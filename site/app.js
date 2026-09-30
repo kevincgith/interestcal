@@ -464,7 +464,6 @@ $('xlsx').addEventListener('click', () => {
       rateBasis: rateBasisLabel(r),
       dayCount: BASES[r.basis],
       rounding: ROUNDINGS[r.rounding],
-      link: location.href,
       ratesTitle: SOURCES[r.source].title,
       sourceUrl: data.source,
       updatedAt: asAt(r.source),
@@ -514,7 +513,6 @@ $('csv').addEventListener('click', () => {
     ['Total Amount Due', money.format(r.totalDue)],
     ['Total No. of Days', r.totalDays],
     ['Rates As At', asAt(r.source)],
-    ['Link', location.href],
     ...(rateData[r.source].crossCheck
       ? [['Cross-check', `${CROSS_CHECK[rateData[r.source].crossCheck.status]} ${rateData[r.source].crossCheck.source}`]]
       : []),
