@@ -5,6 +5,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { parseRatesHtml, validateRates } from './parse-judiciary.mjs';
 import { parsePrimeXls } from './parse-prime.mjs';
 import { HSBC_URL, parseHsbcHtml, crossCheckPrime } from './parse-hsbc.mjs';
+import { HIBOR_URL, parseHiborJson } from './parse-hibor.mjs';
 
 const HEADERS = { 'User-Agent': 'Mozilla/5.0 (interestcal rate updater)' };
 
@@ -46,6 +47,15 @@ const SOURCES = [
       }
     },
   },
+  {
+    name: '1-month HIBOR',
+    url: HIBOR_URL,
+    out: 'hibor.json',
+    parse: async (res) => ({ rates: parseHiborJson(await res.json()) }),
+    validate: { minRows: 1, maxRate: 30 },
+    // Only pre-fills the mortgage tab (the HIBOR box stays editable), so an outage is a warning, not a failure
+    optional: true,
+  },
 ];
 
 async function update(source) {
@@ -84,7 +94,11 @@ for (const source of SOURCES) {
   try {
     await update(source);
   } catch (err) {
-    console.error(`${source.name}: FAILED - ${err.message}`);
-    process.exitCode = 1;
+    if (source.optional) {
+      console.log(`::warning::${source.name}: not updated - ${err.message}`);
+    } else {
+      console.error(`${source.name}: FAILED - ${err.message}`);
+      process.exitCode = 1;
+    }
   }
 }

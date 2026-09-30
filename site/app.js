@@ -1,19 +1,10 @@
 import { calculateInterest } from './calc.js?v=__BUILD__';
 import { buildWorkbook } from './export-xlsx.js?v=__BUILD__';
 import { buildPdf } from './export-pdf.js?v=__BUILD__';
-
-const $ = (id) => document.getElementById(id);
-const money = new Intl.NumberFormat('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-// "2026-04-01" -> "01-Apr-2026", matching the workbook's dd-mmm-yyyy format
-const fmtDate = (iso) => {
-  const [y, m, d] = iso.split('-');
-  return `${d}-${MONTHS[Number(m) - 1]}-${y}`;
-};
-// At least 3 decimals like the published tables, more only if a spread needs them (e.g. 7.0625%)
-const fmtRate = (r) =>
-  `${Number((r * 100).toFixed(6)).toLocaleString('en', { minimumFractionDigits: 3, maximumFractionDigits: 6 })}%`;
+import {
+  $, money, fmtDate, fmtRate, parseNumber, isIsoDate, link, row, download, loadXlsx, loadPdf, busy, copyLink, wireSteppers,
+} from './shared.js?v=__BUILD__';
+import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 // "5.000% + 1.000% = 6.000%" when a spread applies, otherwise just the rate
 const fmtRateWithSpread = (p) => {
   const spread = p.spread ?? 0; // each period carries its own spread (it can change at a rate switch)
@@ -39,8 +30,6 @@ const formula = (p) => {
   if (p.compounding === 'continuous') return `${b} × (e^(${r} × ${d} ÷ ${y}) − 1)`;
   return `${b} × ${r} × ${d} ÷ ${y}`;
 };
-const parseNumber = (s) => Number(s.replace(/[,\s$%]/g, '').replace(/^HK/i, ''));
-const isIsoDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s ?? '');
 
 const BASES = {
   'act/act': 'Actual/Actual',
@@ -207,15 +196,6 @@ function relevantRates(rates, { start, end }) {
   return rates.filter((r) => r.effective >= inForceAtStart && r.effective < end);
 }
 
-function link(url, text = url) {
-  const a = document.createElement('a');
-  a.href = url;
-  a.textContent = text;
-  a.target = '_blank';
-  a.rel = 'noopener';
-  return a;
-}
-
 function renderRateSource(key) {
   const data = rateData[key];
   const lines = [];
@@ -285,17 +265,6 @@ function renderSwitchedRateCard(r) {
     lines.push(p);
   }
   $('rateSource').replaceChildren(...lines);
-}
-
-function row(cells, classes = []) {
-  const tr = document.createElement('tr');
-  cells.forEach((text, i) => {
-    const td = document.createElement('td');
-    td.textContent = text;
-    if (classes[i]) td.className = classes[i];
-    tr.append(td);
-  });
-  return tr;
 }
 
 function showError(msg) {
@@ -477,8 +446,12 @@ function writeQuery(r) {
   // Added principals as date:amount:description, e.g. add=2026-03-01:5000:Costs (description URI-encoded)
   const adds = [...r.additions, ...r.ignoredAdditions];
   if (adds.length) q.set('add', adds.map((a) => `${a.date}:${a.amount}:${encodeURIComponent(a.label)}`).join(','));
-  history.replaceState(null, '', `${location.pathname}?${q}`);
+  lastQuery = `?${q}`;
+  if (activeTab() === 'interest') history.replaceState(null, '', `${location.pathname}${lastQuery}`);
 }
+// The Interest tab's link, restored when switching back from the Mortgage tab
+let lastQuery = '';
+registerQuery('interest', () => lastQuery);
 
 function readQuery() {
   const q = new URLSearchParams(location.search);
@@ -537,20 +510,7 @@ function showSourceFields() {
   $('compoundDatesField').hidden = !PERIOD_NAME[$('compounding').value];
 }
 
-function flash(msg) {
-  $('shareStatus').textContent = msg;
-  clearTimeout(flash.timer);
-  flash.timer = setTimeout(() => ($('shareStatus').textContent = ''), 2500);
-}
-
-$('share').addEventListener('click', async () => {
-  try {
-    await navigator.clipboard.writeText(location.href);
-    flash('Link copied');
-  } catch {
-    window.prompt('Copy this link:', location.href);
-  }
-});
+$('share').addEventListener('click', () => copyLink(location.href, $('shareStatus')));
 
 // ---- Sorting the detailed rate table: click a header; click again to reverse ----
 
@@ -693,18 +653,8 @@ $('principal').addEventListener('blur', () => {
   if ($('principal').value.trim() && Number.isFinite(n)) $('principal').value = money.format(n);
 });
 
-// +1 / -1 buttons for the spread and the fixed rate; keeps any decimals typed (1.5 -> 2.5).
-// An input with data-min (the fixed rate) never goes below it.
-document.querySelectorAll('.stepper .step').forEach((btn) =>
-  btn.addEventListener('click', () => {
-    const input = btn.closest('.stepper').querySelector('input');
-    const current = parseNumber(input.value || '0');
-    let next = (Number.isFinite(current) ? current : 0) + Number(btn.dataset.step);
-    if (input.dataset.min !== undefined) next = Math.max(Number(input.dataset.min), next);
-    input.value = String(Number(next.toFixed(6)));
-    markStale();
-  }),
-);
+// +1 / -1 buttons for the spread and fixed rates (the fixed rate never goes below 0)
+wireSteppers($('form'), () => markStale());
 
 $('relevantOnly').addEventListener('change', renderRateTable);
 
@@ -805,54 +755,13 @@ $('clear').addEventListener('click', () => {
   showSourceFields();
   clearResults();
   showError('');
-  history.replaceState(null, '', location.pathname);
+  lastQuery = '';
+  if (activeTab() === 'interest') history.replaceState(null, '', location.pathname);
 });
 
 // ---- Downloads ----
 
 const exportName = (r, ext) => `interest_${r.source}_${r.basis.replace('/', '')}_${r.start}_${r.end}.${ext}`;
-
-function download(blob, filename) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 0);
-}
-
-// The export libraries are only loaded on first use, so the page itself stays light.
-const scripts = {};
-function loadScript(src) {
-  scripts[src] ??= new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = `vendor/${src}?v=__BUILD__`;
-    script.onload = resolve;
-    script.onerror = () => {
-      delete scripts[src];
-      reject(new Error('Could not load the export library. Please try again.'));
-    };
-    document.head.append(script);
-  });
-  return scripts[src];
-}
-const loadXlsx = () => loadScript('xlsx.mini.min.js').then(() => window.XLSX);
-// AutoTable must load after jsPDF; in the browser it exposes window.autoTable(doc, options)
-const loadPdf = () =>
-  loadScript('jspdf.umd.min.js')
-    .then(() => loadScript('jspdf.plugin.autotable.min.js'))
-    .then(() => ({ jsPDF: window.jspdf.jsPDF, autoTable: window.autoTable }));
-
-// Busy state for export buttons while a library loads
-async function busy(btn, fn) {
-  btn.disabled = true;
-  try {
-    await fn();
-  } catch (err) {
-    showError(err.message);
-  } finally {
-    btn.disabled = false;
-  }
-}
 
 $('xlsx').addEventListener('click', () => {
   if (!lastResult) return;
@@ -884,7 +793,7 @@ $('xlsx').addEventListener('click', () => {
     });
     const bytes = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), exportName(r, 'xlsx'));
-  });
+  }, showError);
 });
 
 $('pdf').addEventListener('click', () => {
@@ -921,7 +830,7 @@ $('pdf').addEventListener('click', () => {
       generatedOn: fmtDate(new Date().toLocaleDateString('en-CA')),
     });
     download(doc.output('blob'), exportName(r, 'pdf'));
-  });
+  }, showError);
 });
 
 $('csv').addEventListener('click', () => {

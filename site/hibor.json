@@ -1,0 +1,247 @@
+{
+  "source": "https://api.hkma.gov.hk/public/market-data-and-statistics/monthly-statistical-bulletin/er-ir/hk-interbank-ir-daily?segment=hibor.fixing&pagesize=60&sortby=end_of_day&sortorder=desc",
+  "updatedAt": "2026-09-30",
+  "checkedAt": "2026-09-30",
+  "rates": [
+    {
+      "effective": "2026-08-31",
+      "rate": 2.85
+    },
+    {
+      "effective": "2026-08-28",
+      "rate": 2.85
+    },
+    {
+      "effective": "2026-08-27",
+      "rate": 2.78821
+    },
+    {
+      "effective": "2026-08-26",
+      "rate": 2.79411
+    },
+    {
+      "effective": "2026-08-25",
+      "rate": 2.78256
+    },
+    {
+      "effective": "2026-08-24",
+      "rate": 2.69452
+    },
+    {
+      "effective": "2026-08-21",
+      "rate": 2.68577
+    },
+    {
+      "effective": "2026-08-20",
+      "rate": 2.68
+    },
+    {
+      "effective": "2026-08-19",
+      "rate": 2.62655
+    },
+    {
+      "effective": "2026-08-18",
+      "rate": 2.57655
+    },
+    {
+      "effective": "2026-08-17",
+      "rate": 2.55476
+    },
+    {
+      "effective": "2026-08-14",
+      "rate": 2.55476
+    },
+    {
+      "effective": "2026-08-13",
+      "rate": 2.59292
+    },
+    {
+      "effective": "2026-08-12",
+      "rate": 2.60619
+    },
+    {
+      "effective": "2026-08-11",
+      "rate": 2.61399
+    },
+    {
+      "effective": "2026-08-10",
+      "rate": 2.61327
+    },
+    {
+      "effective": "2026-08-07",
+      "rate": 2.61327
+    },
+    {
+      "effective": "2026-08-06",
+      "rate": 2.62702
+    },
+    {
+      "effective": "2026-08-05",
+      "rate": 2.6275
+    },
+    {
+      "effective": "2026-08-04",
+      "rate": 2.62679
+    },
+    {
+      "effective": "2026-08-03",
+      "rate": 2.65589
+    },
+    {
+      "effective": "2026-07-31",
+      "rate": 2.67536
+    },
+    {
+      "effective": "2026-07-30",
+      "rate": 2.67536
+    },
+    {
+      "effective": "2026-07-29",
+      "rate": 2.69268
+    },
+    {
+      "effective": "2026-07-28",
+      "rate": 2.71875
+    },
+    {
+      "effective": "2026-07-27",
+      "rate": 2.72333
+    },
+    {
+      "effective": "2026-07-24",
+      "rate": 2.70619
+    },
+    {
+      "effective": "2026-07-23",
+      "rate": 2.7147
+    },
+    {
+      "effective": "2026-07-22",
+      "rate": 2.67988
+    },
+    {
+      "effective": "2026-07-21",
+      "rate": 2.71548
+    },
+    {
+      "effective": "2026-07-20",
+      "rate": 2.75
+    },
+    {
+      "effective": "2026-07-17",
+      "rate": 2.75
+    },
+    {
+      "effective": "2026-07-16",
+      "rate": 2.82821
+    },
+    {
+      "effective": "2026-07-15",
+      "rate": 2.83
+    },
+    {
+      "effective": "2026-07-14",
+      "rate": 2.73792
+    },
+    {
+      "effective": "2026-07-13",
+      "rate": 2.66042
+    },
+    {
+      "effective": "2026-07-10",
+      "rate": 2.66113
+    },
+    {
+      "effective": "2026-07-09",
+      "rate": 2.71899
+    },
+    {
+      "effective": "2026-07-08",
+      "rate": 2.69435
+    },
+    {
+      "effective": "2026-07-07",
+      "rate": 2.71679
+    },
+    {
+      "effective": "2026-07-06",
+      "rate": 2.7628
+    },
+    {
+      "effective": "2026-07-03",
+      "rate": 2.76137
+    },
+    {
+      "effective": "2026-07-02",
+      "rate": 2.7853
+    },
+    {
+      "effective": "2026-06-30",
+      "rate": 2.93976
+    },
+    {
+      "effective": "2026-06-29",
+      "rate": 2.94839
+    },
+    {
+      "effective": "2026-06-26",
+      "rate": 2.95929
+    },
+    {
+      "effective": "2026-06-25",
+      "rate": 2.96113
+    },
+    {
+      "effective": "2026-06-24",
+      "rate": 2.9775
+    },
+    {
+      "effective": "2026-06-23",
+      "rate": 2.96018
+    },
+    {
+      "effective": "2026-06-22",
+      "rate": 2.94381
+    },
+    {
+      "effective": "2026-06-18",
+      "rate": 2.94452
+    },
+    {
+      "effective": "2026-06-17",
+      "rate": 2.95905
+    },
+    {
+      "effective": "2026-06-16",
+      "rate": 2.85143
+    },
+    {
+      "effective": "2026-06-15",
+      "rate": 2.74857
+    },
+    {
+      "effective": "2026-06-12",
+      "rate": 2.7
+    },
+    {
+      "effective": "2026-06-11",
+      "rate": 2.66208
+    },
+    {
+      "effective": "2026-06-10",
+      "rate": 2.67964
+    },
+    {
+      "effective": "2026-06-09",
+      "rate": 2.73435
+    },
+    {
+      "effective": "2026-06-08",
+      "rate": 2.73673
+    },
+    {
+      "effective": "2026-06-05",
+      "rate": 2.71518
+    }
+  ]
+}

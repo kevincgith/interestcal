@@ -1,0 +1,147 @@
+// PDF and Excel exports for the Mortgage tab. Libraries are passed in (browser vendor builds or npm packages in tests).
+
+const MARGIN = 40;
+const MUTED = [90, 90, 90];
+const BORDER = [200, 200, 200];
+
+// jsPDF's built-in Helvetica only covers Latin-1
+const pdfText = (s) => String(s).replace(/[’‘]/g, "'").replace(/[“”]/g, '"').replace(/[−–]/g, '-').replace(/→/g, '->');
+
+/**
+ * @param {{jsPDF: Function, autoTable: Function}} lib
+ * @param {object} m    mortgageSummary result (+ inputs)
+ * @param {object} ctx  { inputs: [label, value][], lines: string[], fmt: {money, date, rate, duration}, generatedOn }
+ */
+export function buildMortgagePdf({ jsPDF, autoTable }, m, ctx) {
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const width = doc.internal.pageSize.getWidth();
+  const height = doc.internal.pageSize.getHeight();
+  const { fmt } = ctx;
+  let y = MARGIN;
+
+  const table = (opts) => {
+    autoTable(doc, {
+      startY: y,
+      margin: { left: MARGIN, right: MARGIN, bottom: 50 },
+      styles: { font: 'helvetica', fontSize: 9, cellPadding: 4, textColor: 20, lineColor: BORDER },
+      headStyles: { fillColor: false, textColor: MUTED, fontStyle: 'bold', lineWidth: { bottom: 0.75 } },
+      bodyStyles: { lineWidth: { bottom: 0.5 } },
+      theme: 'plain',
+      ...opts,
+    });
+    y = doc.lastAutoTable.finalY + 14;
+  };
+  const text = (s, size = 9) => {
+    doc.setFont('helvetica', 'normal').setFontSize(size).setTextColor(20);
+    const lines = doc.splitTextToSize(pdfText(s), width - MARGIN * 2);
+    doc.text(lines, MARGIN, y + size, { lineHeightFactor: 1.3 });
+    y += size * 1.3 * lines.length + 6;
+  };
+
+  doc.setFont('helvetica', 'bold').setFontSize(18).setTextColor(20);
+  doc.text('HK Interest Calculator: Mortgage', MARGIN, y + 18);
+  y += 32;
+
+  table({
+    body: ctx.inputs.map(([k, v]) => [pdfText(k), pdfText(v)]),
+    bodyStyles: { lineWidth: 0 },
+    styles: { font: 'helvetica', fontSize: 9, cellPadding: { top: 2, bottom: 2, left: 0, right: 8 }, textColor: 20 },
+    columnStyles: { 0: { textColor: MUTED, cellWidth: 150 } },
+  });
+
+  table({
+    head: [['Monthly instalment', 'Total interest', 'Total repaid', 'Loan ends']],
+    body: [[fmt.money(m.firstPayment), fmt.money(m.totalInterest), fmt.money(m.totalPaid), `${fmt.date(m.payoffDate)} (${fmt.duration(m.monthsTaken)})`]],
+    headStyles: { fillColor: false, textColor: MUTED, fontStyle: 'normal', fontSize: 8, lineWidth: 0 },
+    bodyStyles: { fontStyle: 'bold', fontSize: 12, lineWidth: { bottom: 0.75 } },
+  });
+  for (const line of ctx.lines) text(line);
+  y += 4;
+
+  const hasExtra = m.totalExtra > 0;
+  table({
+    head: [['No.', 'Due date', 'Rate', 'Instalment', 'Interest', 'Principal', ...(hasExtra ? ['Extra'] : []), 'Balance']],
+    body: m.rows.map((r) => [
+      String(r.no), fmt.date(r.date), fmt.rate(r.rate), fmt.money(r.payment), fmt.money(r.interest), fmt.money(r.principal),
+      ...(hasExtra ? [r.extra ? fmt.money(r.extra) : ''] : []), fmt.money(r.balance),
+    ]),
+    styles: { font: 'helvetica', fontSize: 8, cellPadding: 3, textColor: 20, lineColor: BORDER },
+    columnStyles: Object.fromEntries([0, 2, 3, 4, 5, 6, 7].map((i) => [i, { halign: 'right' }])),
+    showHead: 'everyPage',
+  });
+
+  const pages = doc.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(...MUTED);
+    doc.text(pdfText(`HK Interest Calculator · generated ${ctx.generatedOn}`), MARGIN, height - 24);
+    doc.text(`Page ${i} of ${pages}`, width - MARGIN, height - 24, { align: 'right' });
+  }
+  return doc;
+}
+
+const MONEY = '#,##0.00';
+const DATE = 'dd-mmm-yyyy';
+const PCT = '0.000%';
+const serial = (iso) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return (Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86_400_000;
+};
+const cell = (v) => (v && typeof v === 'object' ? v : { t: typeof v === 'number' ? 'n' : 's', v: v ?? '' });
+
+/**
+ * Excel: one "Mortgage" sheet with the inputs, summary (totals as live SUM formulas) and the full schedule.
+ * @param {object} ctx { inputs: [label, value][], lines: string[], primeSource?: string, hiborSource?: string }
+ */
+export function buildMortgageWorkbook(XLSX, m, ctx) {
+  const rows = [[{ t: 's', v: 'HK Interest Calculator: Mortgage' }], []];
+  for (const [k, v] of ctx.inputs) rows.push([k, v]);
+  const src = [
+    ctx.primeSource && ['HSBC prime rate source', { t: 's', v: ctx.primeSource, l: { Target: ctx.primeSource } }],
+    ctx.hiborSource && ['HIBOR source', { t: 's', v: ctx.hiborSource, l: { Target: ctx.hiborSource } }],
+  ].filter(Boolean);
+  rows.push(...src, []);
+
+  const summaryAt = rows.length; // 0-based index of the first summary row
+  rows.push([], [], [], [], []); // filled below, once the schedule's rows are known
+  for (const line of ctx.lines) rows.push([line]);
+  rows.push([]);
+
+  const head = rows.length;
+  rows.push(['No.', 'Due Date', 'Rate', 'Instalment', 'Interest', 'Principal', 'Extra Repayment', 'Balance']);
+  const first = head + 2;
+  for (const r of m.rows) {
+    rows.push([
+      r.no,
+      { t: 'n', v: serial(r.date), z: DATE },
+      { t: 'n', v: r.rate, z: PCT },
+      { t: 'n', v: r.payment, z: MONEY },
+      { t: 'n', v: r.interest, z: MONEY },
+      { t: 'n', v: r.principal, z: MONEY },
+      { t: 'n', v: r.extra, z: MONEY },
+      { t: 'n', v: r.balance, z: MONEY },
+    ]);
+  }
+  const last = first + m.rows.length - 1;
+  const f = (formula, v) => ({ t: 'n', f: formula, v, z: MONEY });
+  rows[summaryAt] = ['Monthly instalment', { t: 'n', v: m.firstPayment, z: MONEY }];
+  rows[summaryAt + 1] = ['Total interest', f(`SUM(E${first}:E${last})`, m.totalInterest)];
+  rows[summaryAt + 2] = ['Total repaid', f(`SUM(D${first}:D${last})+SUM(G${first}:G${last})`, m.totalPaid)];
+  rows[summaryAt + 3] = ['Loan ends', { t: 'n', v: serial(m.payoffDate), z: DATE }];
+  rows[summaryAt + 4] = [`Stress test instalment (+${m.stressAdd}%)`, { t: 'n', v: m.stressedPayment, z: MONEY }];
+
+  const ws = {};
+  let maxCol = 0;
+  rows.forEach((r, ri) =>
+    r.forEach((v, ci) => {
+      if (v == null) return;
+      ws[XLSX.utils.encode_cell({ r: ri, c: ci })] = cell(v);
+      maxCol = Math.max(maxCol, ci);
+    }),
+  );
+  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: maxCol } });
+  ws['!cols'] = [30, 40, 10, 14, 14, 14, 16, 16].map((wch) => ({ wch }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Mortgage');
+  return wb;
+}

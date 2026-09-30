@@ -17,6 +17,17 @@ You can choose one of three rates:
 
 ## Features
 
+- **Mortgage tab:** equal monthly instalments on HK bank conventions.
+  - **Loan:** property price × loan-to-value gives the loan and down payment. Choose a tenor and a drawdown date; instalments fall due on the drawdown day each month.
+  - **Rate:**
+    - **Prime-based (P − x%):** uses the HSBC prime history; future months use the latest prime.
+    - **HIBOR-based (H + x%, capped at P − y%):** 1-month HIBOR is fetched daily from the HKMA open API and can be edited. Note that it lags about a month.
+    - **Fixed.**
+  - **Interest:** each month's interest = balance × rate × actual days ÷ 365. The instalment is recalculated when the rate changes.
+  - **Extra repayments:** these keep the instalment the same, so the loan ends sooner. The results show interest and months saved.
+  - **Stress test:** +2% or +3%, plus a debt-servicing ratio from monthly income.
+  - **Also:** the full schedule, a shareable link (`?tab=mortgage&...`), and PDF / Excel / CSV downloads.
+
 - **Advanced settings** (collapsed by default, so the basic form stays simple):
   - **Day count basis** (Actual/Actual by default) and **rounding** (round the total only, by default).
   - **Compounding:** None (simple interest, the default), monthly, quarterly, yearly, daily or continuous.
@@ -73,6 +84,9 @@ You can choose one of three rates:
 | `site/vendor/xlsx.mini.min.js` | SheetJS 0.20.3 mini build (Apache-2.0), loaded only when you click Download Excel. It's copied from `node_modules/xlsx/dist/`. |
 | `site/export-pdf.js`, `site/vendor/jspdf*.js` | PDF report, using jsPDF 4 and jsPDF-AutoTable 5 (both MIT). They load only when you click Download PDF and are copied from `node_modules`. |
 | `site/rates.json` | Judgment debt rates scraped from the Judiciary site |
+| `site/hibor.json` | 1-month HIBOR fixings from the HKMA API (optional: an outage only logs a warning) |
+| `site/mortgage.js`, `mortgage-app.js`, `mortgage-export.js` | Mortgage calculation, tab and exports |
+| `site/shared.js`, `tabs.js` | Helpers shared by both tabs; tab switching |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |
 | `scripts/fetch-rates.mjs` | Fetches and validates both sources, and rewrites a JSON file only when its rates change |
 | `scripts/parse-judiciary.mjs`, `parse-prime.mjs`, `parse-hsbc.mjs` | Parsers for each source, plus the HSBC cross-check |
