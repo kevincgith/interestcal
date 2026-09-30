@@ -426,6 +426,20 @@ test('quarterly compounding across a leap-year end: the 1 Jan split is not a com
   close(r.periods[5].capitalised, r.periods[3].interest + r.periods[4].interest);
 });
 
+test('Actual/Actual splits at 1 January only when the year days change', () => {
+  const r = calculateInterest({ principal: 1000000, start: '2024-02-15', end: '2026-09-30', rates: fixed8, compounding: 'yearly' });
+  assert.deepEqual(r.periods.map((p) => [p.start, p.end, p.yearDays]), [
+    ['2024-02-15', '2025-01-01', 366], // 2024 is a leap year: split when it ends
+    ['2025-01-01', '2025-02-15', 365],
+    ['2025-02-15', '2026-02-15', 365], // no split at 1 Jan 2026: 2025 and 2026 both have 365 days
+    ['2026-02-15', '2026-09-30', 365],
+  ]);
+  // Same total as splitting at every 1 January would give
+  const i1 = (1000000 * 0.08 * 321) / 366 + (1000000 * 0.08 * 45) / 365;
+  const i2 = ((1000000 + i1) * 0.08 * 365) / 365;
+  close(r.periods[2].interest, i2);
+});
+
 test('rejects an unknown compounding', () => {
   assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, compounding: 'weekly' }), /compounding/);
 });

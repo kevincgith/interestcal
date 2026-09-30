@@ -5,7 +5,7 @@
 //   - Periods are half-open [start, end): the start date earns interest, the end date does not.
 //     e.g. 1 Jan -> 2 Jan is 1 day at the rate effective on 1 Jan.
 //   - Day count basis (year days in principal x rate x days / year days):
-//       act/act  Actual/Actual (ISDA): periods split at 1 January; 366 in leap years, else 365. Default,
+//       act/act  Actual/Actual (ISDA): 366 in leap years, else 365; periods split at 1 January when that changes. Default,
 //                and the convention used by the HK courts.
 //       act/365  Actual/365 Fixed: always 365.
 //       act/360  Actual/360: always 360.
@@ -144,7 +144,10 @@ export function calculateInterest({
   const cuts = new Set([loanStart, loanEnd]);
   for (const r of sorted) if (r.day > loanStart && r.day < loanEnd) cuts.add(r.day);
   if (basis === 'act/act') {
-    for (let y = yearOf(loanStart) + 1; jan1(y) < loanEnd; y++) cuts.add(jan1(y));
+    // Split at 1 January only when the year days change (366 <-> 365); between two 365-day years it changes nothing
+    for (let y = yearOf(loanStart) + 1; jan1(y) < loanEnd; y++) {
+      if (isLeapYear(y) !== isLeapYear(y - 1)) cuts.add(jan1(y));
+    }
   }
   for (const p of applied) cuts.add(p.day);
   for (const a of added) cuts.add(a.day);

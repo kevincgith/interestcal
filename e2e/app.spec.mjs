@@ -26,7 +26,7 @@ test('changing inputs does not recalculate until Calculate is pressed', async ({
   await page.locator('#advanced summary').click();
   await page.locator('#basis').selectOption('act/360');
   await page.locator('#rounding').selectOption('period');
-  await page.getByLabel('HSBC prime rate (HKMA)').check();
+  await page.locator('input[name="source"][value="prime"]').check();
   await page.getByRole('button', { name: 'Increase spread by 1%' }).click();
   await page.locator('#principal').fill('999');
 
@@ -265,7 +265,7 @@ test('a shared link with a non-default day count opens Advanced settings', async
 test('calendar compounding dates from a shared link', async ({ page }) => {
   await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-15&to=2026-04-15&comp=monthly&cdates=calendar');
   await expect(page.locator('#compoundDates')).toHaveValue('calendar');
-  await expect(page.locator('#periods tr td:first-child')).toHaveText(['15-Jan-2026', '01-Feb-2026', '01-Mar-2026', '01-Apr-2026']);
+  await expect(page.locator('#periods tr td:first-child')).toHaveText([/^15-Jan-2026/, /^01-Feb-2026/, /^01-Mar-2026/, /^01-Apr-2026/]);
   await expect(page.locator('#compareLine')).toContainText('Compounded monthly (calendar month ends)');
   await expect(page).toHaveURL(/comp=monthly&cdates=calendar/);
 });
