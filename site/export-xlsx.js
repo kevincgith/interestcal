@@ -132,7 +132,7 @@ export function buildWorkbook(XLSX, r, ctx) {
     [text(`${ctx.ratesTitle} used in this calculation`)],
     [],
     ['Source', hyperlink(ctx.sourceUrl)],
-    ['Rates last updated', date(ctx.updatedAt)],
+    ['Rates as at', date(ctx.updatedAt)],
     ['Calculation period', `${fmtDate(r.start)} to ${fmtDate(r.end)} (end date excluded)`],
   ];
   if (ctx.crossCheck) {

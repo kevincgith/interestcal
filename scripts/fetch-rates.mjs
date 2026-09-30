@@ -60,16 +60,22 @@ async function update(source) {
   validateRates(rates, source.validate);
 
   const latest = `${rates.length} rates, latest ${rates[0].effective} @ ${rates[0].rate}%`;
+  const today = new Date().toISOString().slice(0, 10);
   const content = { rates, ...meta };
-  const unchanged = previous && JSON.stringify({ rates: previous.rates, crossCheck: previous.crossCheck }) ===
-    JSON.stringify({ rates: content.rates, crossCheck: content.crossCheck });
-  if (unchanged) {
-    console.log(`${name}: no change (${latest}).`);
-  } else {
-    const data = { source: url, updatedAt: new Date().toISOString().slice(0, 10), ...content };
-    await writeFile(file, JSON.stringify(data, null, 2) + '\n');
-    console.log(`${name}: updated (${latest}).`);
-  }
+  const changed = !previous ||
+    JSON.stringify({ rates: previous.rates, crossCheck: previous.crossCheck }) !==
+      JSON.stringify({ rates: content.rates, crossCheck: content.crossCheck });
+
+  // updatedAt: when the rates last changed. checkedAt: when they were last fully confirmed against the source
+  // (only advanced when every check passed, so the page never claims a check that did not happen).
+  const data = {
+    source: url,
+    updatedAt: changed ? today : previous.updatedAt,
+    checkedAt: warnings.length ? (previous?.checkedAt ?? previous?.updatedAt ?? today) : today,
+    ...content,
+  };
+  await writeFile(file, JSON.stringify(data, null, 2) + '\n');
+  console.log(`${name}: ${changed ? 'updated' : 'no change'} (${latest}), checked ${data.checkedAt}.`);
   if (meta.crossCheck) console.log(`${name}: HSBC cross-check ${meta.crossCheck.status}.`);
   if (warnings.length) throw new Error(warnings.join('\n  '));
 }

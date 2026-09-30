@@ -46,7 +46,7 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -am "Update interest rate data"
+            git commit -am "Update interest rate data ($(date -u +%F))"
             git push
           fi
       - name: Keep schedule alive
@@ -63,7 +63,7 @@ jobs:
 
   deploy:
     needs: refresh-rates
-    # Scheduled runs deploy only when rates changed; pushes and manual runs always deploy.
+    # Scheduled runs deploy when the rate files changed (including the daily "checked" date); pushes and manual runs always deploy.
     # Runs even if a rate source failed, so any source that did update still goes live.
     if: ${{ !cancelled() && (github.event_name != 'schedule' || needs.refresh-rates.outputs.changed == 'true') }}
     runs-on: ubuntu-latest

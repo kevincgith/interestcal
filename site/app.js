@@ -90,7 +90,19 @@ async function loadRates() {
       rateData[key] = await res.json();
     }),
   );
+  renderAsAt();
   renderRateTable();
+}
+
+// "As at": the date each rate file was last confirmed against its source by the daily update
+const asAt = (key) => rateData[key].checkedAt ?? rateData[key].updatedAt;
+
+function renderAsAt() {
+  const keys = Object.keys(SOURCES);
+  const dates = keys.map(asAt);
+  $('asAt').textContent = dates.every((d) => d === dates[0])
+    ? `Rates updated as at ${fmtDate(dates[0])}`
+    : `Rates updated as at: ${keys.map((k) => `${SOURCES[k].title.toLowerCase()} ${fmtDate(asAt(k))}`).join(' · ')}`;
 }
 
 // Rates that apply to some day in [start, end): the one in force on the start date plus any that start before the end date.
@@ -141,7 +153,7 @@ function renderRateTable() {
   });
   $('rateMeta').textContent = filtered
     ? `(${shown.length} of ${data.rates.length} rates, used from ${fmtDate(lastResult.start)} to ${fmtDate(lastResult.end)})`
-    : `(${data.rates.length} rates, latest effective ${fmtDate(data.rates[0].effective)}, updated ${fmtDate(data.updatedAt)})`;
+    : `(${data.rates.length} rates, latest effective ${fmtDate(data.rates[0].effective)}, as at ${fmtDate(asAt(key))})`;
   $('rates').replaceChildren(
     ...shown.map((r) => row([fmtDate(r.effective) + (r.source ? ` (${r.source})` : ''), r.rate.toFixed(3)], ['', 'num'])),
   );
@@ -182,6 +194,7 @@ const printInputItems = (r) => [
   ['End date (does not earn interest)', fmtDate(r.end)],
   ['Day count basis', BASES[r.basis]],
   ['Rounding', ROUNDINGS[r.rounding]],
+  ['Rates as at', fmtDate(asAt(r.source))],
   ['Calculated on', fmtDate(new Date().toLocaleDateString('en-CA'))],
 ];
 
@@ -443,7 +456,7 @@ $('xlsx').addEventListener('click', () => {
       link: location.href,
       ratesTitle: SOURCES[r.source].title,
       sourceUrl: data.source,
-      updatedAt: data.updatedAt,
+      updatedAt: asAt(r.source),
       crossCheck: data.crossCheck && { ...data.crossCheck, summary: CROSS_CHECK[data.crossCheck.status] },
       rates: sortRates(relevantRates(data.rates, r)),
       formulaText: formula,
@@ -488,6 +501,7 @@ $('csv').addEventListener('click', () => {
     ['Total Interest', money.format(r.totalInterest)],
     ['Total Amount Due', money.format(r.totalDue)],
     ['Total No. of Days', r.totalDays],
+    ['Rates As At', asAt(r.source)],
     ['Link', location.href],
     ...(rateData[r.source].crossCheck
       ? [['Cross-check', `${CROSS_CHECK[rateData[r.source].crossCheck.status]} ${rateData[r.source].crossCheck.source}`]]
