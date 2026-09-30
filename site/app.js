@@ -178,6 +178,15 @@ $('form').addEventListener('submit', (e) => {
   }
 });
 
+// Sample inputs so the page can be tried without typing: HK$1,000,000 from 1 Jan this year to today.
+// Set as default values, so Reset restores them.
+function setDefaultDates() {
+  const now = new Date();
+  const iso = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  $('start').defaultValue = iso(now.getFullYear(), 1, 1);
+  $('end').defaultValue = iso(now.getFullYear(), now.getMonth() + 1, now.getDate());
+}
+
 $('clear').addEventListener('click', () => {
   $('form').reset();
   onSourceChange();
@@ -214,4 +223,7 @@ $('csv').addEventListener('click', () => {
   URL.revokeObjectURL(a.href);
 });
 
-loadRates().catch((err) => showError(err.message));
+setDefaultDates();
+loadRates()
+  .then(() => $('form').requestSubmit())
+  .catch((err) => showError(err.message));

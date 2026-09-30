@@ -26,7 +26,7 @@
         <label class="radio"><input type="radio" name="source" value="prime"> HSBC prime rate (HKMA)</label>
       </fieldset>
       <label>Principal (HK$)
-        <input id="principal" type="text" inputmode="decimal" autocomplete="off" required placeholder="135,436.48">
+        <input id="principal" type="text" inputmode="decimal" autocomplete="off" required value="1,000,000.00" placeholder="1,000,000.00">
       </label>
       <label>Start date
         <input id="start" type="date" required>
@@ -46,7 +46,7 @@
       </label>
       <div class="actions">
         <button type="submit">Calculate</button>
-        <button type="button" id="clear" class="secondary">Clear</button>
+        <button type="button" id="clear" class="secondary">Reset</button>
       </div>
       <p id="error" class="error" role="alert" hidden></p>
     </form>
