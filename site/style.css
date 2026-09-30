@@ -108,4 +108,5 @@ td.formula { color: var(--muted); font-size: 0.9rem; }
 .num { text-align: right; }
 
 details summary { cursor: pointer; font-weight: 600; }
+.filter { margin-top: 12px; }
 details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }

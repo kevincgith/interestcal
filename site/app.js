@@ -52,15 +52,27 @@ async function loadRates() {
   renderRateTable();
 }
 
+// Rates that apply to some day in [start, end): the one in force on the start date plus any that start before the end date.
+function relevantRates(rates, { start, end }) {
+  const inForceAtStart = rates.find((r) => r.effective <= start)?.effective ?? '';
+  return rates.filter((r) => r.effective >= inForceAtStart && r.effective < end);
+}
+
 function renderRateTable() {
   const key = currentSource();
   const data = rateData[key];
   $('rateTitle').textContent = SOURCES[key].title;
+  $('relevantOnly').disabled = !lastResult;
+  $('relevantHint').hidden = !!lastResult;
   if (!data) return;
-  $('rateMeta').textContent =
-    `(${data.rates.length} rates, latest effective ${fmtDate(data.rates[0].effective)}, updated ${fmtDate(data.updatedAt)})`;
+
+  const filtered = $('relevantOnly').checked && lastResult;
+  const shown = filtered ? relevantRates(data.rates, lastResult) : data.rates;
+  $('rateMeta').textContent = filtered
+    ? `(${shown.length} of ${data.rates.length} rates, used from ${fmtDate(lastResult.start)} to ${fmtDate(lastResult.end)})`
+    : `(${data.rates.length} rates, latest effective ${fmtDate(data.rates[0].effective)}, updated ${fmtDate(data.updatedAt)})`;
   $('rates').replaceChildren(
-    ...data.rates.map((r) => row([fmtDate(r.effective), r.rate.toFixed(3)], ['', 'num'])),
+    ...shown.map((r) => row([fmtDate(r.effective), r.rate.toFixed(3)], ['', 'num'])),
   );
 }
 
@@ -114,6 +126,7 @@ function render(r) {
     ),
   );
   $('results').hidden = false;
+  renderRateTable();
 }
 
 function onSourceChange() {
@@ -133,7 +146,10 @@ $('principal').addEventListener('blur', () => {
 $('basis').addEventListener('change', () => {
   $('results').hidden = true;
   lastResult = null;
+  renderRateTable();
 });
+
+$('relevantOnly').addEventListener('change', renderRateTable);
 
 $('form').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -156,6 +172,8 @@ $('form').addEventListener('submit', (e) => {
     render(lastResult);
   } catch (err) {
     $('results').hidden = true;
+    lastResult = null;
+    renderRateTable();
     showError(err.message);
   }
 });
