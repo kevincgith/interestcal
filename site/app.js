@@ -137,7 +137,8 @@ function renderRateSource(key) {
 }
 
 function renderRateTable() {
-  const key = currentSource();
+  // Follows the last calculation while results are showing, otherwise the selected source
+  const key = lastResult?.source ?? currentSource();
   const data = rateData[key];
   $('rateTitle').textContent = SOURCES[key].title;
   $('relevantOnly').disabled = !lastResult;
@@ -316,14 +317,30 @@ window.addEventListener('afterprint', () => {
 
 // ---- Form ----
 
-function onSourceChange() {
-  $('spreadField').hidden = currentSource() !== 'prime';
+// Results only change when Calculate is pressed. Editing any input afterwards just marks the results as out of date.
+function setStale(stale) {
+  $('results').classList.toggle('stale', stale);
+  $('staleNote').hidden = !stale;
+}
+const markStale = () => {
+  if (lastResult) setStale(true);
+};
+$('form').addEventListener('input', markStale);
+$('form').addEventListener('change', markStale);
+
+function clearResults() {
   $('results').hidden = true;
   lastResult = null;
+  setStale(false);
   renderRateTable();
 }
 
-document.querySelectorAll('input[name="source"]').forEach((el) => el.addEventListener('change', onSourceChange));
+document.querySelectorAll('input[name="source"]').forEach((el) =>
+  el.addEventListener('change', () => {
+    $('spreadField').hidden = currentSource() !== 'prime';
+    if (!lastResult) renderRateTable();
+  }),
+);
 // Show the principal as xxx,xxx.xx once the user leaves the field
 $('principal').addEventListener('blur', () => {
   const n = parseNumber($('principal').value);
@@ -336,16 +353,9 @@ document.querySelectorAll('.stepper .step').forEach((btn) =>
     const current = parseNumber($('spread').value || '0');
     const next = (Number.isFinite(current) ? current : 0) + Number(btn.dataset.step);
     $('spread').value = String(Number(next.toFixed(6)));
-    if (lastResult) $('form').requestSubmit();
+    markStale();
   }),
 );
-
-// Changing the basis or rounding recalculates straight away if results are showing
-for (const id of ['basis', 'rounding']) {
-  $(id).addEventListener('change', () => {
-    if (lastResult) $('form').requestSubmit();
-  });
-}
 
 $('relevantOnly').addEventListener('change', renderRateTable);
 
@@ -373,10 +383,9 @@ $('form').addEventListener('submit', (e) => {
     };
     writeQuery(lastResult);
     render(lastResult);
+    setStale(false);
   } catch (err) {
-    $('results').hidden = true;
-    lastResult = null;
-    renderRateTable();
+    clearResults();
     showError(err.message);
   }
 });
@@ -392,7 +401,8 @@ function setDefaultDates() {
 
 $('clear').addEventListener('click', () => {
   $('form').reset();
-  onSourceChange();
+  $('spreadField').hidden = currentSource() !== 'prime';
+  clearResults();
   showError('');
   history.replaceState(null, '', location.pathname);
 });

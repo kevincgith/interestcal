@@ -157,6 +157,18 @@ button.sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 2p
 .filter { margin-top: 12px; }
 details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
 
+.stale-note {
+  position: sticky;
+  top: 8px;
+  z-index: 1;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  font-size: 0.95rem;
+}
+#results.stale > :not(.stale-note) { opacity: 0.45; }
 .verified { margin: -8px 0 16px; font-size: 0.9rem; color: var(--muted); overflow-wrap: anywhere; }
 .rate-source p { margin: 10px 0 0; font-size: 0.9rem; overflow-wrap: anywhere; }
 .print-only { display: none; }
@@ -177,7 +189,7 @@ details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
   @page { margin: 14mm; }
   body { font-size: 11pt; background: #fff; }
   main { max-width: none; padding: 0; }
-  header p:not(.as-at), form, .exports, label.filter, details summary::marker { display: none; }
+  header p:not(.as-at), form, .exports, label.filter, .stale-note, details summary::marker { display: none; }
   .print-only { display: grid; }
   .inputs-list {
     grid-template-columns: max-content 1fr;
