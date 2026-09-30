@@ -111,7 +111,7 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
   table({
     head: [[
       'Principal', 'Total interest',
-      ...(addedAny ? ['Sums added'] : []),
+      ...(addedAny ? ['Principal added'] : []),
       ...(paid ? ['Payments received'] : []),
       'Total amount due', 'Total no. of days',
     ]],
@@ -150,9 +150,9 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
     },
   });
 
-  // ---- Sums added later ----
+  // ---- Principal added later ----
   if (addedAny) {
-    heading('Sums added later', 11);
+    heading('Principal added later', 11);
     table({
       head: [['Date', 'Description', 'Amount', 'Principal after']],
       body: additions.map((a) => [fmt.date(a.date), pdfText(a.label || '-'), fmt.money(a.amount), fmt.money(a.principalAfter)]),

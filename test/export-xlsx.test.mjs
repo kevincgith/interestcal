@@ -144,7 +144,7 @@ test('Excel export with payments: principal column, payments table, outstanding 
   assert.equal(calc[find('Payments applied')][1], 'Interest first, then principal');
 });
 
-test('Excel export with an added sum: principal column, sums table, outstanding totals', () => {
+test('Excel export with principal added later: principal column, added-principal table, outstanding totals', () => {
   const fixed = [{ effective: '1900-01-01', rate: 8 }];
   const r = calculateInterest({
     principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed,
@@ -160,7 +160,7 @@ test('Excel export with an added sum: principal column, sums table, outstanding 
   assert.ok(calc[find('Period Start')].includes('Principal'));
   const addHead = calc.findIndex((x) => x[0] === 'Date' && x[1] === 'Description');
   assert.deepEqual(calc[addHead + 1].slice(1, 4), ['Costs', 20000, 120000]);
-  assert.equal(ws[`B${find('Sums added') + 1}`].f, `SUM(C${addHead + 2}:C${addHead + 2})`);
+  assert.equal(ws[`B${find('Principal added') + 1}`].f, `SUM(C${addHead + 2}:C${addHead + 2})`);
   assert.ok(Math.abs(ws[`B${find('Total amount due') + 1}`].v - r.totalDue) < 1e-9);
   assert.equal(find('Payments received'), -1);
 });

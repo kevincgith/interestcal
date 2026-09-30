@@ -227,7 +227,7 @@ const printInputItems = (r) => [
   ['Day count basis', BASES[r.basis]],
   ['Rounding', ROUNDINGS[r.rounding]],
   ...(r.additions.length || r.ignoredAdditions.length
-    ? [['Sums added later', String(r.additions.length + r.ignoredAdditions.length)]]
+    ? [['Principal added later', String(r.additions.length + r.ignoredAdditions.length)]]
     : []),
   ...(r.payments.length || r.ignoredPayments.length
     ? [['Payments', `${r.payments.length + r.ignoredPayments.length} (${ALLOCATIONS[r.allocation].toLowerCase()})`]]
@@ -267,7 +267,7 @@ function render(r) {
   }
   if (r.ignoredAdditions.length) {
     warnings.push(warning(
-      `Added sums outside the calculation period were ignored: ${r.ignoredAdditions
+      `Principal added outside the calculation period was ignored: ${r.ignoredAdditions
         .map((a) => `${fmtDate(a.date)} (${money.format(a.amount)})`)
         .join(', ')}.`,
     ));
@@ -340,7 +340,7 @@ function writeQuery(r) {
     q.set('pay', pays.map(([d, a]) => `${d}:${a}`).join(','));
     q.set('alloc', r.allocation);
   }
-  // Added sums as date:amount:description, e.g. add=2026-03-01:5000:Costs (description URI-encoded)
+  // Added principals as date:amount:description, e.g. add=2026-03-01:5000:Costs (description URI-encoded)
   const adds = [...r.additions, ...r.ignoredAdditions];
   if (adds.length) q.set('add', adds.map((a) => `${a.date}:${a.amount}:${encodeURIComponent(a.label)}`).join(','));
   history.replaceState(null, '', `${location.pathname}?${q}`);
@@ -415,11 +415,11 @@ window.addEventListener('afterprint', () => {
   document.querySelector('details').open = detailsWasOpen;
 });
 
-// ---- Payments received and sums added later: rows of date + amount (+ description for sums) ----
+// ---- Payments received and principal added later: rows of date + amount (+ description for sums) ----
 
 const EVENT_ROWS = {
   payment: { container: 'paymentRows', noun: 'Payment', aria: 'Payment', withLabel: false },
-  addition: { container: 'additionRows', noun: 'Added sum', aria: 'Added sum', withLabel: true },
+  addition: { container: 'additionRows', noun: 'Added principal', aria: 'Added principal', withLabel: true },
 };
 
 function input(type, cls, aria, value = '') {
@@ -729,7 +729,7 @@ $('csv').addEventListener('click', () => {
     ['Start Date', r.start],
     ['End Date', r.end],
     ['Total Interest', money.format(r.totalInterest)],
-    ...(r.additions.length ? [['Sums Added', money.format(r.totalAdded)]] : []),
+    ...(r.additions.length ? [['Principal Added', money.format(r.totalAdded)]] : []),
     ...(r.payments.length
       ? [
           ['Payments Received', money.format(r.totalPaid)],
@@ -761,7 +761,7 @@ $('csv').addEventListener('click', () => {
     ...(r.additions.length
       ? [
           [],
-          ['Added Sum Date', 'Description', 'Amount', 'Principal After'],
+          ['Added Principal Date', 'Description', 'Amount', 'Principal After'],
           ...r.additions.map((a) => [a.date, a.label, money.format(a.amount), money.format(a.principalAfter)]),
         ]
       : []),

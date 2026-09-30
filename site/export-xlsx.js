@@ -87,7 +87,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   const totalLabels = withEvents
     ? [
         'Total interest',
-        ...(withAdditions ? ['Sums added'] : []),
+        ...(withAdditions ? ['Principal added'] : []),
         ...(withPayments ? ['Payments received'] : []),
         'Outstanding principal', 'Unpaid interest', 'Total amount due', 'Total no. of days', 'perDiem',
       ]
@@ -97,7 +97,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   rows.push([]);
 
   // With a spread, show Base Rate + Spread = Interest Rate (a live formula); otherwise just the rate.
-  // With payments or added sums, each period has its own principal balance (a Principal column).
+  // With payments or principal added later, each period has its own principal balance (a Principal column).
   const withSpread = r.spread !== 0;
   const cols = [
     'Period Start', 'Period End', 'No. of Days',
@@ -136,10 +136,10 @@ export function buildWorkbook(XLSX, r, ctx) {
   const last = first + r.periods.length - 1;
   const hasPeriods = r.periods.length > 0;
 
-  // Added sums table below the periods
+  // Added principals table below the periods
   let addFirst = 0;
   if (withAdditions) {
-    rows.push([], [text('Sums added later')], ['Date', 'Description', 'Amount', 'Principal After']);
+    rows.push([], [text('Principal added later')], ['Date', 'Description', 'Amount', 'Principal After']);
     addFirst = rows.length + 1;
     for (const a of additions) rows.push([date(a.date), a.label || '', num(a.amount, MONEY), num(a.principalAfter, MONEY)]);
   }
@@ -165,7 +165,7 @@ export function buildWorkbook(XLSX, r, ctx) {
 
   const set = (label, cells) => (rows[totalAt(label) - 1] = cells);
   set('Total interest', ['Total interest', formula(hasPeriods ? `SUM(${INT}${first}:${INT}${last})` : '0', r.totalInterest, MONEY)]);
-  if (withAdditions) set('Sums added', ['Sums added', formula(`SUM(C${addFirst}:C${addLast})`, r.totalAdded, MONEY)]);
+  if (withAdditions) set('Principal added', ['Principal added', formula(`SUM(C${addFirst}:C${addLast})`, r.totalAdded, MONEY)]);
   if (withPayments) set('Payments received', ['Payments received', formula(`SUM(B${payFirst}:B${payLast})`, r.totalPaid, MONEY)]);
   if (withEvents) {
     set('Outstanding principal', ['Outstanding principal', num(r.outstandingPrincipal, MONEY)]);

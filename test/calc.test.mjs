@@ -282,7 +282,7 @@ test('rounding each period with payments keeps cents exact', () => {
   assert.equal(r.totalDue, round2(r.outstandingPrincipal + r.outstandingInterest));
 });
 
-test('an added sum joins the principal from its date and earns interest from that day', () => {
+test('principal added later joins the principal from its date and earns interest from that day', () => {
   const r = calculateInterest({
     principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed8,
     additions: [{ date: '2026-07-01', amount: 20000, label: 'Costs' }],
@@ -306,14 +306,14 @@ test('same day: the sum is added before the payment, so the payment can clear it
   assert.equal(r.periods[1].principal, 100000);
 });
 
-test('added sums outside the dates are ignored and reported; invalid amounts rejected', () => {
+test('principal added outside the dates are ignored and reported; invalid amounts rejected', () => {
   const r = calculateInterest({
     principal: 1000, start: '2026-01-01', end: '2026-02-01', rates: fixed8,
     additions: [{ date: '2025-12-31', amount: 5 }, { date: '2026-02-01', amount: 6, label: 'x' }],
   });
   assert.equal(r.additions.length, 0);
   assert.deepEqual(r.ignoredAdditions, [{ date: '2025-12-31', amount: 5, label: '' }, { date: '2026-02-01', amount: 6, label: 'x' }]);
-  assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, additions: [{ date: '2026-01-05', amount: -1 }] }), /Added sum 1/);
+  assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, additions: [{ date: '2026-01-05', amount: -1 }] }), /Added principal 1/);
 });
 
 test('rejects invalid payments and allocation', () => {

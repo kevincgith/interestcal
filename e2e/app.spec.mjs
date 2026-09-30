@@ -167,12 +167,12 @@ test('footer shows the licence and links to the GitHub repo', async ({ page }) =
   await expect(footer.getByRole('link', { name: 'Source code on GitHub' })).toHaveAttribute('href', 'https://github.com/kevincgith/interestcal');
 });
 
-test('sums added later: from the form and from a shared link', async ({ page }) => {
+test('principal added later: from the form and from a shared link', async ({ page }) => {
   await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-12-31');
-  await page.getByRole('button', { name: '+ Add sum' }).click();
-  await page.getByLabel('Added sum date').fill('2026-07-01');
-  await page.getByLabel('Added sum amount').fill('20000');
-  await page.getByLabel('Added sum description').fill('Costs, fixed');
+  await page.getByRole('button', { name: '+ Add principal' }).click();
+  await page.getByLabel('Added principal date').fill('2026-07-01');
+  await page.getByLabel('Added principal amount').fill('20000');
+  await page.getByLabel('Added principal description').fill('Costs, fixed');
   await page.getByRole('button', { name: 'Calculate' }).click();
 
   await expect(page.locator('#totalAdded')).toHaveText('20,000.00');
@@ -185,7 +185,7 @@ test('sums added later: from the form and from a shared link', async ({ page }) 
   const url = page.url();
   expect(url).toContain('add=2026-07-01%3A20000%3ACosts%252C%2520fixed');
   await page.goto(url);
-  await expect(page.getByLabel('Added sum description')).toHaveValue('Costs, fixed');
+  await expect(page.getByLabel('Added principal description')).toHaveValue('Costs, fixed');
   await expect(total(page)).toHaveText('8,780.27');
 });
 

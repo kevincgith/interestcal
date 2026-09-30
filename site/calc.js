@@ -101,7 +101,7 @@ export function calculateInterest({
 
   const adds = additions
     .map((a, i) => {
-      if (!(Number.isFinite(a.amount) && a.amount > 0)) throw new Error(`Added sum ${i + 1}: amount must be more than 0`);
+      if (!(Number.isFinite(a.amount) && a.amount > 0)) throw new Error(`Added principal ${i + 1}: amount must be more than 0`);
       return { day: toDay(a.date), date: a.date, amount: a.amount, label: a.label ?? '' };
     })
     .sort((a, b) => a.day - b.day);
