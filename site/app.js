@@ -38,12 +38,14 @@ const SOURCES = {
   judgment: {
     file: 'rates.json',
     title: 'Judgment debt rates',
+    sourceName: 'HK Judiciary: interest rates on judgment debts',
     label: 'Judgment debt rate (HK Judiciary)',
     staleNote: 'Check the Judiciary website for any newer rate.',
   },
   prime: {
     file: 'prime-rates.json',
     title: 'HSBC prime rates',
+    sourceName: 'HKMA Monthly Statistical Bulletin, table 6.4.1',
     label: 'HSBC best lending rate (HKMA table 6.4.1)',
     staleNote: 'Rates come from the HKMA table (updated monthly), cross-checked daily against HSBC’s official prime rate page.',
   },
@@ -54,6 +56,14 @@ const CROSS_CHECK = {
   supplemented: 'Cross-checked daily against HSBC’s official prime rate page: matches, and newer changes from HSBC (marked “HSBC”) are included.',
   mismatch: 'Cross-check against HSBC’s official prime rate page found differences. Check the rates before relying on this calculation.',
 };
+
+const HSBC_PAGE = 'HSBC’s official prime rate page';
+
+// The cross-check sentence with "HSBC’s official prime rate page" as a link (named, so no raw URL is shown or printed)
+function crossCheckLine(cc) {
+  const [before, after = ''] = CROSS_CHECK[cc.status].split(HSBC_PAGE);
+  return [before, link(cc.source, HSBC_PAGE), after];
+}
 
 const rateData = {};
 let lastResult = null;
@@ -77,10 +87,10 @@ function relevantRates(rates, { start, end }) {
   return rates.filter((r) => r.effective >= inForceAtStart && r.effective < end);
 }
 
-function link(url) {
+function link(url, text = url) {
   const a = document.createElement('a');
   a.href = url;
-  a.textContent = url;
+  a.textContent = text;
   a.target = '_blank';
   a.rel = 'noopener';
   return a;
@@ -90,12 +100,12 @@ function renderRateSource(key) {
   const data = rateData[key];
   const lines = [];
   const src = document.createElement('p');
-  src.append('Source: ', link(data.source));
+  src.append('Source: ', link(data.source, SOURCES[key].sourceName));
   lines.push(src);
   if (data.crossCheck) {
     const cc = document.createElement('p');
     cc.className = data.crossCheck.status === 'mismatch' ? 'warning' : '';
-    cc.append(CROSS_CHECK[data.crossCheck.status] ?? '', ' ', link(data.crossCheck.source));
+    cc.append(...crossCheckLine(data.crossCheck));
     lines.push(cc);
     for (const note of data.crossCheck.status === 'mismatch' ? data.crossCheck.notes : []) lines.push(warning(note));
   }
@@ -157,7 +167,6 @@ function renderPrintInputs(r) {
     ['Day count basis', BASES[r.basis]],
     ['Rounding', ROUNDINGS[r.rounding]],
     ['Calculated on', fmtDate(new Date().toLocaleDateString('en-CA'))],
-    ['Link', location.href],
   ];
   $('printInputs').replaceChildren(
     ...items.map(([k, v]) => {
@@ -194,7 +203,7 @@ function render(r) {
   const cc = rateData[r.source].crossCheck;
   $('verified').hidden = !cc || cc.status === 'mismatch';
   if (cc && cc.status !== 'mismatch') {
-    $('verified').replaceChildren(`✓ ${CROSS_CHECK[cc.status]} `, link(cc.source));
+    $('verified').replaceChildren('✓ ', ...crossCheckLine(cc));
   }
 
   $('summaryPrincipal').textContent = money.format(r.principal);
