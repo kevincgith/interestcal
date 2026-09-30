@@ -1,13 +1,15 @@
 // Mortgage tab: inputs, results, schedule, exports and shareable links.
-import { mortgageSummary, mortgageRates } from './mortgage.js?v=__BUILD__';
+import { mortgageSummary, mortgageRates, comparePlans, yearlySummary, effectiveRate } from './mortgage.js?v=__BUILD__';
 import { buildMortgagePdf, buildMortgageWorkbook } from './mortgage-export.js?v=__BUILD__';
 import {
-  $, money, fmtDate, fmtRate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
+  $, money, fmtDate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
   wireSteppers,
 } from './shared.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 
 const TYPES = { prime: 'Prime-based', hibor: 'HIBOR-based', fixed: 'Fixed rate' };
+// Mortgage rates to 3 decimals (HIBOR fixings have 5; the extra precision is just noise here). r is a fraction.
+const rate3 = (r) => `${(r * 100).toFixed(3)}%`;
 const pct = (n) => `${Number(n.toFixed(4)).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}%`;
 
 let prime = null; // HSBC prime rate history (prime-rates.json)
@@ -64,6 +66,9 @@ function updateHints() {
   $('mMarginField').hidden = type !== 'hibor';
   $('mCapField').hidden = type !== 'hibor';
   $('mFixedField').hidden = type !== 'fixed';
+  $('mRebateHField').hidden = type !== 'hibor';
+  $('mRebatePField').hidden = type !== 'prime';
+  $('mRebateFField').hidden = type !== 'fixed';
 
   const { price, ltv, loan } = readLoan();
   $('mLoanLine').textContent =
@@ -161,37 +166,63 @@ $('mAddExtra').addEventListener('click', () => {
 
 // ---- Calculate ----
 
+const PLAN_ORDER = ['hibor', 'prime', 'fixed'];
+const REBATE_FIELD = { hibor: 'mRebateH', prime: 'mRebateP', fixed: 'mRebateF' };
+
+/** One plan's settings from its own fields; throws a user-facing message if any is invalid */
+function planParams(type) {
+  // An empty box is "not set" (never 0%): that plan is then left out of the comparison
+  const num = (id) => ($(id).value.trim() === '' ? NaN : parseNumber($(id).value));
+  const params = { type };
+  if (type === 'prime') params.discount = num('mDiscount');
+  if (type === 'hibor') Object.assign(params, { hibor: num('mHibor'), margin: num('mMargin'), capDiscount: num('mCap'), tenor: currentTenor() });
+  if (type === 'fixed') params.fixedRate = num('mFixed');
+  for (const [k, v] of Object.entries(params)) {
+    if (k !== 'type' && k !== 'tenor' && !Number.isFinite(v)) {
+      throw new Error(k === 'hibor' ? 'Please enter the future HIBOR.' : `Please enter a valid rate for the ${TYPES[type].toLowerCase()} plan.`);
+    }
+  }
+  params.rebatePct = parseNumber($(REBATE_FIELD[type]).value || '0');
+  if (!(params.rebatePct >= 0 && params.rebatePct < 20)) throw new Error('Cash rebate must be between 0 and 20% of the loan.');
+  if (type !== 'fixed' && !prime) throw new Error('Prime rates have not loaded yet.');
+  return params;
+}
+
 function readInputs() {
   const type = currentType();
   const { price, ltv, loan } = readLoan();
   const years = parseNumber($('mYears').value);
   const start = $('mStart').value;
-  const num = (id) => parseNumber($(id).value);
   if (!(price > 0)) throw new Error('Please enter the property price.');
   if (!(ltv > 0 && ltv <= 100)) throw new Error('Loan-to-value must be between 0 and 100%.');
   if (!(Number.isInteger(years) && years >= 1 && years <= 50)) throw new Error('Tenor must be 1 to 50 whole years.');
   if (!isIsoDate(start)) throw new Error('Please enter the drawdown date.');
-  const rateParams = { type };
-  if (type === 'prime') rateParams.discount = num('mDiscount');
-  if (type === 'hibor') {
-    Object.assign(rateParams, { hibor: num('mHibor'), margin: num('mMargin'), capDiscount: num('mCap'), tenor: currentTenor() });
-  }
-  if (type === 'fixed') rateParams.fixedRate = num('mFixed');
-  for (const [k, v] of Object.entries(rateParams)) {
-    if (k !== 'type' && k !== 'tenor' && !Number.isFinite(v)) {
-      throw new Error(k === 'hibor' ? 'Please enter the HIBOR to use for future months.' : 'Please enter a valid rate.');
+  const rateParams = planParams(type);
+  // Other plans for the comparison: skipped if their fields aren't valid
+  const plans = PLAN_ORDER.map((t) => {
+    try {
+      return planParams(t);
+    } catch {
+      return null;
     }
-  }
-  if (type !== 'fixed' && !prime) throw new Error('Prime rates have not loaded yet.');
+  }).filter(Boolean);
   const incomeRaw = $('mIncome').value.trim();
   const income = incomeRaw ? parseNumber(incomeRaw) : null;
   if (incomeRaw && !(income > 0)) throw new Error('Monthly income must be a number above 0.');
   return {
-    type, price, ltv, loan, years, start, rateParams, income,
+    type, price, ltv, loan, years, start, rateParams, plans, income,
     stress: Number($('mStress').value),
     method: $('mMethod').value,
     extras: readExtras(),
   };
+}
+
+/** Rate table for a plan; HIBOR plans use the actual fixings for past resets */
+async function ratesFor(params, inputs) {
+  const extra = params.type === 'hibor'
+    ? { hiborHistory: (await loadHibor(params.tenor))?.rates ?? [], start: inputs.start, years: inputs.years }
+    : {};
+  return { rates: mortgageRates({ ...params, ...extra, prime: prime?.rates ?? [] }), hiborHistory: extra.hiborHistory };
 }
 
 $('mform').addEventListener('submit', async (e) => {
@@ -201,31 +232,27 @@ $('mform').addEventListener('submit', async (e) => {
   try {
     inputs = readInputs();
     const p = inputs.rateParams;
-    const extra = p.type === 'hibor'
-      ? {
-          hiborHistory: (await loadHibor(p.tenor))?.rates ?? [],
-          start: inputs.start,
-          years: inputs.years,
-        }
-      : {};
-    const rates = mortgageRates({ ...p, ...extra, prime: prime?.rates ?? [] });
-    const summary = mortgageSummary(
-      { loan: inputs.loan, start: inputs.start, years: inputs.years, rates, prepayments: inputs.extras, method: inputs.method },
-      { stressAdd: inputs.stress, monthlyIncome: inputs.income },
-    );
+    const { rates, hiborHistory } = await ratesFor(p, inputs);
+    const base = { loan: inputs.loan, start: inputs.start, years: inputs.years, prepayments: inputs.extras, method: inputs.method };
+    const summary = mortgageSummary({ ...base, rates }, { stressAdd: inputs.stress, monthlyIncome: inputs.income });
     // HIBOR history may not reach back to the drawdown date (the daily update fills in older years gradually)
-    const earliest = p.type === 'hibor' ? extra.hiborHistory.at(-1)?.effective : null;
+    const earliest = p.type === 'hibor' ? hiborHistory.at(-1)?.effective : null;
     const warning = earliest && inputs.start < earliest
       ? `HIBOR history on this site starts on ${fmtDate(earliest)}. Resets before then use that first fixing, ` +
         'so rates before it are estimates.'
       : '';
-    // HIBOR plans: the cap (prime - x%) in force on each due date, shown next to the rate
-    if (p.type === 'hibor') {
-      const primeAsc = [...prime.rates].sort((a, b) => a.effective.localeCompare(b.effective));
-      const primeOn = (iso) => (primeAsc.filter((x) => x.effective <= iso).at(-1) ?? primeAsc[0]).rate;
-      for (const r of summary.rows) r.cap = (primeOn(r.date) - p.capDiscount) / 100;
-    }
-    last = { ...summary, inputs, warning };
+    const planRates = await Promise.all(inputs.plans.map(async (pl) => ({ key: pl.type, rates: (await ratesFor(pl, inputs)).rates, rebatePct: pl.rebatePct })));
+    const compare = comparePlans(base, planRates).map((c) => ({ ...c, label: planLabel(inputs.plans.find((pl) => pl.type === c.key)) }));
+    const rebate = Math.round(summary.loan * p.rebatePct) / 100;
+    last = {
+      ...summary,
+      inputs,
+      warning,
+      compare,
+      yearly: yearlySummary(summary.rows),
+      rebate,
+      effRate: effectiveRate(summary.loan, rebate, summary.rows),
+    };
   } catch (err) {
     showError(err.message);
     return;
@@ -235,14 +262,16 @@ $('mform').addEventListener('submit', async (e) => {
   setStale(false);
 });
 
-const rateLabel = (inputs) => {
-  const p = inputs.rateParams;
-  if (inputs.type === 'prime') return `HSBC prime − ${pct(p.discount)}`;
-  if (inputs.type === 'hibor') {
+// "1-month HIBOR + 1.30%, capped at prime − 1.75%; future HIBOR 2.85%"
+const planLabel = (p) => {
+  if (p.type === 'prime') return `HSBC prime − ${pct(p.discount)}`;
+  if (p.type === 'hibor') {
     return `${TENOR_NAME[p.tenor]} HIBOR + ${pct(p.margin)}, capped at prime − ${pct(p.capDiscount)}; future HIBOR ${pct(p.hibor)}`;
   }
   return `Fixed ${pct(p.fixedRate)}`;
 };
+
+const rateLabel = (inputs) => planLabel(inputs.rateParams);
 
 const duration = (months) => {
   const y = Math.floor(months / 12);
@@ -253,12 +282,16 @@ const duration = (months) => {
 function resultLines(m) {
   const { inputs } = m;
   const lines = {
-    rate: `Rate at drawdown: ${fmtRate(m.firstRate)} p.a. (${rateLabel(inputs)}). ` +
+    rate: `Rate at drawdown: ${rate3(m.firstRate)} p.a. (${rateLabel(inputs)}). ` +
       (inputs.method === 'monthly'
         ? 'Interest each month = balance × rate ÷ 12 (textbook method).'
         : 'Interest each month = balance × rate × days ÷ 365.'),
+    rebate: m.rebate > 0
+      ? `Cash rebate HK$${money.format(m.rebate)} (${pct(m.inputs.rateParams.rebatePct)} of the loan): effective rate ` +
+        `${rate3(m.effRate)} p.a. after the rebate (monthly rate at which the instalments repay the loan plus rebate, × 12).`
+      : '',
     stress:
-      `Stress test at +${m.stressAdd}% (${fmtRate(m.firstRate + m.stressAdd / 100)}): instalment HK$${money.format(m.stressedPayment)}` +
+      `Stress test at +${m.stressAdd}% (${rate3(m.firstRate + m.stressAdd / 100)}): instalment HK$${money.format(m.stressedPayment)}` +
       ` (+HK$${money.format(m.stressedPayment - m.firstPayment)} a month).`,
     dsr: m.monthlyIncome
       ? `Debt-servicing ratio: ${(m.dsr * 100).toFixed(1)}% now, ${(m.stressedDsr * 100).toFixed(1)}% under the stress test ` +
@@ -288,38 +321,188 @@ function render(m) {
   $('mStressLine').textContent = lines.stress;
   $('mDsrLine').hidden = !lines.dsr;
   $('mDsrLine').textContent = lines.dsr;
-  $('mSavedLine').hidden = !lines.saved;
-  $('mSavedLine').textContent = lines.saved;
+  $('mSavedLine').hidden = !lines.saved && !lines.rebate;
+  $('mSavedLine').textContent = [lines.rebate, lines.saved].filter(Boolean).join(' ');
+  renderCompare(m);
+  renderChart(m);
+  renderYearly(m);
   const hasExtra = m.totalExtra > 0;
   const hasCap = m.inputs.type === 'hibor';
   $('mSchedule').closest('table').classList.toggle('no-extra', !hasExtra);
   $('mSchedule').closest('table').classList.toggle('no-cap', !hasCap);
   $('mSchedule').replaceChildren(
-    ...m.rows.map((r) =>
-      row(
-        [r.no, fmtDate(r.date), fmtRate(r.rate), hasCap ? fmtRate(r.cap) : '', money.format(r.payment), money.format(r.interest),
-          money.format(r.principal), r.extra ? money.format(r.extra) : '', money.format(r.balance)],
-        ['num', '', 'num', 'num m-cap-col', 'num', 'num', 'num', 'num m-extra-col', 'num'],
-      ),
-    ),
+    ...m.rows.map((r) => {
+      const tr = row(
+        [r.no, fmtDate(r.date), rate3(r.rate), hasCap ? rate3(r.hLeg) : '', hasCap ? rate3(r.cap) : '',
+          money.format(r.payment), money.format(r.interest), money.format(r.principal), r.extra ? money.format(r.extra) : '',
+          money.format(r.balance)],
+        ['num', '', 'num', 'num m-cap-col', 'num m-cap-col', 'num', 'num', 'num', 'num m-extra-col', 'num'],
+      );
+      // Mark whichever leg set the rate (the lower one; the cap when they're equal)
+      if (hasCap) tr.cells[r.hLeg < r.cap ? 3 : 4].classList.add('applied');
+      return tr;
+    }),
   );
   $('mResults').hidden = false;
 }
+
+function renderCompare(m) {
+  const best = Math.min(...m.compare.map((c) => c.netCost));
+  $('mCompare').replaceChildren(
+    ...m.compare.map((c) => {
+      const tr = row(
+        [TYPES[c.key], rate3(c.firstRate), money.format(c.firstPayment), money.format(c.totalInterest),
+          c.rebate ? money.format(c.rebate) : '–', money.format(c.netCost), rate3(c.effectiveRate),
+          fmtDate(c.payoffDate)],
+        ['', 'num', 'num', 'num', 'num', 'num', 'num', ''],
+      );
+      tr.cells[0].title = c.label + (c.rebate ? `; cash rebate ${pct(c.rebatePct)} of the loan` : '');
+      if (c.key === m.inputs.type) tr.classList.add('selected');
+      if (c.netCost === best && m.compare.length > 1) {
+        const badge = Object.assign(document.createElement('span'), { className: 'badge', textContent: 'Lowest cost' });
+        tr.cells[0].append(badge);
+      }
+      return tr;
+    }),
+  );
+}
+
+function renderYearly(m) {
+  const hasExtra = m.totalExtra > 0;
+  $('mYearly').closest('table').classList.toggle('no-extra', !hasExtra);
+  $('mYearly').replaceChildren(
+    ...m.yearly.map((y) =>
+      row(
+        [`${y.year} (${fmtDate(y.from)} – ${fmtDate(y.to)})`, Math.min(12, m.rows.filter((r) => Math.ceil(r.no / 12) === y.year).length),
+          money.format(y.paid), money.format(y.interest), money.format(y.principal), y.extra ? money.format(y.extra) : '',
+          money.format(y.balance)],
+        ['', 'num', 'num', 'num', 'num', 'num m-extra-col', 'num'],
+      ),
+    ),
+  );
+}
+
+// Stacked columns per loan year: principal (blue), interest (orange), extra repayments (aqua). One axis, HK$.
+function renderChart(m) {
+  const box = $('mChart');
+  const ys = m.yearly;
+  const W = 720;
+  const H = 240;
+  const pad = { l: 56, r: 8, t: 8, b: 28 };
+  const total = (y) => y.principal + y.interest + y.extra;
+  const maxV = Math.max(...ys.map(total), 1);
+  // A round axis maximum: 1, 2 or 5 x 10^n
+  const mag = 10 ** Math.floor(Math.log10(maxV));
+  const top = [1, 2, 5, 10].map((k) => k * mag).find((v) => v >= maxV);
+  const plotW = W - pad.l - pad.r;
+  const plotH = H - pad.t - pad.b;
+  const band = plotW / ys.length;
+  const bw = Math.min(24, band * 0.7);
+  const y = (v) => pad.t + plotH - (v / top) * plotH;
+  const fmtK = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(v % 1e6 ? 1 : 0)}M` : v >= 1e3 ? `${Math.round(v / 1e3)}k` : String(v));
+  const ns = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs) => {
+    const n = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    return n;
+  };
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' });
+  for (let i = 0; i <= 4; i++) {
+    const v = (top / 4) * i;
+    svg.append(el('line', { x1: pad.l, x2: W - pad.r, y1: y(v), y2: y(v), stroke: 'var(--grid)', 'stroke-width': 1 }));
+    const t = el('text', { x: pad.l - 8, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 11, fill: 'var(--muted)' });
+    t.textContent = fmtK(v);
+    svg.append(t);
+  }
+  const tip = Object.assign(document.createElement('div'), { className: 'tip', hidden: true });
+  const series = [['principal', 'var(--series-1)'], ['interest', 'var(--series-2)'], ['extra', 'var(--series-3)']];
+  ys.forEach((yr, i) => {
+    const x = pad.l + band * i + (band - bw) / 2;
+    let acc = 0;
+    const g = el('g', {});
+    const parts = series.filter(([k]) => yr[k] > 0);
+    parts.forEach(([k, color], j) => {
+      const h = (yr[k] / top) * plotH;
+      const yTop = y(acc + yr[k]);
+      const gap = j > 0 ? 2 : 0; // 2px surface gap between stacked segments
+      const isTop = j === parts.length - 1;
+      // Rounded 4px data end on the top segment only; square at the baseline
+      const r = isTop ? Math.min(4, h / 2) : 0;
+      const hh = Math.max(0, h - gap);
+      const d = r
+        ? `M${x},${yTop + hh} V${yTop + r} Q${x},${yTop} ${x + r},${yTop} H${x + bw - r} Q${x + bw},${yTop} ${x + bw},${yTop + r} V${yTop + hh} Z`
+        : `M${x},${yTop + hh} V${yTop} H${x + bw} V${yTop + hh} Z`;
+      g.append(el('path', { d, fill: color }));
+      acc += yr[k];
+    });
+    // Hit target: the whole column band
+    const hit = el('rect', { x: pad.l + band * i, y: pad.t, width: band, height: plotH, fill: 'transparent' });
+    hit.addEventListener('pointerenter', () => {
+      tip.hidden = false;
+      tip.innerHTML = '';
+      const lines = [
+        `Year ${yr.year} (${fmtDate(yr.from)} – ${fmtDate(yr.to)})`,
+        `Principal HK$${money.format(yr.principal)}`,
+        `Interest HK$${money.format(yr.interest)}`,
+        ...(yr.extra ? [`Extra HK$${money.format(yr.extra)}`] : []),
+        `Balance after HK$${money.format(yr.balance)}`,
+      ];
+      lines.forEach((l, n) => tip.append(Object.assign(document.createElement(n ? 'div' : 'strong'), { textContent: l })));
+      const rect = box.getBoundingClientRect();
+      const colX = ((pad.l + band * (i + 0.5)) / W) * rect.width;
+      tip.style.left = `${Math.min(Math.max(0, colX - 90), rect.width - 200)}px`;
+      tip.style.top = '28px';
+      g.setAttribute('opacity', '0.85');
+    });
+    hit.addEventListener('pointerleave', () => {
+      tip.hidden = true;
+      g.removeAttribute('opacity');
+    });
+    svg.append(g, hit);
+    if (ys.length <= 12 || yr.year % 5 === 0 || yr.year === 1) {
+      const t = el('text', { x: pad.l + band * (i + 0.5), y: H - 8, 'text-anchor': 'middle', 'font-size': 11, fill: 'var(--muted)' });
+      t.textContent = `Y${yr.year}`;
+      svg.append(t);
+    }
+  });
+  const legend = document.createElement('div');
+  legend.className = 'legend';
+  for (const [k, color] of series) {
+    if (k === 'extra' && !(m.totalExtra > 0)) continue;
+    const item = document.createElement('span');
+    item.append(Object.assign(document.createElement('i'), { style: `background:${color}` }), k[0].toUpperCase() + k.slice(1));
+    legend.append(item);
+  }
+  box.replaceChildren(legend, svg, tip);
+}
+
+function setView(view) {
+  $('mViewMonthly').setAttribute('aria-pressed', String(view === 'monthly'));
+  $('mViewYearly').setAttribute('aria-pressed', String(view === 'yearly'));
+  $('mMonthlyWrap').hidden = view !== 'monthly';
+  $('mYearlyWrap').hidden = view !== 'yearly';
+}
+$('mViewMonthly').addEventListener('click', () => setView('monthly'));
+$('mViewYearly').addEventListener('click', () => setView('yearly'));
 
 // ---- Shareable links: ?tab=mortgage&mt=prime&price=...&ltv=...&yrs=...&from=...&disc=... ----
 
 function writeQuery(m) {
   const i = m.inputs;
   const q = new URLSearchParams({ tab: 'mortgage', mt: i.type, price: String(i.price), ltv: String(i.ltv), yrs: String(i.years), from: i.start });
-  const p = i.rateParams;
-  if (i.type === 'prime') q.set('disc', String(p.discount));
-  if (i.type === 'hibor') {
-    q.set('h', String(p.hibor));
-    q.set('mg', String(p.margin));
-    q.set('cap', String(p.capDiscount));
-    if (p.tenor !== '1m') q.set('ht', p.tenor);
+  // Every plan's settings, so the comparison reopens the same
+  for (const p of i.plans) {
+    if (p.type === 'prime') q.set('disc', String(p.discount));
+    if (p.type === 'hibor') {
+      q.set('h', String(p.hibor));
+      q.set('mg', String(p.margin));
+      q.set('cap', String(p.capDiscount));
+      if (p.tenor !== '1m') q.set('ht', p.tenor);
+    }
+    if (p.type === 'fixed') q.set('fx', String(p.fixedRate));
+    const rebateKey = { hibor: 'rbh', prime: 'rbp', fixed: 'rbf' }[p.type];
+    if (p.rebatePct) q.set(rebateKey, String(p.rebatePct));
   }
-  if (i.type === 'fixed') q.set('fx', String(p.fixedRate));
   if (i.stress !== 2) q.set('stress', String(i.stress));
   if (i.method !== 'actual') q.set('meth', i.method);
   if (i.income) q.set('inc', String(i.income));
@@ -347,6 +530,9 @@ function readQuery() {
   if (q.get('ht') === '3m') $('mTenor').value = '3m';
   if (q.has('h')) hiborEdited = true; // the link's HIBOR wins over the latest fixing
   setNum('fx', 'mFixed');
+  setNum('rbh', 'mRebateH');
+  setNum('rbp', 'mRebateP');
+  setNum('rbf', 'mRebateF');
   if (['2', '3'].includes(q.get('stress'))) $('mStress').value = q.get('stress');
   if (q.get('meth') === 'monthly') $('mMethod').value = 'monthly';
   setNum('inc', 'mIncome', (v) => money.format(v));
@@ -398,8 +584,9 @@ $('mPdf').addEventListener('click', () => {
     const lines = resultLines(m);
     const doc = buildMortgagePdf(lib, m, {
       inputs: inputItems(m),
-      lines: [m.warning, lines.rate, lines.stress, lines.dsr, lines.saved].filter(Boolean),
-      fmt: { money: (n) => money.format(n), date: fmtDate, rate: fmtRate, duration },
+      lines: [m.warning, lines.rate, lines.rebate, lines.stress, lines.dsr, lines.saved].filter(Boolean),
+      fmt: { money: (n) => money.format(n), date: fmtDate, rate: rate3, duration },
+      planNames: TYPES,
       generatedOn: fmtDate(todayIso()),
     });
     download(doc.output('blob'), exportName(m, 'pdf'));
@@ -414,7 +601,8 @@ $('mXlsx').addEventListener('click', () => {
     const lines = resultLines(m);
     const wb = buildMortgageWorkbook(XLSX, m, {
       inputs: inputItems(m),
-      lines: [lines.rate, lines.stress, lines.dsr, lines.saved].filter(Boolean),
+      lines: [m.warning, lines.rate, lines.rebate, lines.stress, lines.dsr, lines.saved].filter(Boolean),
+      planNames: TYPES,
       primeSource: m.inputs.type === 'fixed' ? null : prime?.source,
       hiborSource: m.inputs.type === 'hibor' ? hibor[m.inputs.rateParams.tenor]?.source : null,
     });
@@ -436,8 +624,19 @@ $('mCsv').addEventListener('click', () => {
     ...(m.monthlyIncome ? [['Debt-Servicing Ratio', `${(m.dsr * 100).toFixed(1)}%`], ['Stressed Debt-Servicing Ratio', `${(m.stressedDsr * 100).toFixed(1)}%`]] : []),
     ...(m.totalExtra > 0 ? [['Interest Saved By Extra Repayments', money.format(m.interestSaved)], ['Months Saved', m.monthsSaved]] : []),
     [],
-    ['No.', 'Due Date', 'Rate', ...(m.inputs.type === 'hibor' ? ['Cap'] : []), 'Instalment', 'Interest', 'Principal', 'Extra Repayment', 'Balance'],
-    ...m.rows.map((r) => [r.no, r.date, fmtRate(r.rate), ...(m.inputs.type === 'hibor' ? [fmtRate(r.cap)] : []), money.format(r.payment), money.format(r.interest), money.format(r.principal), money.format(r.extra), money.format(r.balance)]),
+    ...(m.rebate > 0 ? [['Cash Rebate', money.format(m.rebate)], ['Effective Rate After Rebate', rate3(m.effRate)]] : []),
+    [],
+    ['Plan', 'Settings', 'Rate At Drawdown', 'Instalment', 'Total Interest', 'Cash Rebate', 'Net Cost', 'Effective Rate', 'Loan Ends'],
+    ...m.compare.map((c) => [TYPES[c.key], c.label, rate3(c.firstRate), money.format(c.firstPayment), money.format(c.totalInterest),
+      money.format(c.rebate), money.format(c.netCost), rate3(c.effectiveRate), c.payoffDate]),
+    [],
+    ['Year', 'From', 'To', 'Paid', 'Interest', 'Principal', 'Extra Repayment', 'Balance'],
+    ...m.yearly.map((y) => [y.year, y.from, y.to, money.format(y.paid), money.format(y.interest), money.format(y.principal),
+      money.format(y.extra), money.format(y.balance)]),
+    [],
+    ['No.', 'Due Date', 'Rate', ...(m.inputs.type === 'hibor' ? ['H + Margin', 'Cap', 'Set By'] : []), 'Instalment', 'Interest', 'Principal', 'Extra Repayment', 'Balance'],
+    ...m.rows.map((r) => [r.no, r.date, rate3(r.rate),
+      ...(m.inputs.type === 'hibor' ? [rate3(r.hLeg), rate3(r.cap), r.hLeg < r.cap ? 'HIBOR' : 'Cap'] : []), money.format(r.payment), money.format(r.interest), money.format(r.principal), money.format(r.extra), money.format(r.balance)]),
   ];
   const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
   const csv = '﻿' + lines.map((l) => l.map(cell).join(',')).join('\n') + '\n';
@@ -458,7 +657,7 @@ async function loadData() {
     return res.json();
   };
   prime = await get('prime-rates.json');
-  if (currentType() === 'hibor') await prefillHibor(); // otherwise HIBOR history loads when HIBOR is chosen
+  await prefillHibor(); // the comparison needs a HIBOR figure even when another plan is selected
 }
 
 $('mHibor').addEventListener('input', () => (hiborEdited = true));

@@ -256,3 +256,29 @@ details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
   .warning { border: 1px solid #d8b24a; }
 }
 .no-extra .m-extra-col, .no-cap .m-cap-col { display: none; }
+
+/* Mortgage: comparison, yearly view, chart */
+.m-section { font-size: 1.05rem; margin: 28px 0 4px; }
+.m-note { margin: 0 0 8px; }
+.compare th { white-space: normal; vertical-align: bottom; }
+.compare tr.selected td { background: var(--surface); font-weight: 600; }
+.compare .badge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; background: var(--accent); color: var(--accent-text); }
+td.applied { font-weight: 700; color: var(--text); }
+td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
+.view-toggle { display: flex; gap: 0; margin: 12px 0 8px; }
+.view-toggle button { border-radius: 0; padding: 6px 16px; }
+.view-toggle button:first-child { border-radius: 6px 0 0 6px; }
+.view-toggle button:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
+.view-toggle button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+.chart { position: relative; margin: 8px 0; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .legend { display: flex; gap: 16px; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+.chart .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.chart .tip {
+  position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 10px; font-size: 0.82rem; box-shadow: 0 4px 14px rgba(0,0,0,.12); white-space: nowrap;
+}
+.chart { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --grid: #e4e4df; }
+@media (prefers-color-scheme: dark) {
+  .chart { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --grid: #34342f; }
+}

@@ -22,7 +22,7 @@ test('fixed-rate mortgage from a link: standard instalment and actual/365 intere
   await expect(page.locator('#mPayment')).toHaveText('4,216.04');
   await expect(page.locator('#mSchedule tr')).toHaveCount(360);
   await expect(page.locator('#mSchedule tr').first().locator('td')).toHaveText(
-    ['1', '15-Feb-2026', '3.000%', '', '4,216.04', '2,547.95', '1,668.09', '', '998,331.91'], // Cap cell empty (not HIBOR)
+    ['1', '15-Feb-2026', '3.000%', '', '', '4,216.04', '2,547.95', '1,668.09', '', '998,331.91'], // HIBOR cells empty
   );
   await expect(page.locator('#mEnds')).toHaveText('15-Jan-2056 (30 yrs)');
 });
@@ -100,7 +100,7 @@ test('textbook interest method: rate / 12 each month, from the Advanced settings
   await page.locator('#mAdvanced summary').click();
   await page.locator('#mMethod').selectOption('monthly');
   await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
-  await expect(page.locator('#mSchedule tr').first().locator('td').nth(5)).toHaveText('2,500.00');
+  await expect(page.locator('#mSchedule tr').first().locator('td').nth(6)).toHaveText('2,500.00');
   await expect(page.locator('#mRateLine')).toContainText('balance × rate ÷ 12 (textbook method)');
   await expect(page).toHaveURL(/meth=monthly/);
   await page.goto(page.url());
@@ -144,8 +144,64 @@ test('3-month HIBOR still resets at every monthly due date, using 3-month fixing
 test('HIBOR plans show the cap (prime - x%) for each due date; other plans do not', async ({ page }) => {
   await page.goto('?tab=mortgage&mt=hibor&h=2.85&mg=1.3&cap=1.75&price=8000000&yrs=30&from=2035-01-15');
   await expect(page.getByRole('columnheader', { name: 'Cap' })).toBeVisible();
-  await expect(page.locator('#mSchedule tr').first().locator('td').nth(3)).toHaveText('3.250%');
+  const cells = page.locator('#mSchedule tr').first().locator('td');
+  await expect(cells.nth(3)).toHaveText('4.150%'); // H + margin: 2.85 + 1.3
+  await expect(cells.nth(4)).toHaveText('3.250%'); // cap: prime 5 - 1.75
+  await expect(cells.nth(4)).toHaveClass(/applied/); // the cap set the rate
   await page.goto('?tab=mortgage&mt=prime&disc=1.75&price=8000000&yrs=30&from=2035-01-15');
   await expect(page.locator('#mPayment')).not.toHaveText('');
   await expect(page.getByRole('columnheader', { name: 'Cap' })).toBeHidden();
+});
+
+test('compare plans: all three plans for the same loan, lowest net cost marked', async ({ page }) => {
+  await page.goto('?tab=mortgage&mt=hibor&h=2.85&mg=1.3&cap=1.75&disc=1.75&fx=3&price=1000000&ltv=100&yrs=30&from=2035-01-15');
+  const rows = page.locator('#mCompare tr');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.locator('td:first-child')).toHaveText([/^HIBOR-based/, /^Prime-based/, /^Fixed rate/]);
+  await expect(rows.nth(0)).toHaveClass(/selected/);
+  await expect(rows.nth(2).locator('td').nth(2)).toHaveText('4,216.04'); // fixed 3%
+  await expect(rows.nth(2).locator('.badge')).toHaveText('Lowest cost'); // 3% beats 3.25%
+});
+
+test('cash rebate: lowers the effective rate and can make a plan the cheapest', async ({ page }) => {
+  await page.goto('?tab=mortgage&mt=prime&disc=1.75&fx=3&rbp=6&price=1000000&ltv=100&yrs=30&from=2035-01-15');
+  await expect(page.locator('#mSavedLine')).toContainText('Cash rebate HK$60,000.00 (6.00% of the loan): effective rate');
+  const prime = page.locator('#mCompare tr').nth(1);
+  await expect(prime.locator('td').nth(4)).toHaveText('60,000.00');
+  await expect(prime.locator('.badge')).toHaveText('Lowest cost');
+  await expect(page).toHaveURL(/rbp=6/);
+});
+
+test('yearly view and chart', async ({ page }) => {
+  await page.goto('?tab=mortgage&mt=fixed&fx=3&price=1000000&ltv=100&yrs=30&from=2026-01-15');
+  await expect(page.locator('#mChart svg path')).toHaveCount(60); // 30 years x (principal + interest)
+  await expect(page.locator('#mChart .legend')).toContainText('Principal');
+  await page.getByRole('button', { name: 'Yearly' }).click();
+  await expect(page.locator('#mYearlyWrap')).toBeVisible();
+  await expect(page.locator('#mMonthlyWrap')).toBeHidden();
+  await expect(page.locator('#mYearly tr')).toHaveCount(30);
+  await expect(page.locator('#mYearly tr').first().locator('td').nth(2)).toHaveText('50,592.48'); // 12 x 4,216.04
+  // Hover a column: tooltip with that year's figures
+  await page.locator('#mChart svg rect').first().hover();
+  await expect(page.locator('#mChart .tip')).toContainText('Year 1');
+});
+
+test('an empty HIBOR box is not read as 0%: that plan is left out of the comparison', async ({ page }) => {
+  await page.goto('?tab=mortgage&mt=fixed&fx=3&price=1000000&ltv=100&yrs=30&from=2035-01-15');
+  await expect(page.locator('#mCompare tr')).toHaveCount(3);
+  await page.locator('input[name="mtype"][value="hibor"]').check();
+  await page.locator('#mHibor').fill('');
+  await page.locator('input[name="mtype"][value="fixed"]').check();
+  await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#mCompare tr')).toHaveCount(2);
+  await expect(page.locator('#mCompare tr td:first-child')).toHaveText([/^Prime-based/, /^Fixed rate/]);
+});
+
+test('mortgage result tables fit without sideways scrolling on a laptop screen', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop-chrome');
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.goto('?tab=mortgage&mt=hibor&mg=1.3&cap=1.75&disc=1.75&fx=3.2&rbh=1.5&price=8000000&ltv=70&yrs=25&from=2023-06-15&x=2028-06-01:500000');
+  await expect(page.locator('#mCompare tr')).toHaveCount(3);
+  const fits = await page.locator('#mResults .table-wrap:not([hidden])').evaluateAll((els) => els.map((e) => e.scrollWidth <= e.clientWidth));
+  expect(fits.every(Boolean), JSON.stringify(fits)).toBe(true);
 });

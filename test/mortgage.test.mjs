@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { instalment, mortgageSchedule, mortgageSummary, mortgageRates } from '../site/mortgage.js';
+import { instalment, mortgageSchedule, mortgageSummary, mortgageRates, yearlySummary, effectiveRate, comparePlans } from '../site/mortgage.js';
 
 const fixed = (rate) => [{ effective: '1900-01-01', rate }];
 const sum = (xs) => xs.reduce((a, b) => a + b, 0);
@@ -146,18 +146,60 @@ test('mortgage exports: PDF has the schedule on every page; Excel totals are liv
   assert.equal(rows.filter((r) => typeof r[0] === 'number').length, m.rows.length);
 });
 
-test('mortgage Excel: a Cap column shifts the total formulas to the right columns', async () => {
+test('mortgage Excel: HIBOR columns shift the total formulas to the right columns', async () => {
   const XLSX = (await import('xlsx')).default;
   const { buildMortgageWorkbook } = await import('../site/mortgage-export.js');
   const m = { ...mortgageSummary({ loan: 100_000, start: '2026-01-15', years: 1, rates: fixed(3) }), inputs: {} };
-  for (const r of m.rows) r.cap = 0.0325;
+  for (const r of m.rows) Object.assign(r, { hLeg: 0.043, cap: 0.0325 });
   const out = XLSX.read(XLSX.write(buildMortgageWorkbook(XLSX, m, { inputs: [], lines: [] }), { bookType: 'xlsx', type: 'buffer' }), { type: 'buffer', cellFormula: true });
   const ws = out.Sheets.Mortgage;
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
   const head = rows.findIndex((r) => r[0] === 'No.');
-  assert.deepEqual(rows[head].slice(0, 5), ['No.', 'Due Date', 'Rate', 'Cap', 'Instalment']);
+  assert.deepEqual(rows[head].slice(0, 7), ['No.', 'Due Date', 'Rate', 'H + Margin', 'Cap', 'Set By', 'Instalment']);
+  assert.equal(rows[head + 1][5], 'Cap'); // the cap (3.25%) is below H + margin (4.3%)
   const at = (label) => rows.findIndex((r) => r[0] === label) + 1;
-  assert.match(ws[`B${at('Total interest')}`].f, /^SUM\(F\d+:F\d+\)$/);
-  assert.match(ws[`B${at('Total repaid')}`].f, /^SUM\(E\d+:E\d+\)\+SUM\(H\d+:H\d+\)$/);
+  assert.match(ws[`B${at('Total interest')}`].f, /^SUM\(H\d+:H\d+\)$/);
+  assert.match(ws[`B${at('Total repaid')}`].f, /^SUM\(G\d+:G\d+\)\+SUM\(J\d+:J\d+\)$/);
   close(ws[`B${at('Total interest')}`].v, m.totalInterest);
+});
+
+test('HIBOR rows carry both legs: H + margin and the prime cap', () => {
+  const prime = [{ effective: '2020-01-01', rate: 5 }];
+  const rates = mortgageRates({ type: 'hibor', prime, hibor: 3, margin: 1.3, capDiscount: 1.75, start: '2026-01-15', years: 1 });
+  const s = mortgageSchedule({ loan: 100_000, start: '2026-01-15', years: 1, rates });
+  close(s.rows[0].hLeg, 0.043, 1e-12);
+  close(s.rows[0].cap, 0.0325, 1e-12);
+  close(s.rows[0].rate, 0.0325, 1e-12); // the cap applied
+  const fixedRows = mortgageSchedule({ loan: 100_000, start: '2026-01-15', years: 1, rates: fixed(3) }).rows;
+  assert.equal(fixedRows[0].hLeg, undefined);
+});
+
+test('yearly summary: 12 instalments per loan year, totals add up', () => {
+  const s = mortgageSchedule({ loan: 1_000_000, start: '2026-01-15', years: 30, rates: fixed(3) });
+  const y = yearlySummary(s.rows);
+  assert.equal(y.length, 30);
+  assert.deepEqual([y[0].year, y[0].from, y[0].to], [1, '2026-02-15', '2027-01-15']);
+  close(y.reduce((a, r) => a + r.interest, 0), s.totalInterest, 0.02);
+  assert.equal(y.at(-1).balance, 0);
+  close(y[0].paid, 4216.04 * 12, 0.01);
+});
+
+test('effective rate: equals the loan rate with no rebate, lower with one', () => {
+  const s = mortgageSchedule({ loan: 1_000_000, start: '2026-01-15', years: 30, rates: fixed(3), method: 'monthly' });
+  close(effectiveRate(1_000_000, 0, s.rows), 0.03, 1e-5); // textbook method: exactly the rate
+  const withRebate = effectiveRate(1_000_000, 20_000, s.rows);
+  assert.ok(withRebate < 0.03 && withRebate > 0.028, `${withRebate}`);
+});
+
+test('compare plans: same loan, each plan its own rates and rebate', () => {
+  const base = { loan: 1_000_000, start: '2026-01-15', years: 30 };
+  const [a, b] = comparePlans(base, [
+    { key: 'fixed3', rates: fixed(3), rebatePct: 0 },
+    { key: 'fixed3.2', rates: fixed(3.2), rebatePct: 2 },
+  ]);
+  assert.equal(a.firstPayment, 4216.04);
+  assert.equal(b.rebate, 20_000);
+  close(b.netCost, b.totalInterest - 20_000, 0.001);
+  assert.ok(b.totalInterest > a.totalInterest);
+  assert.ok(b.effectiveRate < 0.032);
 });

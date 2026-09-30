@@ -35,10 +35,17 @@ export function mortgageSchedule({ loan, start, years, rates, prepayments = [], 
   if (!(Number.isInteger(years * 12) && years > 0 && years <= 50)) throw new Error('Tenor must be between 1 month and 50 years');
   if (!rates?.length) throw new Error('No mortgage rate available');
   const months = Math.round(years * 12);
+  // HIBOR plans also carry the two legs (H + margin, and the prime cap) so the schedule can show which one applied
   const table = rates
-    .map((r) => ({ day: toDay(r.effective), rate: (r.rate + stress) / 100 }))
+    .map((r) => ({
+      day: toDay(r.effective),
+      rate: (r.rate + stress) / 100,
+      hLeg: r.hLeg == null ? null : (r.hLeg + stress) / 100,
+      cap: r.cap == null ? null : (r.cap + stress) / 100,
+    }))
     .sort((a, b) => a.day - b.day);
-  const rateOn = (day) => (table.filter((r) => r.day <= day).at(-1) ?? table[0]).rate;
+  const entryOn = (day) => table.filter((r) => r.day <= day).at(-1) ?? table[0];
+  const rateOn = (day) => entryOn(day).rate;
 
   const extra = prepayments
     .map((p, i) => {
@@ -104,10 +111,12 @@ export function mortgageSchedule({ loan, start, years, rates, prepayments = [], 
     totalInterest += interest;
     totalPaid += pay;
     totalExtra += extraPaid;
+    const entry = entryOn(to);
     rows.push({
       no: k,
       date: fromDay(to),
       rate, // % p.a. as a fraction, in force on the due date
+      ...(entry.hLeg != null && { hLeg: entry.hLeg, cap: entry.cap }), // HIBOR plans: H + margin, and P - x
       payment: pay,
       interest,
       principal,
@@ -198,6 +207,71 @@ export function mortgageRates({
   const points = [...new Set([...resets, ...primeDates])].sort();
   return points.map((d) => {
     const reset = resets.filter((r) => r <= d).at(-1);
-    return { effective: d, rate: Math.min(hiborAt(reset) + margin, inForce(primeAsc, d).rate - capDiscount) };
+    const hLeg = hiborAt(reset) + margin;
+    const cap = inForce(primeAsc, d).rate - capDiscount;
+    return { effective: d, rate: Math.min(hLeg, cap), hLeg, cap };
+  });
+}
+
+/**
+ * Yearly totals of a schedule: loan year 1 = instalments 1-12, and so on.
+ * @returns {{year: number, from: string, to: string, paid: number, interest: number, principal: number, extra: number, balance: number}[]}
+ */
+export function yearlySummary(rows) {
+  const years = [];
+  for (const r of rows) {
+    const y = Math.ceil(r.no / 12);
+    let yr = years[y - 1];
+    if (!yr) yr = years[y - 1] = { year: y, from: r.date, to: r.date, paid: 0, interest: 0, principal: 0, extra: 0, balance: 0 };
+    yr.to = r.date;
+    yr.paid = round2(yr.paid + r.payment);
+    yr.interest = round2(yr.interest + r.interest);
+    yr.principal = round2(yr.principal + r.principal);
+    yr.extra = round2(yr.extra + r.extra);
+    yr.balance = r.balance;
+  }
+  return years;
+}
+
+/**
+ * Effective annual rate after a cash rebate: the monthly rate i at which the instalments (and extra repayments),
+ * discounted monthly, equal what the borrower received, i.e. the loan plus the cash rebate; returned as i x 12 (a
+ * fraction). Found by bisection.
+ */
+export function effectiveRate(loan, rebate, rows) {
+  const received = loan + rebate;
+  const pv = (i) => rows.reduce((sum, r) => sum + (r.payment + r.extra) / (1 + i) ** r.no, 0);
+  let lo = 0;
+  let hi = 1;
+  if (pv(lo) <= received) return 0; // paying back no more than received: nothing to earn
+  for (let n = 0; n < 200; n++) {
+    const mid = (lo + hi) / 2;
+    if (pv(mid) > received) lo = mid;
+    else hi = mid;
+  }
+  return ((lo + hi) / 2) * 12;
+}
+
+/**
+ * The same loan under several plans. plans: [{ key, rates, rebatePct }], base: the mortgageSchedule input without
+ * rates. Returns each plan's instalment, totals, cash rebate, net cost (interest - rebate) and effective rate.
+ */
+export function comparePlans(base, plans) {
+  return plans.map(({ key, rates, rebatePct = 0 }) => {
+    const s = mortgageSchedule({ ...base, rates });
+    const rebate = round2((s.loan * rebatePct) / 100);
+    return {
+      key,
+      firstRate: s.firstRate,
+      firstPayment: s.firstPayment,
+      totalInterest: s.totalInterest,
+      totalPaid: s.totalPaid,
+      payoffDate: s.payoffDate,
+      monthsTaken: s.monthsTaken,
+      rebatePct,
+      rebate,
+      netCost: round2(s.totalInterest - rebate),
+      effectiveRate: effectiveRate(s.loan, rebate, s.rows),
+    };
   });
 }

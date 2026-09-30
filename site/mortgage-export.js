@@ -58,16 +58,54 @@ export function buildMortgagePdf({ jsPDF, autoTable }, m, ctx) {
   for (const line of ctx.lines) text(line);
   y += 4;
 
+  if (m.compare?.length) {
+    doc.setFont('helvetica', 'bold').setFontSize(11).setTextColor(20);
+    doc.text('Compare plans', MARGIN, y + 11);
+    y += 18;
+    table({
+      head: [['Plan', 'Rate at drawdown', 'Instalment', 'Total interest', 'Cash rebate', 'Net cost', 'Effective rate', 'Loan ends']],
+      body: m.compare.map((c) => [
+        pdfText(`${ctx.planNames[c.key]}${c.key === m.inputs?.type ? ' (selected)' : ''}`),
+        fmt.rate(c.firstRate), fmt.money(c.firstPayment), fmt.money(c.totalInterest), c.rebate ? fmt.money(c.rebate) : '-',
+        fmt.money(c.netCost), fmt.rate(c.effectiveRate), fmt.date(c.payoffDate),
+      ]),
+      styles: { font: 'helvetica', fontSize: 8, cellPadding: 3, textColor: 20, lineColor: BORDER },
+      columnStyles: Object.fromEntries([1, 2, 3, 4, 5, 6].map((i) => [i, { halign: 'right' }])),
+    });
+  }
+
+  if (m.yearly?.length) {
+    doc.setFont('helvetica', 'bold').setFontSize(11).setTextColor(20);
+    doc.text('Each year', MARGIN, y + 11);
+    y += 18;
+    const yExtra = m.totalExtra > 0;
+    table({
+      head: [['Year', 'Paid', 'Interest', 'Principal', ...(yExtra ? ['Extra'] : []), 'Balance']],
+      body: m.yearly.map((r) => [
+        `${r.year} (${fmt.date(r.from)} - ${fmt.date(r.to)})`, fmt.money(r.paid), fmt.money(r.interest), fmt.money(r.principal),
+        ...(yExtra ? [r.extra ? fmt.money(r.extra) : ''] : []), fmt.money(r.balance),
+      ]),
+      styles: { font: 'helvetica', fontSize: 8, cellPadding: 3, textColor: 20, lineColor: BORDER },
+      columnStyles: Object.fromEntries([1, 2, 3, 4, 5].map((i) => [i, { halign: 'right' }])),
+    });
+  }
+
   const hasExtra = m.totalExtra > 0;
-  const hasCap = m.rows.some((r) => r.cap != null); // HIBOR plans: prime - x% on each due date
+  const hasCap = m.rows.some((r) => r.cap != null); // HIBOR plans: H + margin and prime - x% on each due date
   table({
-    head: [['No.', 'Due date', 'Rate', ...(hasCap ? ['Cap'] : []), 'Instalment', 'Interest', 'Principal', ...(hasExtra ? ['Extra'] : []), 'Balance']],
+    head: [['No.', 'Due date', 'Rate', ...(hasCap ? ['H + margin', 'Cap'] : []), 'Instalment', 'Interest', 'Principal', ...(hasExtra ? ['Extra'] : []), 'Balance']],
     body: m.rows.map((r) => [
-      String(r.no), fmt.date(r.date), fmt.rate(r.rate), ...(hasCap ? [fmt.rate(r.cap)] : []), fmt.money(r.payment), fmt.money(r.interest), fmt.money(r.principal),
+      String(r.no), fmt.date(r.date), fmt.rate(r.rate), ...(hasCap ? [fmt.rate(r.hLeg), fmt.rate(r.cap)] : []), fmt.money(r.payment), fmt.money(r.interest), fmt.money(r.principal),
       ...(hasExtra ? [r.extra ? fmt.money(r.extra) : ''] : []), fmt.money(r.balance),
     ]),
     styles: { font: 'helvetica', fontSize: 8, cellPadding: 3, textColor: 20, lineColor: BORDER },
-    columnStyles: Object.fromEntries([0, 2, 3, 4, 5, 6, 7, 8].map((i) => [i, { halign: 'right' }])),
+    columnStyles: Object.fromEntries([0, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => [i, { halign: 'right' }])),
+    // Bold whichever HIBOR leg set the rate
+    didParseCell: ({ section, row: rr, column, cell }) => {
+      if (!hasCap || section !== 'body') return;
+      const r = m.rows[rr.index];
+      if (column.index === (r.hLeg < r.cap ? 3 : 4)) cell.styles.fontStyle = 'bold';
+    },
     showHead: 'everyPage',
   });
 
@@ -110,16 +148,17 @@ export function buildMortgageWorkbook(XLSX, m, ctx) {
 
   const head = rows.length;
   const hasCap = m.rows.some((r) => r.cap != null);
-  rows.push(['No.', 'Due Date', 'Rate', ...(hasCap ? ['Cap'] : []), 'Instalment', 'Interest', 'Principal', 'Extra Repayment', 'Balance']);
+  const cols = ['No.', 'Due Date', 'Rate', ...(hasCap ? ['H + Margin', 'Cap', 'Set By'] : []), 'Instalment', 'Interest', 'Principal', 'Extra Repayment', 'Balance'];
+  rows.push(cols);
   const first = head + 2;
-  // Column letters shift by one when the Cap column is present
-  const col = (name) => String.fromCharCode('A'.charCodeAt(0) + ['No.', 'Due Date', 'Rate', ...(hasCap ? ['Cap'] : []), 'Instalment', 'Interest', 'Principal', 'Extra Repayment', 'Balance'].indexOf(name));
+  // Column letters depend on whether the HIBOR columns are present
+  const col = (name) => String.fromCharCode('A'.charCodeAt(0) + cols.indexOf(name));
   for (const r of m.rows) {
     rows.push([
       r.no,
       { t: 'n', v: serial(r.date), z: DATE },
       { t: 'n', v: r.rate, z: PCT },
-      ...(hasCap ? [{ t: 'n', v: r.cap, z: PCT }] : []),
+      ...(hasCap ? [{ t: 'n', v: r.hLeg, z: PCT }, { t: 'n', v: r.cap, z: PCT }, r.hLeg < r.cap ? 'HIBOR' : 'Cap'] : []),
       { t: 'n', v: r.payment, z: MONEY },
       { t: 'n', v: r.interest, z: MONEY },
       { t: 'n', v: r.principal, z: MONEY },
@@ -146,8 +185,35 @@ export function buildMortgageWorkbook(XLSX, m, ctx) {
     }),
   );
   ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: maxCol } });
-  ws['!cols'] = [30, 40, 10, ...(hasCap ? [10] : []), 14, 14, 14, 16, 16].map((wch) => ({ wch }));
+  ws['!cols'] = [30, 40, 10, ...(hasCap ? [12, 10, 8] : []), 14, 14, 14, 16, 16].map((wch) => ({ wch }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Mortgage');
+
+  const sheet = (aoa, widths) => {
+    const w = {};
+    aoa.forEach((r, ri) => r.forEach((v, ci) => v != null && (w[XLSX.utils.encode_cell({ r: ri, c: ci })] = cell(v))));
+    w['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoa.length - 1, c: Math.max(...aoa.map((r) => r.length)) - 1 } });
+    w['!cols'] = widths.map((wch) => ({ wch }));
+    return w;
+  };
+  const money = (v) => ({ t: 'n', v, z: MONEY });
+  if (m.compare?.length) {
+    XLSX.utils.book_append_sheet(wb, sheet([
+      ['Plan', 'Settings', 'Rate at Drawdown', 'Instalment', 'Total Interest', 'Cash Rebate', 'Net Cost', 'Effective Rate', 'Loan Ends'],
+      ...m.compare.map((c) => [
+        ctx.planNames?.[c.key] ?? c.key, c.label ?? '', { t: 'n', v: c.firstRate, z: PCT }, money(c.firstPayment), money(c.totalInterest),
+        money(c.rebate), money(c.netCost), { t: 'n', v: c.effectiveRate, z: PCT }, { t: 'n', v: serial(c.payoffDate), z: DATE },
+      ]),
+    ], [14, 60, 16, 14, 16, 14, 16, 14, 14]), 'Compare');
+  }
+  if (m.yearly?.length) {
+    XLSX.utils.book_append_sheet(wb, sheet([
+      ['Year', 'From', 'To', 'Paid', 'Interest', 'Principal', 'Extra Repayment', 'Balance'],
+      ...m.yearly.map((y) => [
+        y.year, { t: 'n', v: serial(y.from), z: DATE }, { t: 'n', v: serial(y.to), z: DATE }, money(y.paid), money(y.interest),
+        money(y.principal), money(y.extra), money(y.balance),
+      ]),
+    ], [6, 14, 14, 14, 14, 14, 16, 16]), 'Yearly');
+  }
   return wb;
 }

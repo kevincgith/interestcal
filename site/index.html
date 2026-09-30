@@ -287,6 +287,27 @@
             <button type="button" class="step" data-step="0.25" aria-label="Increase mortgage fixed rate by 0.25%">+</button>
           </div>
         </label>
+        <label id="mRebateHField" for="mRebateH">Cash rebate (% of loan)
+          <div class="stepper">
+            <button type="button" class="step" data-step="-0.1" aria-label="Decrease HIBOR plan cash rebate by 0.1%">−</button>
+            <input id="mRebateH" type="text" inputmode="decimal" autocomplete="off" value="0" data-min="0">
+            <button type="button" class="step" data-step="0.1" aria-label="Increase HIBOR plan cash rebate by 0.1%">+</button>
+          </div>
+        </label>
+        <label id="mRebatePField" for="mRebateP" hidden>Cash rebate (% of loan)
+          <div class="stepper">
+            <button type="button" class="step" data-step="-0.1" aria-label="Decrease prime plan cash rebate by 0.1%">−</button>
+            <input id="mRebateP" type="text" inputmode="decimal" autocomplete="off" value="0" data-min="0">
+            <button type="button" class="step" data-step="0.1" aria-label="Increase prime plan cash rebate by 0.1%">+</button>
+          </div>
+        </label>
+        <label id="mRebateFField" for="mRebateF" hidden>Cash rebate (% of loan)
+          <div class="stepper">
+            <button type="button" class="step" data-step="-0.1" aria-label="Decrease fixed plan cash rebate by 0.1%">−</button>
+            <input id="mRebateF" type="text" inputmode="decimal" autocomplete="off" value="0" data-min="0">
+            <button type="button" class="step" data-step="0.1" aria-label="Increase fixed plan cash rebate by 0.1%">+</button>
+          </div>
+        </label>
         <p id="mRateHint" class="loan-line"></p>
 
         <details id="mAdvanced" class="advanced">
@@ -338,10 +359,34 @@
         <p id="mStressLine" class="verified"></p>
         <p id="mDsrLine" class="verified" hidden></p>
         <p id="mSavedLine" class="verified" hidden></p>
-        <div class="table-wrap schedule-wrap">
+
+        <h2 class="m-section">Compare plans</h2>
+        <p class="muted m-note">The same loan under each plan, using each plan's own settings above (switch plan to edit them).</p>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead>
+              <tr><th>Plan</th><th>Rate at drawdown</th><th>Instalment</th><th>Total interest</th><th>Cash rebate</th><th>Net cost</th><th>Effective rate</th><th>Loan ends</th></tr>
+            </thead>
+            <tbody id="mCompare"></tbody>
+          </table>
+        </div>
+
+        <h2 class="m-section">Each year</h2>
+        <div id="mChart" class="chart" role="img" aria-label="Principal and interest paid each year"></div>
+        <div class="view-toggle" role="group" aria-label="Schedule view">
+          <button type="button" id="mViewMonthly" class="secondary" aria-pressed="true">Monthly</button>
+          <button type="button" id="mViewYearly" class="secondary" aria-pressed="false">Yearly</button>
+        </div>
+        <div id="mYearlyWrap" class="table-wrap" hidden>
+          <table>
+            <thead><tr><th>Year</th><th>Instalments</th><th>Paid</th><th>Interest</th><th>Principal</th><th class="m-extra-col">Extra</th><th>Balance</th></tr></thead>
+            <tbody id="mYearly"></tbody>
+          </table>
+        </div>
+        <div id="mMonthlyWrap" class="table-wrap schedule-wrap">
           <table>
             <thead>
-              <tr><th>No.</th><th>Due date</th><th>Rate</th><th class="m-cap-col">Cap</th><th>Instalment</th><th>Interest</th><th>Principal</th><th class="m-extra-col">Extra</th><th>Balance</th></tr>
+              <tr><th>No.</th><th>Due date</th><th>Rate</th><th class="m-cap-col">H + margin</th><th class="m-cap-col">Cap</th><th>Instalment</th><th>Interest</th><th>Principal</th><th class="m-extra-col">Extra</th><th>Balance</th></tr>
             </thead>
             <tbody id="mSchedule"></tbody>
           </table>
