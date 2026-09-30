@@ -54,7 +54,8 @@ form {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
 }
-label { display: grid; gap: 6px; font-size: 0.9rem; font-weight: 600; }
+label { display: grid; gap: 6px; font-size: 0.9rem; font-weight: 600; min-width: 0; }
+input[type="text"], input[type="date"], select { width: 100%; min-width: 0; }
 input, select {
   font: inherit;
   padding: 8px 10px;
