@@ -68,6 +68,8 @@ export function buildWorkbook(XLSX, r, ctx) {
   if (r.source === 'prime') rows.push(['Spread over prime (% p.a.)', num(r.spread)]);
   rows.push(['Day count basis', ctx.dayCount]);
   rows.push(['Rounding', ctx.rounding]);
+  const compounding = r.compounding ?? 'none';
+  if (compounding !== 'none') rows.push(['Compounding', ctx.compounding]);
 
   const principalRow = rows.length; // 0-based
   const P = `$B$${principalRow + 1}`;
@@ -79,7 +81,8 @@ export function buildWorkbook(XLSX, r, ctx) {
   const additions = r.additions ?? [];
   const withPayments = payments.length > 0;
   const withAdditions = additions.length > 0;
-  const withEvents = withPayments || withAdditions; // the principal changes during the calculation
+  // The principal changes during the calculation (payments, principal added later, or compounding)
+  const withEvents = withPayments || withAdditions || compounding !== 'none';
   if (withPayments) rows.push(['Payments applied', ctx.allocation]);
 
   // Totals: placeholders, filled once we know where the tables land
@@ -89,6 +92,7 @@ export function buildWorkbook(XLSX, r, ctx) {
         'Total interest',
         ...(withAdditions ? ['Principal added'] : []),
         ...(withPayments ? ['Payments received'] : []),
+        ...(compounding !== 'none' ? ['Interest added to principal'] : []),
         'Outstanding principal', 'Unpaid interest', 'Total amount due', 'Total no. of days', 'perDiem',
       ]
     : ['Total interest', 'Total amount due', 'Total no. of days', 'perDiem'];
@@ -98,7 +102,7 @@ export function buildWorkbook(XLSX, r, ctx) {
 
   // With a spread, show Base Rate + Spread = Interest Rate (a live formula); otherwise just the rate.
   // With payments or principal added later, each period has its own principal balance (a Principal column).
-  const withSpread = r.spread !== 0;
+  const withSpread = r.periods.some((p) => p.spread); // spreads can differ per period after a rate switch
   const cols = [
     'Period Start', 'Period End', 'No. of Days',
     ...(withEvents ? ['Principal'] : []),
@@ -117,11 +121,17 @@ export function buildWorkbook(XLSX, r, ctx) {
     const rate = withSpread
       ? [
           num(tidy(p.baseRate), PCT),
-          num(tidy(r.spread / 100), PCT),
+          num(tidy((p.spread ?? 0) / 100), PCT),
           formula(`${col('Base Rate')}${n}+${col('Spread')}${n}`, tidy(p.rate), PCT),
         ]
       : [num(tidy(p.rate), PCT)];
-    const interest = `${base}*${RATE}${n}*${DAYS}${n}/${YEAR}${n}`;
+    // Simple within a period; daily / continuous compounding use their own formulas
+    const interest =
+      p.compounding === 'daily'
+        ? `${base}*((1+${RATE}${n}/${YEAR}${n})^${DAYS}${n}-1)`
+        : p.compounding === 'continuous'
+          ? `${base}*(EXP(${RATE}${n}*${DAYS}${n}/${YEAR}${n})-1)`
+          : `${base}*${RATE}${n}*${DAYS}${n}/${YEAR}${n}`;
     rows.push([
       date(p.start),
       date(p.end),
@@ -167,6 +177,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   set('Total interest', ['Total interest', formula(hasPeriods ? `SUM(${INT}${first}:${INT}${last})` : '0', r.totalInterest, MONEY)]);
   if (withAdditions) set('Principal added', ['Principal added', formula(`SUM(C${addFirst}:C${addLast})`, r.totalAdded, MONEY)]);
   if (withPayments) set('Payments received', ['Payments received', formula(`SUM(B${payFirst}:B${payLast})`, r.totalPaid, MONEY)]);
+  if (compounding !== 'none') set('Interest added to principal', ['Interest added to principal', num(r.totalCapitalised, MONEY)]);
   if (withEvents) {
     set('Outstanding principal', ['Outstanding principal', num(r.outstandingPrincipal, MONEY)]);
     set('Unpaid interest', ['Unpaid interest', num(r.outstandingInterest, MONEY)]);
@@ -194,9 +205,11 @@ export function buildWorkbook(XLSX, r, ctx) {
   const rateRows = [
     [text(`${ctx.ratesTitle} used in this calculation`)],
     [],
-    ...(ctx.sourceUrl
-      ? [['Source', hyperlink(ctx.sourceUrl)], ['Rates as at', date(ctx.updatedAt)]]
-      : [['Rate', `${ctx.rateBasis} (no published rate source)`]]),
+    ...(ctx.sources?.length > 1
+      ? ctx.sources.flatMap((src) => [[`${src.title} source`, hyperlink(src.url)], [`${src.title} as at`, date(src.asAt)]])
+      : ctx.sourceUrl
+        ? [['Source', hyperlink(ctx.sourceUrl)], ['Rates as at', date(ctx.updatedAt)]]
+        : [['Rate', `${ctx.rateBasis} (no published rate source)`]]),
     ['Calculation period', `${fmtDate(r.start)} to ${fmtDate(r.end)} (end date excluded)`],
   ];
   if (ctx.crossCheck) {
@@ -207,10 +220,11 @@ export function buildWorkbook(XLSX, r, ctx) {
     rateRows.push(['Note', `A spread of ${r.spread}% p.a. is added to these rates in the calculation.`]);
   }
   // Rates added from HSBC (not yet in the HKMA table) are labelled in a Source column
-  const withSource = ctx.rates.some((rt) => rt.source);
+  // Label each rate: its kind after a rate switch, or HKMA/HSBC for prime rates
+  const withSource = ctx.rates.some((rt) => rt.source || rt.kindLabel);
   if (ctx.rates.length) rateRows.push([], ['Effective Date', 'Rate (% p.a.)', ...(withSource ? ['Source'] : [])]);
   ctx.rates.forEach((rt) =>
-    rateRows.push([date(rt.effective), num(tidy(rt.rate / 100), PCT), ...(withSource ? [rt.source ?? 'HKMA'] : [])]),
+    rateRows.push([date(rt.effective), num(tidy(rt.rate / 100), PCT), ...(withSource ? [rt.kindLabel ?? rt.source ?? 'HKMA'] : [])]),
   );
 
   const rates = sheetFrom(XLSX, rateRows, withSource ? [20, 100, 10] : [20, 100]);

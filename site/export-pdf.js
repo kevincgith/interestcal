@@ -24,6 +24,8 @@ const pdfText = (s) =>
  * @param {{text: string, linkText: string, url: string} | null} ctx.crossCheck  sentence containing linkText
  * @param {{text: string, linkText?: string, url?: string}} [ctx.summaryLine]  line under the summary, e.g. latest rate
  * @param {string} [ctx.allocation]                  e.g. "Payments applied interest first, then principal."
+ * @param {string} [ctx.compareLine]                 compounding vs simple interest
+ * @param {{name: string, url: string}[]} [ctx.extraSources]  further sources after a rate switch
  * @param {string} [ctx.perDiem]                     e.g. "219.18 (at 8.000% ÷ 365)"
  * @param {string} [ctx.ratesHeading]                  e.g. "HSBC prime rates (3 of 191 rates, used from ...)"
  * @param {{name: string, url: string}} [ctx.source]   omitted for a fixed rate: no "rates used" section
@@ -128,6 +130,7 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
   });
   if (ctx.perDiem) linkedLine({ text: `Interest per day after end date: HK$${ctx.perDiem}` });
   if (ctx.summaryLine) linkedLine(ctx.summaryLine);
+  if (ctx.compareLine) linkedLine({ text: ctx.compareLine });
 
   // ---- Period breakdown ----
   table({
@@ -192,12 +195,12 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
     doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(...MUTED);
     doc.text('Source:', MARGIN, y + 9);
     y += 15;
-    linkedLine({ text: ctx.source.name, linkText: ctx.source.name, url: ctx.source.url });
+    for (const src of [ctx.source, ...(ctx.extraSources ?? [])]) linkedLine({ text: src.name, linkText: src.name, url: src.url });
     if (ctx.crossCheck) linkedLine(ctx.crossCheck);
-    const withSource = ctx.rates.some((rt) => rt.source);
+    const withSource = ctx.rates.some((rt) => rt.source || rt.kindLabel);
     table({
       head: [['Effective date', 'Rate (% p.a.)', ...(withSource ? ['Source'] : [])]],
-      body: ctx.rates.map((rt) => [fmt.date(rt.effective), rt.rate.toFixed(3), ...(withSource ? [rt.source ?? 'HKMA'] : [])]),
+      body: ctx.rates.map((rt) => [fmt.date(rt.effective), rt.rate.toFixed(3), ...(withSource ? [rt.kindLabel ?? rt.source ?? 'HKMA'] : [])]),
       columnStyles: { 1: { halign: 'right' } },
     });
   }

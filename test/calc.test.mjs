@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateInterest, isLeapYear, round2 } from '../site/calc.js';
+import { calculateInterest, isLeapYear, round2, addMonths } from '../site/calc.js';
 
 // Subset of the published table, enough for the cases below.
 const rates = [
@@ -320,6 +320,79 @@ test('rejects invalid payments and allocation', () => {
   assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, payments: [{ date: '2026-01-05', amount: 0 }] }), /amount/);
   assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, payments: [{ date: 'x', amount: 1 }] }), /date/i);
   assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, allocation: 'x' }), /allocation/);
+});
+
+// ---- Compounding ----
+test('simple interest is the default and unchanged', () => {
+  const a = calculateInterest({ principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed8 });
+  const b = calculateInterest({ principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed8, compounding: 'none' });
+  assert.equal(a.compounding, 'none');
+  assert.equal(a.totalInterest, b.totalInterest);
+  assert.equal(a.totalCapitalised, 0);
+});
+
+test('yearly compounding: second year charges interest on the first year\'s interest', () => {
+  const r = calculateInterest({ principal: 100000, start: '2025-01-01', end: '2027-01-01', rates: fixed8, compounding: 'yearly', basis: 'act/365' });
+  close(r.totalInterest, 16640);
+  close(r.totalCapitalised, 8000);
+  close(r.outstandingPrincipal, 108000);
+  close(r.outstandingInterest, 8640);
+  close(r.totalDue, 116640);
+});
+
+test('monthly compounding on start-date anniversaries', () => {
+  const r = calculateInterest({ principal: 100000, start: '2026-01-01', end: '2026-04-01', rates: fixed8, compounding: 'monthly' });
+  assert.deepEqual(r.periods.map((p) => [p.start, p.days]), [['2026-01-01', 31], ['2026-02-01', 28], ['2026-03-01', 31]]);
+  close(r.totalInterest, 1985.587198);
+  close(r.periods[1].principal, 100000 + (100000 * 0.08 * 31) / 365);
+});
+
+test('monthly anniversaries keep the start day where the month has it', () => {
+  assert.equal(addMonths('2026-01-31', 1), '2026-02-28');
+  assert.equal(addMonths('2024-01-31', 1), '2024-02-29');
+  assert.equal(addMonths('2026-01-31', 2), '2026-03-31');
+  assert.equal(addMonths('2026-11-15', 3), '2027-02-15');
+  const r = calculateInterest({ principal: 1000, start: '2026-01-31', end: '2026-05-01', rates: fixed8, compounding: 'monthly' });
+  assert.deepEqual(r.periods.map((p) => p.start), ['2026-01-31', '2026-02-28', '2026-03-31', '2026-04-30']);
+});
+
+test('daily and continuous compounding', () => {
+  const daily = calculateInterest({ principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed8, compounding: 'daily' });
+  close(daily.totalInterest, 8304.019312, 1e-5);
+  assert.equal(daily.periods.length, 1);
+  assert.equal(daily.periods[0].compounding, 'daily');
+  close(daily.outstandingPrincipal, 108304.019312, 1e-5);
+  assert.equal(daily.outstandingInterest, 0);
+  const cont = calculateInterest({ principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed8, compounding: 'continuous' });
+  close(cont.totalInterest, 8304.966091, 1e-5);
+  assert.ok(cont.totalInterest > daily.totalInterest);
+});
+
+test('compounding with a payment: interest-first takes only uncompounded interest', () => {
+  // Monthly compounding, payment on the 1 Feb compounding date: interest is compounded first, so the payment reduces principal
+  const r = calculateInterest({
+    principal: 100000, start: '2026-01-01', end: '2026-03-01', rates: fixed8, compounding: 'monthly',
+    payments: [{ date: '2026-02-01', amount: 5000 }],
+  });
+  const jan = (100000 * 0.08 * 31) / 365;
+  assert.equal(r.payments[0].toInterest, 0);
+  close(r.payments[0].principalAfter, 100000 + jan - 5000);
+});
+
+test('a rate table can switch source and spread on a date', () => {
+  const switched = [
+    { effective: '1900-01-01', rate: 5, spread: 1, kind: 'prime' },
+    { effective: '2026-07-01', rate: 8, spread: 0, kind: 'judgment' },
+  ];
+  const r = calculateInterest({ principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: switched });
+  assert.deepEqual(r.periods.map((p) => [p.start, pct(p), p.spread, p.rateKind]), [
+    ['2026-01-01', 6, 1, 'prime'],
+    ['2026-07-01', 8, 0, 'judgment'],
+  ]);
+});
+
+test('rejects an unknown compounding', () => {
+  assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, compounding: 'weekly' }), /compounding/);
 });
 
 test('leap year rule', () => {

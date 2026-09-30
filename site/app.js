@@ -15,13 +15,19 @@ const fmtDate = (iso) => {
 const fmtRate = (r) =>
   `${Number((r * 100).toFixed(6)).toLocaleString('en', { minimumFractionDigits: 3, maximumFractionDigits: 6 })}%`;
 // "5.000% + 1.000% = 6.000%" when a spread applies, otherwise just the rate
-const fmtRateWithSpread = (p, spread) => {
+const fmtRateWithSpread = (p) => {
+  const spread = p.spread ?? 0; // each period carries its own spread (it can change at a rate switch)
   if (!spread) return fmtRate(p.rate);
   const sign = spread < 0 ? '−' : '+';
   return `${fmtRate(p.baseRate)} ${sign} ${fmtRate(Math.abs(spread) / 100)} = ${fmtRate(p.rate)}`;
 };
 // Each period's own principal: it changes after a payment
-const formula = (p) => `${money.format(p.principal)} × ${fmtRate(p.rate)} × ${p.days} ÷ ${p.yearDays}`;
+const formula = (p) => {
+  const [b, r, d, y] = [money.format(p.principal), fmtRate(p.rate), p.days, p.yearDays];
+  if (p.compounding === 'daily') return `${b} × ((1 + ${r} ÷ ${y})^${d} − 1)`;
+  if (p.compounding === 'continuous') return `${b} × (e^(${r} × ${d} ÷ ${y}) − 1)`;
+  return `${b} × ${r} × ${d} ÷ ${y}`;
+};
 const parseNumber = (s) => Number(s.replace(/[,\s$%]/g, '').replace(/^HK/i, ''));
 const isIsoDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s ?? '');
 
@@ -30,6 +36,18 @@ const BASES = {
   'act/365': 'Actual/365',
   'act/360': 'Actual/360',
 };
+
+const COMPOUNDINGS = {
+  none: 'None (simple interest)',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  yearly: 'Yearly',
+  daily: 'Daily',
+  continuous: 'Continuous',
+};
+
+// Short names for a rate kind, used when a calculation switches rate on a date
+const KIND_LABEL = { judgment: 'Judgment', prime: 'HSBC prime', fixed: 'Fixed' };
 
 const ALLOCATIONS = {
   interest: 'Interest first, then principal',
@@ -76,17 +94,52 @@ function crossCheckLine(cc) {
   return [before, link(cc.source, HSBC_PAGE), after];
 }
 
-// "Latest effective rate is 5.000% (from 31-Oct-2025), cross-checked with HSBC." (HSBC linked to its official page)
+// "Latest effective rate is 5.000% (from 31-Oct-2025), cross-checked with HSBC." (HSBC linked to its official page).
+// With a rate switch it describes the rate in force at the end: "From 01-Jul-2026: judgment debt rate; latest …".
 function latestRateLine(r) {
-  if (isFixed(r)) return { before: `Fixed rate of ${fmtPct(r.fixedRate)} p.a.`, text: `Fixed rate of ${fmtPct(r.fixedRate)} p.a.` };
-  const data = rateData[r.source];
+  const key = r.switch ? r.switch.source : r.source;
+  const fixedRate = r.switch ? r.switch.fixedRate : r.fixedRate;
+  const prefix = r.switch ? `From ${fmtDate(r.switch.date)}: ` : '';
+  if (key === 'fixed') {
+    const text = `${prefix}fixed rate of ${fmtPct(fixedRate)} p.a.`;
+    const cap = text.charAt(0).toUpperCase() + text.slice(1);
+    return { before: cap, text: cap };
+  }
+  const data = rateData[key];
   const latest = data.rates[0];
-  const before = `Latest effective rate is ${latest.rate.toFixed(3)}% (from ${fmtDate(latest.effective)})`;
+  const name = { judgment: 'judgment debt rate', prime: 'HSBC prime rate' }[key];
+  const before = `${prefix}${r.switch ? `${name}; l` : 'L'}atest effective rate is ${latest.rate.toFixed(3)}% (from ${fmtDate(latest.effective)})`;
   const cc = data.crossCheck;
   if (!cc || cc.status === 'mismatch') return { before: `${before}.`, text: `${before}.` };
-  const [prefix, linkText, after] = [`${before}, cross-checked with `, 'HSBC', '.'];
-  return { before: prefix, linkText, url: cc.source, after, text: prefix + linkText + after };
+  const [pre, linkText, after] = [`${before}, cross-checked with `, 'HSBC', '.'];
+  return { before: pre, linkText, url: cc.source, after, text: pre + linkText + after };
 }
+
+// A rate table for one kind of rate, oldest first; each entry carries its spread and kind (see calculateInterest)
+function rateTableFor(key, { spread = 0, fixedRate = null, from = FIXED_FROM } = {}) {
+  if (key === 'fixed') return [{ effective: from, rate: fixedRate, spread: 0, kind: 'fixed' }];
+  return [...rateData[key].rates]
+    .sort((a, b) => a.effective.localeCompare(b.effective))
+    .map((x) => ({ ...x, spread: key === 'prime' ? spread : 0, kind: key }));
+}
+
+// Rate A until the switch date, then rate B (the B rate in force on the switch date starts that day)
+function switchedRateTable(a, b, date) {
+  const before = a.filter((x) => x.effective < date);
+  const inForce = b.filter((x) => x.effective <= date).at(-1);
+  const after = b.filter((x) => x.effective > date);
+  return [...before, ...(inForce ? [{ ...inForce, effective: date }] : []), ...after];
+}
+
+// Rates to list for a result (rate card, PDF, Excel): newest first; with a switch, labelled by kind
+function usedRatesFor(r) {
+  if (r.switch) {
+    return relevantRates([...r.rateTable].reverse(), r).map((x) => ({ ...x, kindLabel: KIND_LABEL[x.kind] }));
+  }
+  return isFixed(r) ? [] : relevantRates(rateData[r.source].rates, r);
+}
+// Published sources behind a result, e.g. ['prime', 'judgment'] when switching
+const publishedKinds = (r) => [...new Set([r.source, r.switch?.source].filter((k) => k in SOURCES))];
 
 const rateData = {};
 let lastResult = null;
@@ -162,6 +215,7 @@ function renderRateSource(key) {
 function renderRateTable() {
   // Follows the last calculation while results are showing, otherwise the selected source
   const key = lastResult?.source ?? currentSource();
+  if (lastResult?.switch) return renderSwitchedRateCard(lastResult);
   $('rateCard').hidden = !(key in SOURCES);
   if (!(key in SOURCES)) return;
   const data = rateData[key];
@@ -184,6 +238,32 @@ function renderRateTable() {
     ...shown.map((r) => row([fmtDate(r.effective) + (r.source ? ` (${r.source})` : ''), r.rate.toFixed(3)], ['', 'num'])),
   );
   renderRateSource(key);
+}
+
+// With a rate switch the card lists the rates used from both kinds, each labelled
+function renderSwitchedRateCard(r) {
+  const used = sortRates(usedRatesFor(r));
+  $('rateCard').hidden = false;
+  $('rateTitle').textContent = 'Rates used';
+  $('relevantOnly').disabled = true;
+  $('relevantHint').hidden = true;
+  $('rateMeta').textContent = `(${used.length} rates, switching on ${fmtDate(r.switch.date)})`;
+  $('rates').replaceChildren(
+    ...used.map((x) => row([`${fmtDate(x.effective)} (${x.kindLabel})`, x.rate.toFixed(3)], ['', 'num'])),
+  );
+  const lines = publishedKinds(r).map((k) => {
+    const p = document.createElement('p');
+    p.append(`${SOURCES[k].title} source:`, document.createElement('br'), link(rateData[k].source, SOURCES[k].sourceName));
+    return p;
+  });
+  if (publishedKinds(r).includes('prime') && rateData.prime.crossCheck) {
+    const cc = rateData.prime.crossCheck;
+    const p = document.createElement('p');
+    p.className = cc.status === 'mismatch' ? 'warning' : 'checked';
+    p.append(crossCheckTick(cc), ...crossCheckLine(cc));
+    lines.push(p);
+  }
+  $('rateSource').replaceChildren(...lines);
 }
 
 function row(cells, classes = []) {
@@ -209,10 +289,13 @@ function warning(text) {
   return p;
 }
 
+const kindLabel = (key, spread, fixedRate) =>
+  key === 'fixed'
+    ? `Fixed rate of ${fmtPct(fixedRate)} p.a.`
+    : SOURCES[key].label + (key === 'prime' && spread ? ` ${spread < 0 ? '−' : '+'} ${Math.abs(spread)}%` : '');
 const rateBasisLabel = (r) =>
-  isFixed(r)
-    ? `Fixed rate of ${fmtPct(r.fixedRate)} p.a.`
-    : SOURCES[r.source].label + (r.source === 'prime' && r.spread ? ` ${r.spread < 0 ? '−' : '+'} ${Math.abs(r.spread)}%` : '');
+  kindLabel(r.source, r.spreadA ?? r.spread, r.fixedRate) +
+  (r.switch ? `; from ${fmtDate(r.switch.date)}: ${kindLabel(r.switch.source, r.switch.spread, r.switch.fixedRate)}` : '');
 
 // "HK$219.18 (at 8.000% ÷ 365)", or a dash when no rate applies on the end date
 const perDiemText = (r) =>
@@ -226,6 +309,7 @@ const printInputItems = (r) => [
   ['End date (does not earn interest)', fmtDate(r.end)],
   ['Day count basis', BASES[r.basis]],
   ['Rounding', ROUNDINGS[r.rounding]],
+  ...(r.compounding !== 'none' ? [['Compounding', COMPOUNDINGS[r.compounding]]] : []),
   ...(r.additions.length || r.ignoredAdditions.length
     ? [['Principal added later', String(r.additions.length + r.ignoredAdditions.length)]]
     : []),
@@ -280,6 +364,19 @@ function render(r) {
   }
   $('warnings').replaceChildren(...warnings);
 
+  // Compounding: compare with simple interest
+  $('compareLine').hidden = r.compounding === 'none';
+  if (r.compounding !== 'none') {
+    const extra = r.totalInterest - r.simpleInterest;
+    $('compareLine').textContent =
+      `Compounded ${COMPOUNDINGS[r.compounding].toLowerCase()}: HK$${money.format(r.totalInterest)} interest, ` +
+      `vs HK$${money.format(r.simpleInterest)} as simple interest (${extra >= 0 ? '+' : '−'}HK$${money.format(Math.abs(extra))}). ` +
+      `Interest added to principal: HK$${money.format(r.totalCapitalised)}.`;
+  }
+  $('formulaHead').textContent = ['daily', 'continuous'].includes(r.compounding)
+    ? 'Formula'
+    : 'Formula: principal × rate × days ÷ year days';
+
   // One line under the summary: the latest effective rate, and (prime) that it is cross-checked with HSBC
   const line = latestRateLine(r);
   $('verified').replaceChildren(line.before, ...(line.linkText ? [link(line.url, line.linkText), line.after] : []));
@@ -318,7 +415,7 @@ function render(r) {
   $('periods').replaceChildren(
     ...r.periods.map((p) =>
       row(
-        [fmtDate(p.start), fmtDate(p.end), p.days, fmtRateWithSpread(p, r.spread), formula(p), money.format(p.interest)],
+        [fmtDate(p.start), fmtDate(p.end), p.days, fmtRateWithSpread(p), formula(p), money.format(p.interest)],
         ['', '', 'num', 'num', 'formula', 'num'],
       ),
     ),
@@ -332,8 +429,15 @@ function render(r) {
 
 function writeQuery(r) {
   const q = new URLSearchParams({ src: r.source, p: String(r.principal), from: r.start, to: r.end, basis: r.basis, round: r.rounding });
-  if (r.source === 'prime') q.set('spread', String(r.spread));
+  if (r.source === 'prime') q.set('spread', String(r.spreadA ?? r.spread));
   if (isFixed(r)) q.set('rate', String(r.fixedRate));
+  if (r.compounding !== 'none') q.set('comp', r.compounding);
+  if (r.switch) {
+    q.set('sw', r.switch.date);
+    q.set('src2', r.switch.source);
+    if (r.switch.source === 'prime') q.set('spread2', String(r.switch.spread));
+    if (r.switch.source === 'fixed') q.set('rate2', String(r.switch.fixedRate));
+  }
   // Payments as date:amount pairs, e.g. pay=2026-07-01:10000,2026-10-01:5000
   const pays = [...r.payments.map((p) => [p.date, p.amount]), ...r.ignoredPayments.map((p) => [p.date, p.amount])];
   if (pays.length) {
@@ -367,15 +471,32 @@ function readQuery() {
     if (isIsoDate(date) && Number(amount) > 0) addEventRow('addition', date, Number(amount), decodeURIComponent(label));
   }
   if (q.get('alloc') in ALLOCATIONS) $('allocation').value = q.get('alloc');
+  // Advanced settings: open the section if the link uses them
+  if (q.get('comp') in COMPOUNDINGS) $('compounding').value = q.get('comp');
+  if (isIsoDate(q.get('sw'))) {
+    $('switchOn').checked = true;
+    $('switchDate').value = q.get('sw');
+    const src2 = q.get('src2');
+    if (src2 in SOURCES || src2 === 'fixed') document.querySelector(`input[name="source2"][value="${src2}"]`).checked = true;
+    const s2 = Number(q.get('spread2'));
+    if (q.has('spread2') && Number.isFinite(s2)) $('spread2').value = String(s2);
+    const f2 = Number(q.get('rate2'));
+    if (q.has('rate2') && Number.isFinite(f2)) $('fixedRate2').value = String(f2);
+  }
+  if ((q.get('comp') && q.get('comp') !== 'none') || $('switchOn').checked) $('advanced').open = true;
   const rate = Number(q.get('rate'));
   if (q.has('rate') && Number.isFinite(rate)) $('fixedRate').value = String(rate);
   showSourceFields();
 }
 
 // Spread only applies to prime; the fixed rate field only to a fixed rate
+const currentSource2 = () => document.querySelector('input[name="source2"]:checked').value;
 function showSourceFields() {
   $('spreadField').hidden = currentSource() !== 'prime';
   $('fixedField').hidden = currentSource() !== 'fixed';
+  $('switchFields').hidden = !$('switchOn').checked;
+  $('spread2Field').hidden = currentSource2() !== 'prime';
+  $('fixed2Field').hidden = currentSource2() !== 'fixed';
 }
 
 function flash(msg) {
@@ -489,6 +610,9 @@ function readEventRows(kind) {
   return out;
 }
 
+document.querySelectorAll('input[name="source2"]').forEach((el) => el.addEventListener('change', showSourceFields));
+$('switchOn').addEventListener('change', showSourceFields);
+
 $('addPayment').addEventListener('click', () => {
   addEventRow('payment').querySelector('.pay-date').focus();
   markStale();
@@ -557,6 +681,21 @@ $('form').addEventListener('submit', (e) => {
   const rounding = $('rounding').value;
   const fixedRate = source === 'fixed' ? parseNumber($('fixedRate').value) : null;
   const allocation = $('allocation').value;
+  const compounding = $('compounding').value;
+
+  // Advanced: switch to another rate from a date
+  let switchTo = null;
+  if ($('switchOn').checked) {
+    const date = $('switchDate').value;
+    const source2 = currentSource2();
+    const spread2 = source2 === 'prime' ? parseNumber($('spread2').value || '0') : 0;
+    const fixed2 = source2 === 'fixed' ? parseNumber($('fixedRate2').value) : null;
+    if (!date) return showError('Please enter the date the new rate applies from.');
+    if (!Number.isFinite(spread2)) return showError('Please enter a valid spread for the new rate.');
+    if (source2 === 'fixed' && !Number.isFinite(fixed2)) return showError('Please enter a valid fixed rate for the new rate.');
+    if (source2 !== 'fixed' && !rateData[source2]) return showError('Interest rates have not loaded yet.');
+    switchTo = { date, source: source2, spread: spread2, fixedRate: fixed2 };
+  }
   let payments;
   let additions;
   try {
@@ -574,13 +713,30 @@ $('form').addEventListener('submit', (e) => {
     return showError('Please enter a valid fixed rate, e.g. 8 for 8% p.a.');
   }
   if (source !== 'fixed' && !rateData[source]) return showError('Interest rates have not loaded yet.');
-  const rates = source === 'fixed' ? [{ effective: FIXED_FROM, rate: fixedRate }] : rateData[source].rates;
+  // With a switch, one combined table carries each part's own spread; the calculation's spread is then 0
+  const rateTable = switchTo
+    ? switchedRateTable(
+        rateTableFor(source, { spread, fixedRate, from: start }),
+        rateTableFor(switchTo.source, { spread: switchTo.spread, fixedRate: switchTo.fixedRate, from: switchTo.date }),
+        switchTo.date,
+      )
+    : null;
+  const rates = rateTable ?? (source === 'fixed' ? [{ effective: FIXED_FROM, rate: fixedRate }] : rateData[source].rates);
+  const calcInput = {
+    principal, start, end, basis, rounding, rates, payments, additions, allocation,
+    spread: switchTo ? 0 : spread,
+  };
 
   try {
     lastResult = {
-      ...calculateInterest({ principal, start, end, spread, basis, rounding, rates, payments, additions, allocation }),
+      ...calculateInterest({ ...calcInput, compounding }),
+      // For the comparison line: the same calculation as simple interest
+      simpleInterest: compounding === 'none' ? null : calculateInterest({ ...calcInput, compounding: 'none' }).totalInterest,
       source,
       fixedRate,
+      spreadA: spread,
+      switch: switchTo,
+      rateTable,
     };
     writeQuery(lastResult);
     render(lastResult);
@@ -604,6 +760,7 @@ $('clear').addEventListener('click', () => {
   $('form').reset();
   $('paymentRows').replaceChildren();
   $('additionRows').replaceChildren();
+  $('advanced').open = false;
   updatePaymentFields();
   showSourceFields();
   clearResults();
@@ -662,25 +819,26 @@ $('xlsx').addEventListener('click', () => {
   const r = lastResult;
   busy($('xlsx'), async () => {
     const XLSX = await loadXlsx();
-    const data = rateData[r.source];
     const wb = buildWorkbook(XLSX, r, {
       rateBasis: rateBasisLabel(r),
       dayCount: BASES[r.basis],
       rounding: ROUNDINGS[r.rounding],
       allocation: ALLOCATIONS[r.allocation],
       formulaText: formula,
+      compounding: COMPOUNDINGS[r.compounding],
       // A fixed rate has no published source: the Rates sheet just states the rate
-      ...(isFixed(r)
+      ...(publishedKinds(r).length === 0
         ? { ratesTitle: 'Fixed rate', rates: [] }
         : {
-            ratesTitle: SOURCES[r.source].title,
-            sourceUrl: data.source,
-            updatedAt: asAt(r.source),
-            crossCheck: data.crossCheck && {
-        ...data.crossCheck,
-        summary: crossCheckTick(data.crossCheck) + CROSS_CHECK[data.crossCheck.status],
-      },
-            rates: sortRates(relevantRates(data.rates, r)),
+            ratesTitle: r.switch ? 'Rates' : SOURCES[r.source].title,
+            sources: publishedKinds(r).map((k) => ({ title: SOURCES[k].title, url: rateData[k].source, asAt: asAt(k) })),
+            sourceUrl: rateData[publishedKinds(r)[0]].source,
+            updatedAt: asAt(publishedKinds(r)[0]),
+            crossCheck: publishedKinds(r).includes('prime') && rateData.prime.crossCheck && {
+              ...rateData.prime.crossCheck,
+              summary: crossCheckTick(rateData.prime.crossCheck) + CROSS_CHECK[rateData.prime.crossCheck.status],
+            },
+            rates: sortRates(usedRatesFor(r)),
           }),
     });
     const bytes = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -693,9 +851,9 @@ $('pdf').addEventListener('click', () => {
   const r = lastResult;
   busy($('pdf'), async () => {
     const lib = await loadPdf();
-    const data = rateData[r.source];
-    const used = isFixed(r) ? [] : relevantRates(data.rates, r);
-    const cc = data?.crossCheck;
+    const kinds = publishedKinds(r);
+    const used = usedRatesFor(r);
+    const cc = kinds.includes('prime') ? rateData.prime.crossCheck : null;
     const doc = buildPdf(lib, r, {
       inputs: printInputItems(r),
       warnings: [...$('warnings').querySelectorAll('.warning')].map((el) => el.textContent),
@@ -703,12 +861,16 @@ $('pdf').addEventListener('click', () => {
       summaryLine: latestRateLine(r),
       perDiem: perDiemText(r),
       allocation: `Payments applied ${ALLOCATIONS[r.allocation].toLowerCase()}.`,
+      compareLine: r.compounding === 'none' ? null : $('compareLine').textContent,
       // No "rates used" section for a fixed rate
-      ...(isFixed(r)
+      ...(kinds.length === 0
         ? {}
         : {
-            ratesHeading: `${SOURCES[r.source].title} (${used.length} of ${data.rates.length} rates, used from ${fmtDate(r.start)} to ${fmtDate(r.end)})`,
-            source: { name: SOURCES[r.source].sourceName, url: data.source },
+            ratesHeading: r.switch
+              ? `Rates used (${used.length}, switching on ${fmtDate(r.switch.date)})`
+              : `${SOURCES[r.source].title} (${used.length} of ${rateData[r.source].rates.length} rates, used from ${fmtDate(r.start)} to ${fmtDate(r.end)})`,
+            source: { name: SOURCES[kinds[0]].sourceName, url: rateData[kinds[0]].source },
+            extraSources: kinds.slice(1).map((k) => ({ name: SOURCES[k].sourceName, url: rateData[k].source })),
             rates: sortRates(used),
           }),
       fmt: { money: (n) => money.format(n), date: fmtDate, rate: fmtRate, rateWithSpread: fmtRateWithSpread, formula },
@@ -725,6 +887,13 @@ $('csv').addEventListener('click', () => {
     ['Rate Basis', rateBasisLabel(r)],
     ['Day Count Basis', BASES[r.basis]],
     ['Rounding', ROUNDINGS[r.rounding]],
+    ...(r.compounding !== 'none'
+      ? [
+          ['Compounding', COMPOUNDINGS[r.compounding]],
+          ['Simple Interest (For Comparison)', money.format(r.simpleInterest)],
+          ['Interest Added To Principal', money.format(r.totalCapitalised)],
+        ]
+      : []),
     ['Principal', money.format(r.principal)],
     ['Start Date', r.start],
     ['End Date', r.end],
@@ -748,14 +917,14 @@ $('csv').addEventListener('click', () => {
     [],
     [
       'Period Start', 'Period End', 'No. of Days',
-      ...(r.payments.length || r.additions.length ? ['Principal'] : []),
-      ...(r.spread ? ['Base Rate', 'Spread'] : []),
+      ...(r.payments.length || r.additions.length || r.compounding !== 'none' ? ['Principal'] : []),
+      ...(r.periods.some((p) => p.spread) ? ['Base Rate', 'Spread'] : []),
       'Interest Rate', 'Year Days', 'Formula', 'Interest Amount',
     ],
     ...r.periods.map((p) => [
       p.start, p.end, p.days,
-      ...(r.payments.length || r.additions.length ? [money.format(p.principal)] : []),
-      ...(r.spread ? [fmtRate(p.baseRate), fmtRate(r.spread / 100)] : []),
+      ...(r.payments.length || r.additions.length || r.compounding !== 'none' ? [money.format(p.principal)] : []),
+      ...(r.periods.some((x) => x.spread) ? [fmtRate(p.baseRate), fmtRate(p.spread / 100)] : []),
       fmtRate(p.rate), p.yearDays, formula(p), money.format(p.interest),
     ]),
     ...(r.additions.length

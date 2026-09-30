@@ -48,10 +48,11 @@ test('fixed rate: interest, daily interest, and no published rate table', async 
 });
 
 test('form fields share one height and never overlap; no sideways scrolling', async ({ page }) => {
-  await page.goto('?src=prime&pay=2026-03-01:1000');
-  const ids = ['principal', 'start', 'end', 'basis', 'rounding'];
+  await page.goto('?src=prime&pay=2026-03-01:1000&sw=2026-06-01&src2=prime');
+  const ids = ['principal', 'start', 'end', 'basis', 'rounding', 'compounding', 'switchDate'];
   const boxes = await Promise.all(ids.map((id) => page.locator(`#${id}`).boundingBox()));
   boxes.push(await page.locator('#spreadField .stepper').boundingBox());
+  boxes.push(await page.locator('#spread2Field .stepper').boundingBox());
   for (const sel of ['.pay-date', '.pay-amount', '.payment-row .remove']) boxes.push(await page.locator(sel).boundingBox());
 
   const heights = boxes.map((b) => Math.round(b.height));
@@ -196,4 +197,51 @@ test('icons and the link-preview image are served', async ({ page, request }) =>
     expect(res.status(), href).toBe(200);
   }
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://app.kevinlhc.com/interestcal/og-image.png');
+});
+
+test('advanced settings are closed by default and compounding defaults to simple interest', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.locator('#advanced')).not.toHaveAttribute('open', '');
+  await expect(page.locator('#compounding')).toHaveValue('none');
+  await expect(page.locator('#compareLine')).toBeHidden();
+  await page.locator('#advanced summary').click();
+  await expect(page.locator('#compounding')).toBeVisible();
+  await expect(page.locator('#switchFields')).toBeHidden();
+});
+
+test('monthly compounding from a shared link, compared with simple interest', async ({ page }) => {
+  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-04-01&comp=monthly');
+  await expect(page.locator('#advanced')).toHaveAttribute('open', '');
+  await expect(total(page)).toHaveText('1,985.59');
+  await expect(page.locator('#compareLine')).toHaveText(
+    'Compounded monthly: HK$1,985.59 interest, vs HK$1,972.60 as simple interest (+HK$12.98). Interest added to principal: HK$1,297.32.',
+  );
+  await expect(page.locator('#periods tr')).toHaveCount(3);
+});
+
+test('switch from prime + 1% to the judgment rate on a date', async ({ page }) => {
+  await page.goto('?src=prime&p=100000&from=2026-01-01&to=2026-12-31&spread=1');
+  await page.locator('#advanced summary').click();
+  await page.getByLabel('Switch to a different rate from a date').check();
+  await page.getByLabel('Switch date (new rate applies from this day)').fill('2026-07-01');
+  await page.getByRole('button', { name: 'Calculate' }).click();
+
+  await expect(total(page)).toHaveText('6,986.30');
+  await expect(page.locator('#periods tr').first().locator('td').nth(3)).toHaveText('5.000% + 1.000% = 6.000%');
+  await expect(page.locator('#periods tr').nth(1).locator('td').nth(3)).toHaveText('8.000%');
+  await expect(page.locator('#verified')).toHaveText(/^From 01-Jul-2026: judgment debt rate; latest effective rate is 8\.000%/);
+  await expect(page).toHaveURL(/sw=2026-07-01&src2=judgment/);
+  await expect(page.locator('#rateTitle')).toHaveText('Rates used');
+});
+
+test('downloads work with compounding and a rate switch', async ({ page }) => {
+  await page.goto('?src=prime&p=100000&from=2026-01-01&to=2026-12-31&spread=1&comp=daily&sw=2026-07-01&src2=judgment');
+  await expect(total(page)).not.toHaveText('');
+  for (const button of ['Download PDF', 'Download Excel', 'Download CSV']) {
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
+    const bytes = await (await import('node:fs/promises')).readFile(await download.path());
+    expect(bytes.length, button).toBeGreaterThan(500);
+    if (button === 'Download CSV') expect(bytes.toString('utf8')).toContain('Compounding,Daily');
+  }
+  await expect(page.locator('#error')).toBeHidden();
 });

@@ -45,13 +45,28 @@ const yearOf = (day) => new Date(day * MS_PER_DAY).getUTCFullYear();
 const jan1 = (y) => Date.UTC(y, 0, 1) / MS_PER_DAY;
 
 export const ALLOCATIONS = ['interest', 'principal'];
+export const COMPOUNDING = ['none', 'monthly', 'quarterly', 'yearly', 'daily', 'continuous'];
+const COMPOUND_MONTHS = { monthly: 1, quarterly: 3, yearly: 12 };
+
+const daysInMonth = (y, m0) => new Date(Date.UTC(y, m0 + 1, 0)).getUTCDate();
+
+/** "YYYY-MM-DD" plus n months, keeping the start's day where the month has it (31 Jan + 1 month = 28/29 Feb) */
+export function addMonths(iso, n) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const total = m - 1 + n;
+  const ny = y + Math.floor(total / 12);
+  const nm = ((total % 12) + 12) % 12;
+  return `${ny}-${String(nm + 1).padStart(2, '0')}-${String(Math.min(d, daysInMonth(ny, nm))).padStart(2, '0')}`;
+}
 
 /**
  * @param {object} input
  * @param {number} input.principal
  * @param {string} input.start  "YYYY-MM-DD", earns interest
  * @param {string} input.end    "YYYY-MM-DD", does not earn interest
- * @param {{effective: string, rate: number}[]} input.rates  rate in % per annum (8.107 = 8.107%)
+ * @param {{effective: string, rate: number, spread?: number, kind?: string}[]} input.rates  rate in % per annum
+ *   (8.107 = 8.107%). An entry's own spread (and kind label) overrides input.spread, so one table can switch from
+ *   one kind of rate to another on a date.
  * @param {number} [input.spread]  % per annum added to every rate, e.g. 2 for "prime + 2%"
  * @param {'act/act' | 'act/365' | 'act/360'} [input.basis]  day count basis
  * @param {'total' | 'period'} [input.rounding]  'total': add unrounded period amounts, round only for display;
@@ -61,7 +76,12 @@ export const ALLOCATIONS = ['interest', 'principal'];
  * @param {{date: string, amount: number, label?: string}[]} [input.additions]  further sums (e.g. costs) that join the
  *   principal from their date and earn interest from that day. On a day with both, sums are added before payments.
  * @param {'interest' | 'principal'} [input.allocation]  what a payment pays off first: accrued unpaid interest
- *   ('interest', the usual rule) or principal. Interest is always simple: unpaid interest never earns interest.
+ *   ('interest', the usual rule) or principal.
+ * @param {'none' | 'monthly' | 'quarterly' | 'yearly' | 'daily' | 'continuous'} [input.compounding]
+ *   'none' (default): simple interest, unpaid interest never earns interest.
+ *   monthly/quarterly/yearly: on each anniversary of the start date, unpaid interest is added to principal.
+ *   daily: principal x ((1 + rate / year days)^days - 1) within each period, added to principal as it accrues.
+ *   continuous: principal x (e^(rate x days / year days) - 1), added to principal as it accrues.
  */
 export function calculateInterest({
   principal,
@@ -74,6 +94,7 @@ export function calculateInterest({
   payments = [],
   additions = [],
   allocation = 'interest',
+  compounding = 'none',
 }) {
   if (!Number.isFinite(principal)) throw new Error('Principal must be a number');
   const loanStart = toDay(start);
@@ -84,9 +105,13 @@ export function calculateInterest({
   if (!DAY_COUNT_BASES.includes(basis)) throw new Error(`Unknown day count basis: ${basis}`);
   if (!ROUNDING.includes(rounding)) throw new Error(`Unknown rounding: ${rounding}`);
   if (!ALLOCATIONS.includes(allocation)) throw new Error(`Unknown payment allocation: ${allocation}`);
+  if (!COMPOUNDING.includes(compounding)) throw new Error(`Unknown compounding: ${compounding}`);
 
   const sorted = rates
-    .map((r) => ({ day: toDay(r.effective), baseRate: r.rate / 100, rate: (r.rate + spread) / 100 }))
+    .map((r) => {
+      const s = r.spread ?? spread;
+      return { day: toDay(r.effective), baseRate: r.rate / 100, spread: s, rate: (r.rate + s) / 100, kind: r.kind };
+    })
     .sort((a, b) => a.day - b.day);
 
   const pays = payments
@@ -116,6 +141,16 @@ export function calculateInterest({
   }
   for (const p of applied) cuts.add(p.day);
   for (const a of added) cuts.add(a.day);
+  // Compounding dates: anniversaries of the start date (monthly / quarterly / yearly)
+  const capDays = new Set();
+  if (COMPOUND_MONTHS[compounding]) {
+    for (let k = 1; ; k++) {
+      const day = toDay(addMonths(start, k * COMPOUND_MONTHS[compounding]));
+      if (day >= loanEnd) break;
+      capDays.add(day);
+      cuts.add(day);
+    }
+  }
   const points = [...cuts].sort((a, b) => a - b);
 
   let balance = principal; // principal still owed
@@ -127,6 +162,8 @@ export function calculateInterest({
   const paymentRows = [];
   const additionRows = [];
   let totalAdded = 0;
+  let totalCapitalised = 0; // interest added to principal by compounding
+  const continuousRate = compounding === 'daily' || compounding === 'continuous';
 
   // In 'period' rounding everything is kept in whole cents, so floating point dust never shows
   const cents = (x) => (rounding === 'period' ? round2(x) : x);
@@ -174,6 +211,12 @@ export function calculateInterest({
   for (let i = 0; i < points.length - 1; i++) {
     const segStart = points[i];
     const segEnd = points[i + 1];
+    // On a compounding date: add unpaid interest to principal first, then principal added later, then payments
+    if (capDays.has(segStart) && unpaid) {
+      balance = cents(balance + unpaid);
+      totalCapitalised += unpaid;
+      unpaid = 0;
+    }
     applyAdditions(segStart);
     applyPayments(segStart);
 
@@ -183,7 +226,13 @@ export function calculateInterest({
     const days = segEnd - segStart;
     const year = yearOf(segStart);
     const yearDays = basis === 'act/360' ? 360 : basis === 'act/365' ? 365 : isLeapYear(year) ? 366 : 365;
-    const exact = (balance * r.rate * days) / yearDays;
+    const t = (r.rate * days) / yearDays;
+    const exact =
+      compounding === 'daily'
+        ? balance * ((1 + r.rate / yearDays) ** days - 1)
+        : compounding === 'continuous'
+          ? balance * Math.expm1(t)
+          : balance * t;
     const interest = rounding === 'period' ? round2(exact) : exact;
 
     periods.push({
@@ -192,13 +241,22 @@ export function calculateInterest({
       days,
       principal: balance, // principal the interest is charged on in this period
       baseRate: r.baseRate, // published rate, before spread
+      spread: r.spread, // % p.a. added to the base rate in this period
       rate: r.rate, // rate applied = baseRate + spread
+      rateKind: r.kind, // which kind of rate (set when the rate table switches on a date)
       yearDays,
       interest,
+      compounding: continuousRate ? compounding : 'simple', // how this row's interest was worked out
     });
-    unpaid = cents(unpaid + interest);
     totalInterest += interest;
     totalDays += days;
+    if (continuousRate) {
+      // Daily / continuous: interest joins the principal as it accrues
+      balance = cents(balance + interest);
+      totalCapitalised += interest;
+    } else {
+      unpaid = cents(unpaid + interest);
+    }
   }
 
   // Adding rounded cents in floating point can leave dust (e.g. 0.30000000000000004)
@@ -233,6 +291,8 @@ export function calculateInterest({
     additions: additionRows,
     ignoredAdditions,
     totalAdded,
+    compounding,
+    totalCapitalised,
     totalInterest,
     totalPaid: totals.paid,
     interestPaid: totals.toInterest,

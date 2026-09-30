@@ -104,6 +104,11 @@ input, select {
 label.radio { display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 1rem; }
 label[hidden] { display: none; }
 .actions { grid-column: 1 / -1; display: flex; gap: 12px; }
+.advanced { grid-column: 1 / -1; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
+.advanced summary { cursor: pointer; font-weight: 600; font-size: 0.95rem; }
+.advanced-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 14px; }
+.switch-toggle { grid-column: 1 / -1; }
+.switch-fields { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
 .payments { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; min-width: 0; }
 .payments legend { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; padding: 0; }
 .event-rows { display: grid; gap: 8px; margin-bottom: 8px; }

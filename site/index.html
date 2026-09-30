@@ -72,6 +72,47 @@
           <button type="button" class="step" data-step="1" aria-label="Increase spread by 1%">+</button>
         </div>
       </label>
+      <details id="advanced" class="advanced">
+        <summary>Advanced settings <span class="muted">(compounding, switching rate on a date)</span></summary>
+        <div class="advanced-body">
+          <label>Compounding
+            <select id="compounding">
+              <option value="none" selected>None (simple interest)</option>
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="yearly">Yearly</option>
+              <option value="daily">Daily</option>
+              <option value="continuous">Continuous</option>
+            </select>
+          </label>
+          <label class="radio switch-toggle"><input type="checkbox" id="switchOn"> Switch to a different rate from a date</label>
+          <div id="switchFields" class="switch-fields" hidden>
+            <label>Switch date (new rate applies from this day)
+              <input id="switchDate" type="date">
+            </label>
+            <fieldset class="source">
+              <legend>New rate</legend>
+              <label class="radio"><input type="radio" name="source2" value="judgment" checked> Judgment debt rate</label>
+              <label class="radio"><input type="radio" name="source2" value="prime"> HSBC prime rate</label>
+              <label class="radio"><input type="radio" name="source2" value="fixed"> Fixed rate</label>
+            </fieldset>
+            <label id="spread2Field" for="spread2" hidden>Spread over prime (% p.a.)
+              <div class="stepper">
+                <button type="button" class="step" data-step="-1" aria-label="Decrease new spread by 1%">−</button>
+                <input id="spread2" type="text" inputmode="decimal" autocomplete="off" value="1" placeholder="0">
+                <button type="button" class="step" data-step="1" aria-label="Increase new spread by 1%">+</button>
+              </div>
+            </label>
+            <label id="fixed2Field" for="fixedRate2" hidden>Fixed rate (% p.a.)
+              <div class="stepper">
+                <button type="button" class="step" data-step="-1" aria-label="Decrease new fixed rate by 1%">−</button>
+                <input id="fixedRate2" type="text" inputmode="decimal" autocomplete="off" value="8" placeholder="8" data-min="0">
+                <button type="button" class="step" data-step="1" aria-label="Increase new fixed rate by 1%">+</button>
+              </div>
+            </label>
+          </div>
+        </div>
+      </details>
       <fieldset class="payments">
         <legend>Principal added later <span class="muted">(optional, e.g. costs)</span></legend>
         <div id="additionRows" class="event-rows"></div>
@@ -113,10 +154,11 @@
         <div><dt>Interest per day after end date</dt><dd id="perDiem"></dd></div>
       </dl>
       <p id="verified" class="verified"></p>
+      <p id="compareLine" class="verified" hidden></p>
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Period start</th><th>Period end</th><th>Days</th><th>Rate</th><th>Formula: principal × rate × days ÷ year days</th><th>Interest</th></tr>
+            <tr><th>Period start</th><th>Period end</th><th>Days</th><th>Rate</th><th id="formulaHead">Formula: principal × rate × days ÷ year days</th><th>Interest</th></tr>
           </thead>
           <tbody id="periods"></tbody>
         </table>
