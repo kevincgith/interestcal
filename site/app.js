@@ -10,19 +10,48 @@ const fmtDate = (iso) => {
   return `${d}-${MONTHS[Number(m) - 1]}-${y}`;
 };
 const fmtRate = (r) => `${(r * 100).toFixed(3)}%`;
+const parseNumber = (s) => Number(s.replace(/[,\s$%]/g, '').replace(/^HK/i, ''));
 
-let rateData = null;
+const SOURCES = {
+  judgment: {
+    file: 'rates.json',
+    title: 'Judgment debt rates',
+    label: 'Judgment debt rate (HK Judiciary)',
+    staleNote: 'Check the Judiciary website for any newer rate.',
+  },
+  prime: {
+    file: 'prime-rates.json',
+    title: 'HSBC prime rates',
+    label: 'HSBC best lending rate (HKMA table 6.4.1)',
+    staleNote: 'The HKMA table is updated monthly, so a very recent HSBC change may not be included yet.',
+  },
+};
+
+const rateData = {};
 let lastResult = null;
 
-async function loadRates() {
-  const res = await fetch('rates.json', { cache: 'no-cache' });
-  if (!res.ok) throw new Error(`Could not load rates (HTTP ${res.status})`);
-  rateData = await res.json();
+const currentSource = () => document.querySelector('input[name="source"]:checked').value;
 
+async function loadRates() {
+  await Promise.all(
+    Object.entries(SOURCES).map(async ([key, { file }]) => {
+      const res = await fetch(file, { cache: 'no-cache' });
+      if (!res.ok) throw new Error(`Could not load ${file} (HTTP ${res.status})`);
+      rateData[key] = await res.json();
+    }),
+  );
+  renderRateTable();
+}
+
+function renderRateTable() {
+  const key = currentSource();
+  const data = rateData[key];
+  $('rateTitle').textContent = SOURCES[key].title;
+  if (!data) return;
   $('rateMeta').textContent =
-    `(${rateData.rates.length} rates, latest effective ${fmtDate(rateData.rates[0].effective)}, updated ${fmtDate(rateData.updatedAt)})`;
+    `(${data.rates.length} rates, latest effective ${fmtDate(data.rates[0].effective)}, updated ${fmtDate(data.updatedAt)})`;
   $('rates').replaceChildren(
-    ...rateData.rates.map((r) => row([fmtDate(r.effective), r.rate.toFixed(3)], [false, true])),
+    ...data.rates.map((r) => row([fmtDate(r.effective), r.rate.toFixed(3)], [false, true])),
   );
 }
 
@@ -59,8 +88,7 @@ function render(r) {
   }
   if (r.end > r.latestRateDate && r.periods.length) {
     warnings.push(warning(
-      `Days on or after ${fmtDate(r.latestRateDate)} use the latest published rate. ` +
-      `Check the Judiciary website for any newer rate.`,
+      `Days on or after ${fmtDate(r.latestRateDate)} use the latest published rate. ${SOURCES[r.source].staleNote}`,
     ));
   }
   $('warnings').replaceChildren(...warnings);
@@ -79,20 +107,32 @@ function render(r) {
   $('results').hidden = false;
 }
 
+function onSourceChange() {
+  $('marginField').hidden = currentSource() !== 'prime';
+  $('results').hidden = true;
+  lastResult = null;
+  renderRateTable();
+}
+
+document.querySelectorAll('input[name="source"]').forEach((el) => el.addEventListener('change', onSourceChange));
+
 $('form').addEventListener('submit', (e) => {
   e.preventDefault();
   showError('');
-  const principal = Number($('principal').value.replace(/[,\s$]/g, '').replace(/^HK/i, ''));
+  const source = currentSource();
+  const principal = parseNumber($('principal').value);
+  const margin = source === 'prime' ? parseNumber($('margin').value || '0') : 0;
   const start = $('start').value;
   const end = $('end').value;
 
   if (!$('principal').value.trim() || !Number.isFinite(principal)) return showError('Please enter a valid principal amount.');
   if (!start) return showError('Please enter a valid start date.');
   if (!end) return showError('Please enter a valid end date.');
-  if (!rateData) return showError('Interest rates have not loaded yet.');
+  if (!Number.isFinite(margin)) return showError('Please enter a valid margin, e.g. 2 for prime + 2%.');
+  if (!rateData[source]) return showError('Interest rates have not loaded yet.');
 
   try {
-    lastResult = calculateInterest({ principal, start, end, rates: rateData.rates });
+    lastResult = { ...calculateInterest({ principal, start, end, margin, rates: rateData[source].rates }), source };
     render(lastResult);
   } catch (err) {
     $('results').hidden = true;
@@ -102,15 +142,16 @@ $('form').addEventListener('submit', (e) => {
 
 $('clear').addEventListener('click', () => {
   $('form').reset();
+  onSourceChange();
   showError('');
-  $('results').hidden = true;
-  lastResult = null;
 });
 
 $('csv').addEventListener('click', () => {
   if (!lastResult) return;
   const r = lastResult;
+  const basis = SOURCES[r.source].label + (r.source === 'prime' ? ` + ${r.margin}%` : '');
   const lines = [
+    ['Rate Basis', `"${basis}"`],
     ['Principal', r.principal.toFixed(2)],
     ['Start Date', r.start],
     ['End Date', r.end],
@@ -124,7 +165,7 @@ $('csv').addEventListener('click', () => {
   const blob = new Blob([lines.map((l) => l.join(',')).join('\n') + '\n'], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `interest_${r.start}_${r.end}.csv`;
+  a.download = `interest_${r.source}_${r.start}_${r.end}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
 });

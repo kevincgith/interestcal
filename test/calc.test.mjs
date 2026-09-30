@@ -81,6 +81,19 @@ test('rejects end before start and invalid dates', () => {
   assert.throws(() => calculateInterest({ principal: 1, start: '2026-02-30', end: '2026-03-01', rates }));
 });
 
+test('margin is added to every rate (e.g. prime + 2%)', () => {
+  const prime = [
+    { effective: '2025-10-31', rate: 5.0 },
+    { effective: '2025-09-19', rate: 5.125 },
+  ];
+  const r = calculateInterest({ principal: 100000, start: '2025-10-01', end: '2025-11-10', rates: prime, margin: 2 });
+  assert.deepEqual(r.periods.map((p) => [p.start, p.end, p.days, pct(p)]), [
+    ['2025-10-01', '2025-10-31', 30, 7.125],
+    ['2025-10-31', '2025-11-10', 10, 7],
+  ]);
+  close(r.totalInterest, (100000 * 0.07125 * 30) / 365 + (100000 * 0.07 * 10) / 365);
+});
+
 test('leap year rule', () => {
   assert.equal(isLeapYear(2024), true);
   assert.equal(isLeapYear(1900), false);

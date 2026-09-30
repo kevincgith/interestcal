@@ -25,22 +25,34 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-      - run: npm run fetch-rates
+          cache: npm
+      - run: npm ci
+      - name: Fetch rates
+        id: fetch
+        # One source failing must not block the other from updating; the job is failed at the end instead.
+        continue-on-error: true
+        run: npm run fetch-rates
       - run: npm test
       - name: Commit if rates changed
         run: |
-          if git diff --quiet site/rates.json; then
+          if git diff --quiet site/; then
             echo "Rates unchanged."
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -am "Update judgment debt interest rates"
+            git commit -am "Update interest rate data"
             git push
           fi
+      - name: Report fetch failure
+        if: steps.fetch.outcome == 'failure'
+        run: |
+          echo "::error::A rate source failed to update. See the Fetch rates step log."
+          exit 1
 
   deploy:
     needs: refresh-rates
-    if: ${{ !failure() && !cancelled() }}
+    # Deploy even if a rate source failed, so any source that did update still goes live.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -52,6 +64,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+          cache: npm
+      - run: npm ci
       - run: npm test
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4

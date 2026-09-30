@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRatesHtml, validateRates } from '../scripts/parse-rates.mjs';
+import { parseRatesHtml, validateRates } from '../scripts/parse-judiciary.mjs';
 
 const html = `
 <table class="table_width50_50 table-border">

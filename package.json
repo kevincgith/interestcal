@@ -11,5 +11,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

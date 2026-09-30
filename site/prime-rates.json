@@ -1,0 +1,770 @@
+{
+  "source": "https://www.hkma.gov.hk/media/eng/doc/market-data-and-statistics/monthly-statistical-bulletin/T060401.xls",
+  "updatedAt": "2026-09-30",
+  "rates": [
+    {
+      "effective": "2025-10-31",
+      "rate": 5
+    },
+    {
+      "effective": "2025-09-19",
+      "rate": 5.125
+    },
+    {
+      "effective": "2024-12-20",
+      "rate": 5.25
+    },
+    {
+      "effective": "2024-11-11",
+      "rate": 5.375
+    },
+    {
+      "effective": "2024-09-20",
+      "rate": 5.625
+    },
+    {
+      "effective": "2023-07-28",
+      "rate": 5.875
+    },
+    {
+      "effective": "2023-05-05",
+      "rate": 5.75
+    },
+    {
+      "effective": "2022-12-16",
+      "rate": 5.625
+    },
+    {
+      "effective": "2022-11-04",
+      "rate": 5.375
+    },
+    {
+      "effective": "2022-09-23",
+      "rate": 5.125
+    },
+    {
+      "effective": "2019-11-01",
+      "rate": 5
+    },
+    {
+      "effective": "2018-09-28",
+      "rate": 5.125
+    },
+    {
+      "effective": "2008-11-10",
+      "rate": 5
+    },
+    {
+      "effective": "2008-03-20",
+      "rate": 5.25
+    },
+    {
+      "effective": "2008-02-01",
+      "rate": 5.75
+    },
+    {
+      "effective": "2008-01-24",
+      "rate": 6
+    },
+    {
+      "effective": "2007-12-13",
+      "rate": 6.75
+    },
+    {
+      "effective": "2007-11-12",
+      "rate": 7
+    },
+    {
+      "effective": "2007-11-02",
+      "rate": 7.25
+    },
+    {
+      "effective": "2007-09-20",
+      "rate": 7.5
+    },
+    {
+      "effective": "2006-11-07",
+      "rate": 7.75
+    },
+    {
+      "effective": "2006-03-30",
+      "rate": 8
+    },
+    {
+      "effective": "2005-12-15",
+      "rate": 7.75
+    },
+    {
+      "effective": "2005-11-03",
+      "rate": 7.5
+    },
+    {
+      "effective": "2005-09-23",
+      "rate": 7
+    },
+    {
+      "effective": "2005-08-11",
+      "rate": 6.75
+    },
+    {
+      "effective": "2005-07-22",
+      "rate": 6.5
+    },
+    {
+      "effective": "2005-07-05",
+      "rate": 6.25
+    },
+    {
+      "effective": "2005-05-23",
+      "rate": 5.75
+    },
+    {
+      "effective": "2005-03-21",
+      "rate": 5.25
+    },
+    {
+      "effective": "2004-11-12",
+      "rate": 5
+    },
+    {
+      "effective": "2004-09-23",
+      "rate": 5.125
+    },
+    {
+      "effective": "2002-11-08",
+      "rate": 5
+    },
+    {
+      "effective": "2001-12-13",
+      "rate": 5.125
+    },
+    {
+      "effective": "2001-11-08",
+      "rate": 5.25
+    },
+    {
+      "effective": "2001-10-04",
+      "rate": 5.5
+    },
+    {
+      "effective": "2001-09-19",
+      "rate": 6
+    },
+    {
+      "effective": "2001-08-24",
+      "rate": 6.5
+    },
+    {
+      "effective": "2001-07-03",
+      "rate": 6.75
+    },
+    {
+      "effective": "2001-05-21",
+      "rate": 7
+    },
+    {
+      "effective": "2001-04-23",
+      "rate": 7.5
+    },
+    {
+      "effective": "2001-03-26",
+      "rate": 8
+    },
+    {
+      "effective": "2001-02-05",
+      "rate": 8.5
+    },
+    {
+      "effective": "2001-01-08",
+      "rate": 9
+    },
+    {
+      "effective": "2000-05-22",
+      "rate": 9.5
+    },
+    {
+      "effective": "2000-03-27",
+      "rate": 9
+    },
+    {
+      "effective": "2000-02-14",
+      "rate": 8.75
+    },
+    {
+      "effective": "1999-08-30",
+      "rate": 8.5
+    },
+    {
+      "effective": "1999-05-03",
+      "rate": 8.25
+    },
+    {
+      "effective": "1999-04-12",
+      "rate": 8.5
+    },
+    {
+      "effective": "1999-01-11",
+      "rate": 8.75
+    },
+    {
+      "effective": "1998-12-21",
+      "rate": 9
+    },
+    {
+      "effective": "1998-12-07",
+      "rate": 9.25
+    },
+    {
+      "effective": "1998-11-23",
+      "rate": 9.5
+    },
+    {
+      "effective": "1998-10-19",
+      "rate": 9.75
+    },
+    {
+      "effective": "1998-03-30",
+      "rate": 10
+    },
+    {
+      "effective": "1998-01-12",
+      "rate": 10.25
+    },
+    {
+      "effective": "1997-10-24",
+      "rate": 9.5
+    },
+    {
+      "effective": "1997-03-27",
+      "rate": 8.75
+    },
+    {
+      "effective": "1996-02-05",
+      "rate": 8.5
+    },
+    {
+      "effective": "1995-12-27",
+      "rate": 8.75
+    },
+    {
+      "effective": "1995-02-06",
+      "rate": 9
+    },
+    {
+      "effective": "1994-11-21",
+      "rate": 8.5
+    },
+    {
+      "effective": "1994-08-22",
+      "rate": 7.75
+    },
+    {
+      "effective": "1994-05-23",
+      "rate": 7.25
+    },
+    {
+      "effective": "1994-03-28",
+      "rate": 6.75
+    },
+    {
+      "effective": "1992-07-06",
+      "rate": 6.5
+    },
+    {
+      "effective": "1992-05-25",
+      "rate": 7
+    },
+    {
+      "effective": "1992-05-04",
+      "rate": 8
+    },
+    {
+      "effective": "1991-11-04",
+      "rate": 8.5
+    },
+    {
+      "effective": "1991-09-16",
+      "rate": 9
+    },
+    {
+      "effective": "1991-07-01",
+      "rate": 9.5
+    },
+    {
+      "effective": "1991-05-27",
+      "rate": 10.5
+    },
+    {
+      "effective": "1991-01-28",
+      "rate": 9.5
+    },
+    {
+      "effective": "1990-10-22",
+      "rate": 10
+    },
+    {
+      "effective": "1990-08-13",
+      "rate": 10.5
+    },
+    {
+      "effective": "1990-04-02",
+      "rate": 11
+    },
+    {
+      "effective": "1989-08-07",
+      "rate": 10
+    },
+    {
+      "effective": "1989-07-10",
+      "rate": 10.5
+    },
+    {
+      "effective": "1989-06-20",
+      "rate": 11
+    },
+    {
+      "effective": "1989-03-20",
+      "rate": 11.5
+    },
+    {
+      "effective": "1989-03-06",
+      "rate": 11
+    },
+    {
+      "effective": "1989-02-13",
+      "rate": 10.5
+    },
+    {
+      "effective": "1988-12-05",
+      "rate": 10
+    },
+    {
+      "effective": "1988-08-15",
+      "rate": 9.5
+    },
+    {
+      "effective": "1988-07-25",
+      "rate": 9
+    },
+    {
+      "effective": "1988-06-27",
+      "rate": 8.5
+    },
+    {
+      "effective": "1988-06-14",
+      "rate": 8
+    },
+    {
+      "effective": "1988-05-09",
+      "rate": 7.5
+    },
+    {
+      "effective": "1988-04-11",
+      "rate": 6.5
+    },
+    {
+      "effective": "1988-02-15",
+      "rate": 6
+    },
+    {
+      "effective": "1988-01-11",
+      "rate": 5.25
+    },
+    {
+      "effective": "1987-12-07",
+      "rate": 5.5
+    },
+    {
+      "effective": "1987-11-30",
+      "rate": 6
+    },
+    {
+      "effective": "1987-10-28",
+      "rate": 6.5
+    },
+    {
+      "effective": "1987-10-26",
+      "rate": 7.5
+    },
+    {
+      "effective": "1987-10-12",
+      "rate": 8.5
+    },
+    {
+      "effective": "1987-06-22",
+      "rate": 7.5
+    },
+    {
+      "effective": "1987-06-02",
+      "rate": 7
+    },
+    {
+      "effective": "1987-04-07",
+      "rate": 6.5
+    },
+    {
+      "effective": "1987-03-02",
+      "rate": 6
+    },
+    {
+      "effective": "1987-01-15",
+      "rate": 5
+    },
+    {
+      "effective": "1986-08-16",
+      "rate": 6.5
+    },
+    {
+      "effective": "1986-05-12",
+      "rate": 7.5
+    },
+    {
+      "effective": "1986-04-01",
+      "rate": 8
+    },
+    {
+      "effective": "1985-09-02",
+      "rate": 7
+    },
+    {
+      "effective": "1985-07-19",
+      "rate": 6
+    },
+    {
+      "effective": "1985-07-15",
+      "rate": 7
+    },
+    {
+      "effective": "1985-06-24",
+      "rate": 8
+    },
+    {
+      "effective": "1985-05-20",
+      "rate": 8.5
+    },
+    {
+      "effective": "1985-04-22",
+      "rate": 9
+    },
+    {
+      "effective": "1985-04-01",
+      "rate": 9.5
+    },
+    {
+      "effective": "1985-01-28",
+      "rate": 10
+    },
+    {
+      "effective": "1985-01-14",
+      "rate": 10.5
+    },
+    {
+      "effective": "1984-12-24",
+      "rate": 11
+    },
+    {
+      "effective": "1984-11-26",
+      "rate": 11.5
+    },
+    {
+      "effective": "1984-10-29",
+      "rate": 12
+    },
+    {
+      "effective": "1984-10-01",
+      "rate": 13
+    },
+    {
+      "effective": "1984-08-23",
+      "rate": 14
+    },
+    {
+      "effective": "1984-08-03",
+      "rate": 15
+    },
+    {
+      "effective": "1984-07-07",
+      "rate": 17
+    },
+    {
+      "effective": "1984-06-27",
+      "rate": 13.75
+    },
+    {
+      "effective": "1984-05-28",
+      "rate": 12.75
+    },
+    {
+      "effective": "1984-05-10",
+      "rate": 12
+    },
+    {
+      "effective": "1984-04-09",
+      "rate": 11
+    },
+    {
+      "effective": "1984-03-26",
+      "rate": 10
+    },
+    {
+      "effective": "1984-03-12",
+      "rate": 8.5
+    },
+    {
+      "effective": "1984-02-15",
+      "rate": 10
+    },
+    {
+      "effective": "1984-01-30",
+      "rate": 11.5
+    },
+    {
+      "effective": "1984-01-23",
+      "rate": 12.5
+    },
+    {
+      "effective": "1983-11-02",
+      "rate": 13.5
+    },
+    {
+      "effective": "1983-10-27",
+      "rate": 15
+    },
+    {
+      "effective": "1983-09-27",
+      "rate": 16
+    },
+    {
+      "effective": "1983-09-09",
+      "rate": 13
+    },
+    {
+      "effective": "1983-07-25",
+      "rate": 11.5
+    },
+    {
+      "effective": "1983-07-06",
+      "rate": 12.5
+    },
+    {
+      "effective": "1983-05-24",
+      "rate": 13.5
+    },
+    {
+      "effective": "1983-04-20",
+      "rate": 11.5
+    },
+    {
+      "effective": "1982-12-30",
+      "rate": 10.5
+    },
+    {
+      "effective": "1982-11-29",
+      "rate": 11
+    },
+    {
+      "effective": "1982-08-31",
+      "rate": 12
+    },
+    {
+      "effective": "1982-08-23",
+      "rate": 12.5
+    },
+    {
+      "effective": "1982-07-26",
+      "rate": 14
+    },
+    {
+      "effective": "1982-05-31",
+      "rate": 15
+    },
+    {
+      "effective": "1981-12-07",
+      "rate": 16
+    },
+    {
+      "effective": "1981-11-30",
+      "rate": 17
+    },
+    {
+      "effective": "1981-11-16",
+      "rate": 18
+    },
+    {
+      "effective": "1981-11-09",
+      "rate": 19
+    },
+    {
+      "effective": "1981-10-07",
+      "rate": 20
+    },
+    {
+      "effective": "1981-07-21",
+      "rate": 18
+    },
+    {
+      "effective": "1980-12-09",
+      "rate": 17
+    },
+    {
+      "effective": "1980-11-25",
+      "rate": 16
+    },
+    {
+      "effective": "1980-11-11",
+      "rate": 14
+    },
+    {
+      "effective": "1980-11-04",
+      "rate": 13
+    },
+    {
+      "effective": "1980-10-07",
+      "rate": 12
+    },
+    {
+      "effective": "1980-09-09",
+      "rate": 10.5
+    },
+    {
+      "effective": "1980-07-28",
+      "rate": 10
+    },
+    {
+      "effective": "1980-06-23",
+      "rate": 12
+    },
+    {
+      "effective": "1980-06-02",
+      "rate": 13
+    },
+    {
+      "effective": "1980-05-26",
+      "rate": 14.5
+    },
+    {
+      "effective": "1980-03-11",
+      "rate": 16
+    },
+    {
+      "effective": "1979-08-21",
+      "rate": 14.5
+    },
+    {
+      "effective": "1979-04-20",
+      "rate": 13
+    },
+    {
+      "effective": "1979-04-10",
+      "rate": 11.5
+    },
+    {
+      "effective": "1979-03-20",
+      "rate": 11
+    },
+    {
+      "effective": "1979-02-19",
+      "rate": 10.5
+    },
+    {
+      "effective": "1979-01-02",
+      "rate": 9.5
+    },
+    {
+      "effective": "1978-11-09",
+      "rate": 8.75
+    },
+    {
+      "effective": "1978-10-30",
+      "rate": 7.25
+    },
+    {
+      "effective": "1978-07-17",
+      "rate": 6
+    },
+    {
+      "effective": "1978-05-01",
+      "rate": 5.5
+    },
+    {
+      "effective": "1977-04-14",
+      "rate": 4.75
+    },
+    {
+      "effective": "1977-01-08",
+      "rate": 5.5
+    },
+    {
+      "effective": "1976-08-03",
+      "rate": 6
+    },
+    {
+      "effective": "1975-03-08",
+      "rate": 6.5
+    },
+    {
+      "effective": "1975-02-22",
+      "rate": 7.5
+    },
+    {
+      "effective": "1975-02-19",
+      "rate": 8.5
+    },
+    {
+      "effective": "1974-12-16",
+      "rate": 9
+    },
+    {
+      "effective": "1974-12-13",
+      "rate": 9.75
+    },
+    {
+      "effective": "1974-11-28",
+      "rate": 10.5
+    },
+    {
+      "effective": "1974-11-27",
+      "rate": 10.75
+    },
+    {
+      "effective": "1974-11-20",
+      "rate": 11
+    },
+    {
+      "effective": "1974-10-30",
+      "rate": 11.5
+    },
+    {
+      "effective": "1974-07-15",
+      "rate": 12
+    },
+    {
+      "effective": "1974-07-04",
+      "rate": 10.75
+    },
+    {
+      "effective": "1973-09-10",
+      "rate": 9.75
+    },
+    {
+      "effective": "1973-08-20",
+      "rate": 9
+    },
+    {
+      "effective": "1973-06-14",
+      "rate": 8
+    },
+    {
+      "effective": "1973-03-01",
+      "rate": 7.5
+    },
+    {
+      "effective": "1971-10-11",
+      "rate": 7
+    },
+    {
+      "effective": "1971-05-05",
+      "rate": 8
+    }
+  ]
+}

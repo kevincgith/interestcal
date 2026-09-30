@@ -25,12 +25,16 @@ export function parseRatesHtml(html) {
   return rates.sort((a, b) => b.effective.localeCompare(a.effective));
 }
 
-/** Throws if the scrape looks wrong, so a site redesign never overwrites good data. */
-export function validateRates(rates) {
-  if (rates.length < 50) throw new Error(`Only ${rates.length} rates parsed; page layout may have changed`);
+/**
+ * Throws if the scrape looks wrong, so a site redesign never overwrites good data.
+ * @param {{effective: string, rate: number}[]} rates
+ * @param {{minRows?: number, maxRate?: number}} [opts]
+ */
+export function validateRates(rates, { minRows = 50, maxRate = 50 } = {}) {
+  if (rates.length < minRows) throw new Error(`Only ${rates.length} rates parsed; source layout may have changed`);
   const seen = new Set();
   for (const { effective, rate } of rates) {
-    if (!(rate > 0 && rate < 50)) throw new Error(`Implausible rate ${rate} on ${effective}`);
+    if (!(rate > 0 && rate < maxRate)) throw new Error(`Implausible rate ${rate} on ${effective}`);
     const d = new Date(`${effective}T00:00:00Z`);
     if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== effective) {
       throw new Error(`Invalid effective date ${effective}`);

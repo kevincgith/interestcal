@@ -11,12 +11,19 @@
   <main>
     <header>
       <h1>HK Judgment Debt Interest</h1>
-      <p class="muted">Simple interest at the rates published by the
-        <a href="https://www.judiciary.hk/en/court_services_facilities/interest_rate.html" target="_blank" rel="noopener">HK Judiciary</a>.
+      <p class="muted">Simple interest at either the judgment debt rate published by the
+        <a href="https://www.judiciary.hk/en/court_services_facilities/interest_rate.html" target="_blank" rel="noopener">HK Judiciary</a>
+        or the HSBC best lending (prime) rate published by the
+        <a href="https://www.hkma.gov.hk/eng/data-publications-and-research/data-and-statistics/monthly-statistical-bulletin/" target="_blank" rel="noopener">HKMA</a>.
         The start date earns interest and the end date does not. Each day uses a 365-day basis, or 366 in a leap year.</p>
     </header>
 
     <form id="form" class="card" novalidate>
+      <fieldset class="source">
+        <legend>Interest rate</legend>
+        <label class="radio"><input type="radio" name="source" value="judgment" checked> Judgment debt rate (HK Judiciary)</label>
+        <label class="radio"><input type="radio" name="source" value="prime"> HSBC prime rate (HKMA)</label>
+      </fieldset>
       <label>Principal (HK$)
         <input id="principal" type="text" inputmode="decimal" autocomplete="off" required placeholder="135,436.48">
       </label>
@@ -25,6 +32,9 @@
       </label>
       <label>End date
         <input id="end" type="date" required>
+      </label>
+      <label id="marginField" hidden>Margin over prime (% p.a.)
+        <input id="margin" type="text" inputmode="decimal" autocomplete="off" value="0" placeholder="0">
       </label>
       <div class="actions">
         <button type="submit">Calculate</button>
@@ -52,7 +62,7 @@
     </section>
 
     <details class="card">
-      <summary>Rate table <span id="rateMeta" class="muted"></span></summary>
+      <summary><span id="rateTitle">Rate table</span> <span id="rateMeta" class="muted"></span></summary>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Effective date</th><th class="num">Rate (% p.a.)</th></tr></thead>

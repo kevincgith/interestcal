@@ -63,6 +63,10 @@ input {
   background: var(--bg);
   color: var(--text);
 }
+.source { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.source legend { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; padding: 0; }
+label.radio { display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 1rem; }
+label[hidden] { display: none; }
 .actions { grid-column: 1 / -1; display: flex; gap: 12px; }
 
 button {
