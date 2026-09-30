@@ -45,14 +45,14 @@ const SOURCES = {
     file: 'prime-rates.json',
     title: 'HSBC prime rates',
     label: 'HSBC best lending rate (HKMA table 6.4.1)',
-    staleNote: 'Rates come from the HKMA table (updated monthly), cross-checked daily against HSBC’s page.',
+    staleNote: 'Rates come from the HKMA table (updated monthly), cross-checked daily against HSBC’s official prime rate page.',
   },
 };
 
 const CROSS_CHECK = {
-  match: 'Cross-checked daily against HSBC’s published prime rate history: matches.',
-  supplemented: 'Cross-checked daily against HSBC: matches, and newer changes from HSBC (marked “HSBC”) are included.',
-  mismatch: 'Cross-check against HSBC found differences. Check the rates before relying on this calculation.',
+  match: 'Cross-checked daily against HSBC’s official prime rate page: matches.',
+  supplemented: 'Cross-checked daily against HSBC’s official prime rate page: matches, and newer changes from HSBC (marked “HSBC”) are included.',
+  mismatch: 'Cross-check against HSBC’s official prime rate page found differences. Check the rates before relying on this calculation.',
 };
 
 const rateData = {};
@@ -189,6 +189,13 @@ function render(r) {
     warnings.push(warning(`${CROSS_CHECK.mismatch} See the rate table below for details.`));
   }
   $('warnings').replaceChildren(...warnings);
+
+  // Prime: state the HSBC cross-check next to the results (and in the PDF), linking HSBC's official page
+  const cc = rateData[r.source].crossCheck;
+  $('verified').hidden = !cc || cc.status === 'mismatch';
+  if (cc && cc.status !== 'mismatch') {
+    $('verified').replaceChildren(`✓ ${CROSS_CHECK[cc.status]} `, link(cc.source));
+  }
 
   $('summaryPrincipal').textContent = money.format(r.principal);
   $('totalInterest').textContent = money.format(r.totalInterest);
@@ -412,6 +419,9 @@ $('csv').addEventListener('click', () => {
     ['Total Amount Due', money.format(r.totalDue)],
     ['Total No. of Days', r.totalDays],
     ['Link', location.href],
+    ...(rateData[r.source].crossCheck
+      ? [['Cross-check', `${CROSS_CHECK[rateData[r.source].crossCheck.status]} ${rateData[r.source].crossCheck.source}`]]
+      : []),
     [],
     [
       'Period Start', 'Period End', 'No. of Days',

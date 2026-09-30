@@ -14,7 +14,9 @@
       <p class="muted">Simple interest at either the judgment debt rate published by the
         <a href="https://www.judiciary.hk/en/court_services_facilities/interest_rate.html" target="_blank" rel="noopener">HK Judiciary</a>
         or the HSBC best lending (prime) rate published by the
-        <a href="https://www.hkma.gov.hk/eng/data-publications-and-research/data-and-statistics/monthly-statistical-bulletin/" target="_blank" rel="noopener">HKMA</a>.
+        <a href="https://www.hkma.gov.hk/eng/data-publications-and-research/data-and-statistics/monthly-statistical-bulletin/" target="_blank" rel="noopener">HKMA</a>
+        and cross-checked daily against
+        <a href="https://www.hsbc.com.hk/zh-hk/investments/market-information/hk/lending-rate/" target="_blank" rel="noopener">HSBC’s official prime rate page</a>.
         The start date earns interest and the end date does not.
         Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.</p>
     </header>
@@ -70,6 +72,7 @@
         <div><dt>Total amount due</dt><dd id="totalDue"></dd></div>
         <div><dt>Total no. of days</dt><dd id="totalDays"></dd></div>
       </dl>
+      <p id="verified" class="verified" hidden></p>
       <div class="table-wrap">
         <table>
           <thead>
