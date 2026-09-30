@@ -59,7 +59,7 @@ export function calculateInterest({ principal, start, end, rates, spread = 0, ba
   if (!DAY_COUNT_BASES.includes(basis)) throw new Error(`Unknown day count basis: ${basis}`);
 
   const sorted = rates
-    .map((r) => ({ day: toDay(r.effective), rate: (r.rate + spread) / 100 }))
+    .map((r) => ({ day: toDay(r.effective), baseRate: r.rate / 100, rate: (r.rate + spread) / 100 }))
     .sort((a, b) => a.day - b.day);
 
   const periods = [];
@@ -84,7 +84,8 @@ export function calculateInterest({ principal, start, end, rates, spread = 0, ba
         start: fromDay(subStart),
         end: fromDay(subEnd),
         days,
-        rate: sorted[i].rate,
+        baseRate: sorted[i].baseRate, // published rate, before spread
+        rate: sorted[i].rate, // rate applied = baseRate + spread
         yearDays,
         interest,
       });

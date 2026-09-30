@@ -126,6 +126,8 @@ button.secondary { background: transparent; color: var(--accent); }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
 th { font-size: 0.85rem; color: var(--muted); }
+.exports { display: flex; flex-wrap: wrap; gap: 12px; }
+button:disabled { opacity: 0.6; cursor: progress; }
 td.formula { color: var(--muted); font-size: 0.9rem; }
 .num { text-align: right; }
 

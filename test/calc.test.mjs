@@ -92,6 +92,7 @@ test('spread is added to every rate (e.g. prime + 2%)', () => {
     ['2025-10-31', '2025-11-10', 10, 7],
   ]);
   close(r.totalInterest, (100000 * 0.07125 * 30) / 365 + (100000 * 0.07 * 10) / 365);
+  assert.deepEqual(r.periods.map((p) => Number((p.baseRate * 100).toFixed(4))), [5.125, 5]);
 });
 
 test('Actual/365 Fixed uses 365 in a leap year and does not split at year end', () => {

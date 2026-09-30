@@ -1,4 +1,5 @@
 import { calculateInterest } from './calc.js';
+import { buildWorkbook } from './export-xlsx.js';
 
 const $ = (id) => document.getElementById(id);
 const money = new Intl.NumberFormat('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -12,6 +13,12 @@ const fmtDate = (iso) => {
 // At least 3 decimals like the published tables, more only if a spread needs them (e.g. 7.0625%)
 const fmtRate = (r) =>
   `${Number((r * 100).toFixed(6)).toLocaleString('en', { minimumFractionDigits: 3, maximumFractionDigits: 6 })}%`;
+// "5.000% + 1.000% = 6.000%" when a spread applies, otherwise just the rate
+const fmtRateWithSpread = (p, spread) => {
+  if (!spread) return fmtRate(p.rate);
+  const sign = spread < 0 ? '−' : '+';
+  return `${fmtRate(p.baseRate)} ${sign} ${fmtRate(Math.abs(spread) / 100)} = ${fmtRate(p.rate)}`;
+};
 const formula = (principal, p) => `${money.format(principal)} × ${fmtRate(p.rate)} × ${p.days} ÷ ${p.yearDays}`;
 const parseNumber = (s) => Number(s.replace(/[,\s$%]/g, '').replace(/^HK/i, ''));
 
@@ -121,7 +128,7 @@ function render(r) {
   $('periods').replaceChildren(
     ...r.periods.map((p) =>
       row(
-        [fmtDate(p.start), fmtDate(p.end), p.days, fmtRate(p.rate), formula(r.principal, p), money.format(p.interest)],
+        [fmtDate(p.start), fmtDate(p.end), p.days, fmtRateWithSpread(p, r.spread), formula(r.principal, p), money.format(p.interest)],
         ['', '', 'num', 'num', 'formula', 'num'],
       ),
     ),
@@ -204,10 +211,63 @@ $('clear').addEventListener('click', () => {
   showError('');
 });
 
+const rateBasisLabel = (r) => SOURCES[r.source].label + (r.source === 'prime' ? ` + ${r.spread}%` : '');
+const exportName = (r, ext) => `interest_${r.source}_${r.basis.replace('/', '')}_${r.start}_${r.end}.${ext}`;
+
+function download(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 0);
+}
+
+// SheetJS is only needed for the Excel export, so load it on first use.
+let xlsxLoading = null;
+function loadXlsx() {
+  xlsxLoading ??= new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'vendor/xlsx.mini.min.js';
+    script.onload = () => resolve(window.XLSX);
+    script.onerror = () => {
+      xlsxLoading = null;
+      reject(new Error('Could not load the Excel library. Please try again.'));
+    };
+    document.head.append(script);
+  });
+  return xlsxLoading;
+}
+
+$('xlsx').addEventListener('click', async () => {
+  if (!lastResult) return;
+  const r = lastResult;
+  const btn = $('xlsx');
+  btn.disabled = true;
+  try {
+    const XLSX = await loadXlsx();
+    const data = rateData[r.source];
+    const wb = buildWorkbook(XLSX, r, {
+      rateBasis: rateBasisLabel(r),
+      dayCount: BASES[r.basis],
+      ratesTitle: SOURCES[r.source].title,
+      sourceUrl: data.source,
+      updatedAt: data.updatedAt,
+      rates: relevantRates(data.rates, r),
+      formulaText: formula,
+    });
+    const bytes = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), exportName(r, 'xlsx'));
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 $('csv').addEventListener('click', () => {
   if (!lastResult) return;
   const r = lastResult;
-  const rateBasis = SOURCES[r.source].label + (r.source === 'prime' ? ` + ${r.spread}%` : '');
+  const rateBasis = rateBasisLabel(r);
   const lines = [
     ['Rate Basis', rateBasis],
     ['Day Count Basis', BASES[r.basis]],
@@ -218,20 +278,21 @@ $('csv').addEventListener('click', () => {
     ['Total Amount Due', money.format(r.totalDue)],
     ['Total No. of Days', r.totalDays],
     [],
-    ['Period Start', 'Period End', 'No. of Days', 'Interest Rate', 'Year Days', 'Formula', 'Interest Amount'],
+    [
+      'Period Start', 'Period End', 'No. of Days',
+      ...(r.spread ? ['Base Rate', 'Spread'] : []),
+      'Interest Rate', 'Year Days', 'Formula', 'Interest Amount',
+    ],
     ...r.periods.map((p) => [
-      p.start, p.end, p.days, fmtRate(p.rate), p.yearDays, formula(r.principal, p), money.format(p.interest),
+      p.start, p.end, p.days,
+      ...(r.spread ? [fmtRate(p.baseRate), fmtRate(r.spread / 100)] : []),
+      fmtRate(p.rate), p.yearDays, formula(r.principal, p), money.format(p.interest),
     ]),
   ];
   const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
   // BOM so Excel reads the × and ÷ in the formula column as UTF-8
   const csv = '\uFEFF' + lines.map((l) => l.map(cell).join(',')).join('\n') + '\n';
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `interest_${r.source}_${r.basis.replace('/', '')}_${r.start}_${r.end}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), exportName(r, 'csv'));
 });
 
 setDefaultDates();

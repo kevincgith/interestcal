@@ -29,7 +29,9 @@ You can choose one of two rates:
 | Path | Purpose |
 |---|---|
 | `site/calc.js` | The calculation, a pure function ported from the VBA macro |
-| `site/index.html`, `app.js`, `style.css` | Static web UI with a CSV export. Amounts are shown as `xxx,xxx.xx`. |
+| `site/index.html`, `app.js`, `style.css` | Static web UI. Amounts are shown as `xxx,xxx.xx`, and a spread is shown as `base + spread = rate`. |
+| `site/export-xlsx.js` | Excel export. The **Calculation** sheet has live formulas (days, base + spread, `principal × rate × days ÷ year days`, totals). The **Rates** sheet has the source URL and the rates used. A CSV export is also available. |
+| `site/vendor/xlsx.mini.min.js` | SheetJS 0.20.3 mini build (Apache-2.0), loaded only when you click Download Excel. It's copied from `node_modules/xlsx/dist/`. |
 | `site/rates.json` | Judgment debt rates scraped from the Judiciary site |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |
 | `scripts/fetch-rates.mjs` | Fetches and validates both sources, and rewrites a JSON file only when its rates change |
@@ -37,7 +39,7 @@ You can choose one of two rates:
 | `test/` | Tests, including the workbook's saved example (HK$135,436.48, 24 Nov 2025 → 20 Apr 2026 = HK$4,434.64) |
 | `.github/workflows/pages.yml` | Refreshes the rates daily and deploys to GitHub Pages |
 
-The website itself has no dependencies and no build step. The rate updater uses [SheetJS](https://sheetjs.com) to read the HKMA `.xls` file. You need Node 20 or later to run the tests and the updater.
+The website has no build step. [SheetJS](https://sheetjs.com) is used by the rate updater to read the HKMA `.xls` file, and by the page's Excel export through the vendored build. You need Node 20 or later to run the tests and the updater.
 
 ## Development
 
