@@ -43,8 +43,12 @@
           <option value="period">Round each period</option>
         </select>
       </label>
-      <label id="fixedField" hidden>Fixed rate (% p.a.)
-        <input id="fixedRate" type="text" inputmode="decimal" autocomplete="off" value="8" placeholder="8">
+      <label id="fixedField" for="fixedRate" hidden>Fixed rate (% p.a.)
+        <div class="stepper">
+          <button type="button" class="step" data-step="-1" aria-label="Decrease fixed rate by 1%">−</button>
+          <input id="fixedRate" type="text" inputmode="decimal" autocomplete="off" value="8" placeholder="8" data-min="0">
+          <button type="button" class="step" data-step="1" aria-label="Increase fixed rate by 1%">+</button>
+        </div>
       </label>
       <label id="spreadField" for="spread" hidden>Spread over prime (% p.a.)
         <div class="stepper">
@@ -89,7 +93,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Period start</th><th>Period end</th><th class="num">Days</th><th class="num">Rate</th><th>Formula: principal × rate × days ÷ year days</th><th class="num">Interest</th></tr>
+            <tr><th>Period start</th><th>Period end</th><th>Days</th><th>Rate</th><th>Formula: principal × rate × days ÷ year days</th><th>Interest</th></tr>
           </thead>
           <tbody id="periods"></tbody>
         </table>
@@ -100,7 +104,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Date</th><th class="num">Amount</th><th class="num">To interest</th><th class="num">To principal</th><th class="num">Principal after</th><th class="num">Unpaid interest after</th></tr>
+              <tr><th>Date</th><th>Amount</th><th>To interest</th><th>To principal</th><th>Principal after</th><th>Unpaid interest after</th></tr>
             </thead>
             <tbody id="paymentsTable"></tbody>
           </table>
@@ -122,7 +126,7 @@
         <span id="relevantHint" class="muted">(calculate first)</span></label>
       <div class="table-wrap">
         <table>
-          <thead><tr><th aria-sort="descending"><button type="button" class="sort" data-key="effective">Effective date <span class="arrow">▼</span></button></th><th class="num" aria-sort="none"><button type="button" class="sort" data-key="rate">Rate (% p.a.) <span class="arrow"></span></button></th></tr></thead>
+          <thead><tr><th aria-sort="descending"><button type="button" class="sort" data-key="effective">Effective date <span class="arrow">▼</span></button></th><th aria-sort="none"><button type="button" class="sort" data-key="rate">Rate (% p.a.) <span class="arrow"></span></button></th></tr></thead>
           <tbody id="rates"></tbody>
         </table>
       </div>
@@ -137,6 +141,12 @@
         or a fixed rate, with optional partial payments.
         The start date earns interest and the end date does not.
         Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.</p>
+      <p class="license">
+        © 2026 kevincgith · Free to use, copy and modify under the
+        <a href="https://github.com/kevincgith/interestcal/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>.
+        Provided as is, without warranty; check results before relying on them. ·
+        <a href="https://github.com/kevincgith/interestcal" target="_blank" rel="noopener">Source code on GitHub</a>
+      </p>
     </footer>
   </main>
   <script type="module" src="app.js?v=__BUILD__"></script>

@@ -63,6 +63,7 @@ const CROSS_CHECK = {
 };
 
 const HSBC_PAGE = 'HSBC’s official prime rate page';
+const crossCheckTick = (cc) => (cc.status === 'mismatch' ? '' : '✓ ');
 
 // A fixed rate has no published table: it is one rate from the start of time. Published sources are in SOURCES.
 const FIXED_FROM = '1900-01-01';
@@ -149,8 +150,9 @@ function renderRateSource(key) {
   lines.push(src);
   if (data.crossCheck) {
     const cc = document.createElement('p');
-    cc.className = data.crossCheck.status === 'mismatch' ? 'warning' : '';
-    cc.append(...crossCheckLine(data.crossCheck));
+    const ok = data.crossCheck.status !== 'mismatch';
+    cc.className = ok ? 'checked' : 'warning';
+    cc.append(...(ok ? ['✓ '] : []), ...crossCheckLine(data.crossCheck));
     lines.push(cc);
     for (const note of data.crossCheck.status === 'mismatch' ? data.crossCheck.notes : []) lines.push(warning(note));
   }
@@ -482,12 +484,15 @@ $('principal').addEventListener('blur', () => {
   if ($('principal').value.trim() && Number.isFinite(n)) $('principal').value = money.format(n);
 });
 
-// +1 / -1 buttons for the spread; keeps any decimals the user typed (1.5 -> 2.5)
+// +1 / -1 buttons for the spread and the fixed rate; keeps any decimals typed (1.5 -> 2.5).
+// An input with data-min (the fixed rate) never goes below it.
 document.querySelectorAll('.stepper .step').forEach((btn) =>
   btn.addEventListener('click', () => {
-    const current = parseNumber($('spread').value || '0');
-    const next = (Number.isFinite(current) ? current : 0) + Number(btn.dataset.step);
-    $('spread').value = String(Number(next.toFixed(6)));
+    const input = btn.closest('.stepper').querySelector('input');
+    const current = parseNumber(input.value || '0');
+    let next = (Number.isFinite(current) ? current : 0) + Number(btn.dataset.step);
+    if (input.dataset.min !== undefined) next = Math.max(Number(input.dataset.min), next);
+    input.value = String(Number(next.toFixed(6)));
     markStale();
   }),
 );
@@ -622,7 +627,10 @@ $('xlsx').addEventListener('click', () => {
             ratesTitle: SOURCES[r.source].title,
             sourceUrl: data.source,
             updatedAt: asAt(r.source),
-            crossCheck: data.crossCheck && { ...data.crossCheck, summary: CROSS_CHECK[data.crossCheck.status] },
+            crossCheck: data.crossCheck && {
+        ...data.crossCheck,
+        summary: crossCheckTick(data.crossCheck) + CROSS_CHECK[data.crossCheck.status],
+      },
             rates: sortRates(relevantRates(data.rates, r)),
           }),
     });
@@ -642,7 +650,7 @@ $('pdf').addEventListener('click', () => {
     const doc = buildPdf(lib, r, {
       inputs: printInputItems(r),
       warnings: [...$('warnings').querySelectorAll('.warning')].map((el) => el.textContent),
-      crossCheck: cc && cc.status !== 'mismatch' ? { text: CROSS_CHECK[cc.status], linkText: HSBC_PAGE, url: cc.source } : null,
+      crossCheck: cc && cc.status !== 'mismatch' ? { text: CROSS_CHECK[cc.status], linkText: HSBC_PAGE, url: cc.source, tick: true } : null,
       summaryLine: latestRateLine(r),
       perDiem: perDiemText(r),
       allocation: `Payments applied ${ALLOCATIONS[r.allocation].toLowerCase()}.`,
@@ -685,7 +693,7 @@ $('csv').addEventListener('click', () => {
     ['Interest Per Day After End Date', perDiemText(r)],
     ...(isFixed(r) ? [] : [['Rates As At', asAt(r.source)]]),
     ...(rateData[r.source]?.crossCheck
-      ? [['Cross-check', `${CROSS_CHECK[rateData[r.source].crossCheck.status]} ${rateData[r.source].crossCheck.source}`]]
+      ? [['Cross-check', `${crossCheckTick(rateData[r.source].crossCheck)}${CROSS_CHECK[rateData[r.source].crossCheck.status]} ${rateData[r.source].crossCheck.source}`]]
       : []),
     [],
     [

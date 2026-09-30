@@ -57,15 +57,21 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
   };
 
   // A sentence with one phrase as a clickable link (the phrase text is shown, never the URL)
-  const linkedLine = ({ text, linkText, url }, size = 9) => {
+  // tick: a check mark drawn with the standard ZapfDingbats font (Helvetica has no ✓ glyph)
+  const linkedLine = ({ text, linkText, url, tick = false }, size = 9) => {
+    let x = MARGIN;
+    if (tick) {
+      doc.setFont('zapfdingbats', 'normal').setFontSize(size).setTextColor(34, 139, 34);
+      doc.text('4', x, y + size); // "4" is the check mark in ZapfDingbats
+      x += doc.getTextWidth('4') + 4;
+    }
     doc.setFont('helvetica', 'normal').setFontSize(size).setTextColor(20);
     if (!linkText) {
-      doc.text(pdfText(text), MARGIN, y + size);
+      doc.text(pdfText(text), x, y + size);
       y += size + 8;
       return;
     }
     const [before, after = ''] = pdfText(text).split(pdfText(linkText));
-    let x = MARGIN;
     doc.text(before, x, y + size);
     x += doc.getTextWidth(before);
     doc.setTextColor(31, 95, 139);
@@ -134,9 +140,6 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
       4: { textColor: MUTED, fontSize: 8 },
       5: { halign: 'right', cellWidth: 62 },
     },
-    didParseCell: ({ section, column, cell }) => {
-      if (section === 'head' && [2, 3, 5].includes(column.index)) cell.styles.halign = 'right';
-    },
   });
 
   // ---- Payments ----
@@ -158,9 +161,6 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
         fmt.money(p.unpaidInterestAfter),
       ]),
       columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
-      didParseCell: ({ section, column, cell }) => {
-        if (section === 'head' && column.index > 0) cell.styles.halign = 'right';
-      },
     });
   }
 
@@ -181,9 +181,6 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
       head: [['Effective date', 'Rate (% p.a.)', ...(withSource ? ['Source'] : [])]],
       body: ctx.rates.map((rt) => [fmt.date(rt.effective), rt.rate.toFixed(3), ...(withSource ? [rt.source ?? 'HKMA'] : [])]),
       columnStyles: { 1: { halign: 'right' } },
-      didParseCell: ({ section, column, cell }) => {
-        if (section === 'head' && column.index === 1) cell.styles.halign = 'right';
-      },
     });
   }
 

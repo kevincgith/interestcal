@@ -51,7 +51,7 @@ test('form fields share one height and never overlap; no sideways scrolling', as
   await page.goto('?src=prime&pay=2026-03-01:1000');
   const ids = ['principal', 'start', 'end', 'basis', 'rounding'];
   const boxes = await Promise.all(ids.map((id) => page.locator(`#${id}`).boundingBox()));
-  boxes.push(await page.locator('.stepper').boundingBox());
+  boxes.push(await page.locator('#spreadField .stepper').boundingBox());
   for (const sel of ['.pay-date', '.pay-amount', '.payment-row .remove']) boxes.push(await page.locator(sel).boundingBox());
 
   const heights = boxes.map((b) => Math.round(b.height));
@@ -140,4 +140,29 @@ test('a half-filled payment row shows an error instead of calculating', async ({
   await page.getByLabel('Payment amount').fill('5000');
   await page.getByRole('button', { name: 'Calculate' }).click();
   await expect(page.locator('#error')).toHaveText('Payment 1: enter a date and an amount above 0.');
+});
+
+test('fixed rate has +/- buttons that stop at 0', async ({ page }) => {
+  await page.goto('?src=fixed&rate=1.5&p=365000&from=2026-01-01&to=2026-02-01');
+  const rate = page.locator('#fixedRate');
+  await page.getByRole('button', { name: 'Increase fixed rate by 1%' }).click();
+  await expect(rate).toHaveValue('2.5');
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Decrease fixed rate by 1%' }).click();
+  await expect(rate).toHaveValue('0');
+  await expect(page.locator('#staleNote')).toBeVisible();
+});
+
+test('prime cross-check line carries a tick; column headers are left-aligned', async ({ page }) => {
+  await page.goto('?src=prime&p=1000000&from=2026-01-01&to=2026-09-30&spread=1');
+  await page.locator('#rateCard summary').click();
+  await expect(page.locator('#rateSource p.checked')).toHaveText(/^✓ Cross-checked daily against HSBC’s official prime rate page: matches\.$/);
+  const aligns = await page.locator('th').evaluateAll((ths) => ths.map((th) => getComputedStyle(th).textAlign));
+  expect(new Set(aligns)).toEqual(new Set(['left']));
+});
+
+test('footer shows the licence and links to the GitHub repo', async ({ page }) => {
+  await page.goto('./');
+  const footer = page.locator('footer.about');
+  await expect(footer.getByRole('link', { name: 'MIT License' })).toHaveAttribute('href', 'https://github.com/kevincgith/interestcal/blob/main/LICENSE');
+  await expect(footer.getByRole('link', { name: 'Source code on GitHub' })).toHaveAttribute('href', 'https://github.com/kevincgith/interestcal');
 });
