@@ -4,46 +4,74 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseRatesHtml, validateRates } from './parse-judiciary.mjs';
 import { parsePrimeXls } from './parse-prime.mjs';
+import { HSBC_URL, parseHsbcHtml, crossCheckPrime } from './parse-hsbc.mjs';
 
 const HEADERS = { 'User-Agent': 'Mozilla/5.0 (interestcal rate updater)' };
+
+async function get(url) {
+  const res = await fetch(url, { headers: HEADERS });
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
+  return res;
+}
 
 const SOURCES = [
   {
     name: 'Judgment debt rates',
     url: 'https://www.judiciary.hk/en/court_services_facilities/interest_rate.html',
     out: 'rates.json',
-    parse: async (res) => parseRatesHtml(await res.text()),
+    parse: async (res) => ({ rates: parseRatesHtml(await res.text()) }),
     validate: { minRows: 50, maxRate: 50 },
   },
   {
     name: 'HSBC prime rates',
     url: 'https://www.hkma.gov.hk/media/eng/doc/market-data-and-statistics/monthly-statistical-bulletin/T060401.xls',
     out: 'prime-rates.json',
-    parse: async (res) => parsePrimeXls(Buffer.from(await res.arrayBuffer())),
     validate: { minRows: 100, maxRate: 30 },
+    // HKMA is the full history; HSBC's own page cross-checks it and fills the HKMA's monthly lag.
+    async parse(res, previous) {
+      const hkma = parsePrimeXls(Buffer.from(await res.arrayBuffer()));
+      validateRates(hkma, this.validate);
+      try {
+        const hsbc = parseHsbcHtml(await (await get(HSBC_URL)).text());
+        const { rates, crossCheck } = crossCheckPrime(hkma, hsbc);
+        const warnings = crossCheck.status === 'mismatch' ? crossCheck.notes.map((n) => `HSBC cross-check mismatch: ${n}`) : [];
+        return { rates, meta: { crossCheck }, warnings };
+      } catch (err) {
+        // HSBC unreachable or redesigned: keep HKMA data and the last known cross-check result
+        return {
+          rates: hkma,
+          meta: previous?.crossCheck ? { crossCheck: previous.crossCheck } : {},
+          warnings: [`HSBC cross-check failed: ${err.message}`],
+        };
+      }
+    },
   },
 ];
 
-async function update({ name, url, out, parse, validate }) {
-  const res = await fetch(url, { headers: HEADERS });
-  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
-  const rates = await parse(res);
-  validateRates(rates, validate);
-
+async function update(source) {
+  const { name, url, out } = source;
   const file = new URL(`../site/${out}`, import.meta.url);
   let previous = null;
   try {
     previous = JSON.parse(await readFile(file, 'utf8'));
   } catch {}
 
+  const { rates, meta = {}, warnings = [] } = await source.parse(await get(url), previous);
+  validateRates(rates, source.validate);
+
   const latest = `${rates.length} rates, latest ${rates[0].effective} @ ${rates[0].rate}%`;
-  if (previous && JSON.stringify(previous.rates) === JSON.stringify(rates)) {
+  const content = { rates, ...meta };
+  const unchanged = previous && JSON.stringify({ rates: previous.rates, crossCheck: previous.crossCheck }) ===
+    JSON.stringify({ rates: content.rates, crossCheck: content.crossCheck });
+  if (unchanged) {
     console.log(`${name}: no change (${latest}).`);
-    return;
+  } else {
+    const data = { source: url, updatedAt: new Date().toISOString().slice(0, 10), ...content };
+    await writeFile(file, JSON.stringify(data, null, 2) + '\n');
+    console.log(`${name}: updated (${latest}).`);
   }
-  const data = { source: url, updatedAt: new Date().toISOString().slice(0, 10), rates };
-  await writeFile(file, JSON.stringify(data, null, 2) + '\n');
-  console.log(`${name}: updated (${latest}).`);
+  if (meta.crossCheck) console.log(`${name}: HSBC cross-check ${meta.crossCheck.status}.`);
+  if (warnings.length) throw new Error(warnings.join('\n  '));
 }
 
 for (const source of SOURCES) {

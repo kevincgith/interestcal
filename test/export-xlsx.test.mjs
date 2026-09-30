@@ -18,6 +18,8 @@ function roundTrip(result, rates, source) {
   const wb = buildWorkbook(XLSX, { ...result, source }, {
     rateBasis: 'test basis',
     dayCount: 'Actual/Actual',
+    rounding: 'test rounding',
+    link: 'https://example.com/?p=1',
     ratesTitle: 'Test rates',
     sourceUrl: 'https://example.com/rates',
     updatedAt: '2026-09-30',
@@ -59,6 +61,18 @@ test('Excel export: calculation sheet with live formulas, rates sheet with sourc
   assert.equal(out.Sheets.Rates[`B${src + 1}`].l.Target, 'https://example.com/rates');
   const rh = findRow(rates, 'Effective Date');
   assert.deepEqual(rates.slice(rh + 1).map((x) => x[1]), [0.08, 0.08107, 0.0825]);
+});
+
+test('Excel export rounding each period uses ROUND in the interest formula', () => {
+  const r = calculateInterest({ principal: 135436.48, start: '2025-11-24', end: '2026-04-20', rates: judgment, rounding: 'period' });
+  const { out, rows } = roundTrip(r, judgment, 'judgment');
+  const calc = rows('Calculation');
+  const first = findRow(calc, 'Period Start') + 2;
+  assert.match(out.Sheets.Calculation[`G${first}`].f, /^ROUND\(.*,2\)$/);
+  assert.equal(out.Sheets.Calculation[`G${first}`].v, 1163.27);
+  assert.equal(calc[findRow(calc, 'Rounding')][1], 'test rounding');
+  const linkRow = findRow(calc, 'Link to this calculation');
+  assert.equal(out.Sheets.Calculation[`B${linkRow + 1}`].l.Target, 'https://example.com/?p=1');
 });
 
 test('Excel export with a spread: base rate + spread = interest rate as a formula', () => {

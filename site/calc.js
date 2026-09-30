@@ -36,6 +36,10 @@ export function isLeapYear(y) {
 }
 
 export const DAY_COUNT_BASES = ['act/act', 'act/365', 'act/360'];
+export const ROUNDING = ['total', 'period'];
+
+/** Round to cents, half away from zero (same as Excel ROUND). toPrecision strips float noise like 100.49999999999999. */
+export const round2 = (x) => (Math.sign(x) * Math.round(Number((Math.abs(x) * 100).toPrecision(15)))) / 100;
 
 const yearOf = (day) => new Date(day * MS_PER_DAY).getUTCFullYear();
 const jan1 = (y) => Date.UTC(y, 0, 1) / MS_PER_DAY;
@@ -48,8 +52,10 @@ const jan1 = (y) => Date.UTC(y, 0, 1) / MS_PER_DAY;
  * @param {{effective: string, rate: number}[]} input.rates  rate in % per annum (8.107 = 8.107%)
  * @param {number} [input.spread]  % per annum added to every rate, e.g. 2 for "prime + 2%"
  * @param {'act/act' | 'act/365' | 'act/360'} [input.basis]  day count basis
+ * @param {'total' | 'period'} [input.rounding]  'total': add unrounded period amounts, round only for display;
+ *   'period': round each period's interest to cents, total = sum of the rounded amounts
  */
-export function calculateInterest({ principal, start, end, rates, spread = 0, basis = 'act/act' }) {
+export function calculateInterest({ principal, start, end, rates, spread = 0, basis = 'act/act', rounding = 'total' }) {
   if (!Number.isFinite(principal)) throw new Error('Principal must be a number');
   const loanStart = toDay(start);
   const loanEnd = toDay(end);
@@ -57,6 +63,7 @@ export function calculateInterest({ principal, start, end, rates, spread = 0, ba
   if (!rates?.length) throw new Error('No interest rates available');
   if (!Number.isFinite(spread)) throw new Error('Spread must be a number');
   if (!DAY_COUNT_BASES.includes(basis)) throw new Error(`Unknown day count basis: ${basis}`);
+  if (!ROUNDING.includes(rounding)) throw new Error(`Unknown rounding: ${rounding}`);
 
   const sorted = rates
     .map((r) => ({ day: toDay(r.effective), baseRate: r.rate / 100, rate: (r.rate + spread) / 100 }))
@@ -78,7 +85,8 @@ export function calculateInterest({ principal, start, end, rates, spread = 0, ba
       const subEnd = basis === 'act/act' ? Math.min(jan1(year + 1), calcEnd) : calcEnd;
       const days = subEnd - subStart;
       const yearDays = basis === 'act/360' ? 360 : basis === 'act/365' ? 365 : isLeapYear(year) ? 366 : 365;
-      const interest = (principal * sorted[i].rate * days) / yearDays;
+      const exact = (principal * sorted[i].rate * days) / yearDays;
+      const interest = rounding === 'period' ? round2(exact) : exact;
 
       periods.push({
         start: fromDay(subStart),
@@ -95,6 +103,9 @@ export function calculateInterest({ principal, start, end, rates, spread = 0, ba
     }
   }
 
+  // Adding rounded cents in floating point can leave dust (e.g. 0.30000000000000004)
+  if (rounding === 'period') totalInterest = round2(totalInterest);
+
   // Days before the earliest known rate earn nothing; report them rather than hide them.
   const uncoveredDays = Math.max(0, Math.min(loanEnd, sorted[0].day) - loanStart);
 
@@ -104,6 +115,7 @@ export function calculateInterest({ principal, start, end, rates, spread = 0, ba
     end,
     spread,
     basis,
+    rounding,
     periods,
     totalInterest,
     totalDue: principal + totalInterest,

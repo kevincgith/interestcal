@@ -26,6 +26,7 @@ const text = (v) => ({ t: 's', v });
 const num = (v, z) => ({ t: 'n', v, ...(z && { z }) });
 const date = (iso) => num(serial(iso), DATE);
 const formula = (f, v, z) => ({ t: 'n', f, v, ...(z && { z }) });
+const hyperlink = (url) => ({ t: 's', v: url, l: { Target: url } });
 
 function sheetFrom(XLSX, rows, widths) {
   const ws = {};
@@ -48,6 +49,9 @@ function sheetFrom(XLSX, rows, widths) {
  * @param {object} ctx
  * @param {string} ctx.rateBasis     e.g. "HSBC best lending rate (HKMA table 6.4.1) + 1%"
  * @param {string} ctx.dayCount      e.g. "Actual/Actual"
+ * @param {string} ctx.rounding      rounding description
+ * @param {string} [ctx.link]        shareable link that reopens this calculation
+ * @param {{status: string, summary: string, source: string, notes: string[]}} [ctx.crossCheck]  HSBC cross-check (prime)
  * @param {string} ctx.ratesTitle    e.g. "HSBC prime rates"
  * @param {string} ctx.sourceUrl
  * @param {string} ctx.updatedAt     "YYYY-MM-DD"
@@ -57,18 +61,20 @@ function sheetFrom(XLSX, rows, widths) {
 export function buildWorkbook(XLSX, r, ctx) {
   // ---- Sheet 1: Calculation ----
   const rows = [
-    [text('HK Judgment Debt Interest')],
+    [text('HK Interest Calculator')],
     [],
     ['Rate basis', ctx.rateBasis],
   ];
   if (r.source === 'prime') rows.push(['Spread over prime (% p.a.)', num(r.spread)]);
   rows.push(['Day count basis', ctx.dayCount]);
+  rows.push(['Rounding', ctx.rounding]);
 
   const principalRow = rows.length; // 0-based
   const P = `$B$${principalRow + 1}`;
   rows.push(['Principal (HK$)', num(r.principal, MONEY)]);
   rows.push(['Start date', date(r.start)]);
   rows.push(['End date (does not earn interest)', date(r.end)]);
+  if (ctx.link) rows.push(['Link to this calculation', hyperlink(ctx.link)]);
 
   const totalsRow = rows.length;
   // Placeholders; filled once we know where the period table lands
@@ -102,7 +108,13 @@ export function buildWorkbook(XLSX, r, ctx) {
       ...rate,
       num(p.yearDays),
       ctx.formulaText(r.principal, p),
-      formula(`${P}*${RATE}${n}*${DAYS}${n}/${YEAR}${n}`, p.interest, MONEY),
+      formula(
+        r.rounding === 'period'
+          ? `ROUND(${P}*${RATE}${n}*${DAYS}${n}/${YEAR}${n},2)`
+          : `${P}*${RATE}${n}*${DAYS}${n}/${YEAR}${n}`,
+        p.interest,
+        MONEY,
+      ),
     ]);
   });
   const last = first + r.periods.length - 1;
@@ -119,17 +131,25 @@ export function buildWorkbook(XLSX, r, ctx) {
   const rateRows = [
     [text(`${ctx.ratesTitle} used in this calculation`)],
     [],
-    ['Source', { t: 's', v: ctx.sourceUrl, l: { Target: ctx.sourceUrl } }],
+    ['Source', hyperlink(ctx.sourceUrl)],
     ['Rates last updated', date(ctx.updatedAt)],
     ['Calculation period', `${fmtDate(r.start)} to ${fmtDate(r.end)} (end date excluded)`],
   ];
+  if (ctx.crossCheck) {
+    rateRows.push(['Cross-check', ctx.crossCheck.summary], ['', hyperlink(ctx.crossCheck.source)]);
+    ctx.crossCheck.notes.forEach((note) => rateRows.push(['', note]));
+  }
   if (r.source === 'prime') {
     rateRows.push(['Note', `A spread of ${r.spread}% p.a. is added to these rates in the calculation.`]);
   }
-  rateRows.push([], ['Effective Date', 'Rate (% p.a.)']);
-  ctx.rates.forEach((rt) => rateRows.push([date(rt.effective), num(tidy(rt.rate / 100), PCT)]));
+  // Rates added from HSBC (not yet in the HKMA table) are labelled in a Source column
+  const withSource = ctx.rates.some((rt) => rt.source);
+  rateRows.push([], ['Effective Date', 'Rate (% p.a.)', ...(withSource ? ['Source'] : [])]);
+  ctx.rates.forEach((rt) =>
+    rateRows.push([date(rt.effective), num(tidy(rt.rate / 100), PCT), ...(withSource ? [rt.source ?? 'HKMA'] : [])]),
+  );
 
-  const rates = sheetFrom(XLSX, rateRows, [20, 100]);
+  const rates = sheetFrom(XLSX, rateRows, withSource ? [20, 100, 10] : [20, 100]);
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, calc, 'Calculation');

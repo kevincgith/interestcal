@@ -21,11 +21,17 @@ const fmtRateWithSpread = (p, spread) => {
 };
 const formula = (principal, p) => `${money.format(principal)} × ${fmtRate(p.rate)} × ${p.days} ÷ ${p.yearDays}`;
 const parseNumber = (s) => Number(s.replace(/[,\s$%]/g, '').replace(/^HK/i, ''));
+const isIsoDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s ?? '');
 
 const BASES = {
   'act/act': 'Actual/Actual',
   'act/365': 'Actual/365',
   'act/360': 'Actual/360',
+};
+
+const ROUNDINGS = {
+  total: 'Round the total only (periods added unrounded)',
+  period: 'Round each period to cents, then add',
 };
 
 const SOURCES = {
@@ -39,8 +45,14 @@ const SOURCES = {
     file: 'prime-rates.json',
     title: 'HSBC prime rates',
     label: 'HSBC best lending rate (HKMA table 6.4.1)',
-    staleNote: 'The HKMA table is updated monthly, so a very recent HSBC change may not be included yet.',
+    staleNote: 'Rates come from the HKMA table (updated monthly), cross-checked daily against HSBC’s page.',
   },
+};
+
+const CROSS_CHECK = {
+  match: 'Cross-checked daily against HSBC’s published prime rate history: matches.',
+  supplemented: 'Cross-checked daily against HSBC: matches, and newer changes from HSBC (marked “HSBC”) are included.',
+  mismatch: 'Cross-check against HSBC found differences. Check the rates before relying on this calculation.',
 };
 
 const rateData = {};
@@ -65,6 +77,31 @@ function relevantRates(rates, { start, end }) {
   return rates.filter((r) => r.effective >= inForceAtStart && r.effective < end);
 }
 
+function link(url) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.textContent = url;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  return a;
+}
+
+function renderRateSource(key) {
+  const data = rateData[key];
+  const lines = [];
+  const src = document.createElement('p');
+  src.append('Source: ', link(data.source));
+  lines.push(src);
+  if (data.crossCheck) {
+    const cc = document.createElement('p');
+    cc.className = data.crossCheck.status === 'mismatch' ? 'warning' : '';
+    cc.append(CROSS_CHECK[data.crossCheck.status] ?? '', ' ', link(data.crossCheck.source));
+    lines.push(cc);
+    for (const note of data.crossCheck.status === 'mismatch' ? data.crossCheck.notes : []) lines.push(warning(note));
+  }
+  $('rateSource').replaceChildren(...lines);
+}
+
 function renderRateTable() {
   const key = currentSource();
   const data = rateData[key];
@@ -79,8 +116,9 @@ function renderRateTable() {
     ? `(${shown.length} of ${data.rates.length} rates, used from ${fmtDate(lastResult.start)} to ${fmtDate(lastResult.end)})`
     : `(${data.rates.length} rates, latest effective ${fmtDate(data.rates[0].effective)}, updated ${fmtDate(data.updatedAt)})`;
   $('rates').replaceChildren(
-    ...shown.map((r) => row([fmtDate(r.effective), r.rate.toFixed(3)], ['', 'num'])),
+    ...shown.map((r) => row([fmtDate(r.effective) + (r.source ? ` (${r.source})` : ''), r.rate.toFixed(3)], ['', 'num'])),
   );
+  renderRateSource(key);
 }
 
 function row(cells, classes = []) {
@@ -106,6 +144,34 @@ function warning(text) {
   return p;
 }
 
+const rateBasisLabel = (r) =>
+  SOURCES[r.source].label + (r.source === 'prime' && r.spread ? ` ${r.spread < 0 ? '−' : '+'} ${Math.abs(r.spread)}%` : '');
+
+// Inputs block, shown only when printing / saving as PDF (the form itself is hidden there)
+function renderPrintInputs(r) {
+  const items = [
+    ['Interest rate', rateBasisLabel(r)],
+    ['Principal (HK$)', money.format(r.principal)],
+    ['Start date', fmtDate(r.start)],
+    ['End date (does not earn interest)', fmtDate(r.end)],
+    ['Day count basis', BASES[r.basis]],
+    ['Rounding', ROUNDINGS[r.rounding]],
+    ['Calculated on', fmtDate(new Date().toLocaleDateString('en-CA'))],
+    ['Link', location.href],
+  ];
+  $('printInputs').replaceChildren(
+    ...items.map(([k, v]) => {
+      const div = document.createElement('div');
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+      dt.textContent = k;
+      dd.textContent = v;
+      div.append(dt, dd);
+      return div;
+    }),
+  );
+}
+
 function render(r) {
   const warnings = [];
   if (r.uncoveredDays > 0) {
@@ -118,6 +184,9 @@ function render(r) {
     warnings.push(warning(
       `Days on or after ${fmtDate(r.latestRateDate)} use the latest published rate. ${SOURCES[r.source].staleNote}`,
     ));
+  }
+  if (rateData[r.source].crossCheck?.status === 'mismatch') {
+    warnings.push(warning(`${CROSS_CHECK.mismatch} See the rate table below for details.`));
   }
   $('warnings').replaceChildren(...warnings);
 
@@ -135,7 +204,61 @@ function render(r) {
   );
   $('results').hidden = false;
   renderRateTable();
+  renderPrintInputs(r);
 }
+
+// ---- Shareable links: the inputs live in the URL, e.g. ?src=prime&p=1000000&from=2026-01-01&to=2026-09-30&spread=1 ----
+
+function writeQuery(r) {
+  const q = new URLSearchParams({ src: r.source, p: String(r.principal), from: r.start, to: r.end, basis: r.basis, round: r.rounding });
+  if (r.source === 'prime') q.set('spread', String(r.spread));
+  history.replaceState(null, '', `${location.pathname}?${q}`);
+}
+
+function readQuery() {
+  const q = new URLSearchParams(location.search);
+  const src = q.get('src');
+  if (src in SOURCES) document.querySelector(`input[name="source"][value="${src}"]`).checked = true;
+  const p = Number(q.get('p'));
+  if (q.has('p') && Number.isFinite(p)) $('principal').value = money.format(p);
+  if (isIsoDate(q.get('from'))) $('start').value = q.get('from');
+  if (isIsoDate(q.get('to'))) $('end').value = q.get('to');
+  if (q.get('basis') in BASES) $('basis').value = q.get('basis');
+  if (q.get('round') in ROUNDINGS) $('rounding').value = q.get('round');
+  const spread = Number(q.get('spread'));
+  if (q.has('spread') && Number.isFinite(spread)) $('spread').value = String(spread);
+  $('spreadField').hidden = currentSource() !== 'prime';
+}
+
+function flash(msg) {
+  $('shareStatus').textContent = msg;
+  clearTimeout(flash.timer);
+  flash.timer = setTimeout(() => ($('shareStatus').textContent = ''), 2500);
+}
+
+$('share').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(location.href);
+    flash('Link copied');
+  } catch {
+    window.prompt('Copy this link:', location.href);
+  }
+});
+
+// ---- Save as PDF: the browser's print dialog, with a print stylesheet; show the rates used ----
+
+$('pdf').addEventListener('click', () => window.print());
+let detailsWasOpen = false;
+window.addEventListener('beforeprint', () => {
+  const details = document.querySelector('details');
+  detailsWasOpen = details.open;
+  details.open = true;
+});
+window.addEventListener('afterprint', () => {
+  document.querySelector('details').open = detailsWasOpen;
+});
+
+// ---- Form ----
 
 function onSourceChange() {
   $('spreadField').hidden = currentSource() !== 'prime';
@@ -161,11 +284,12 @@ document.querySelectorAll('.stepper .step').forEach((btn) =>
   }),
 );
 
-$('basis').addEventListener('change', () => {
-  $('results').hidden = true;
-  lastResult = null;
-  renderRateTable();
-});
+// Changing the basis or rounding recalculates straight away if results are showing
+for (const id of ['basis', 'rounding']) {
+  $(id).addEventListener('change', () => {
+    if (lastResult) $('form').requestSubmit();
+  });
+}
 
 $('relevantOnly').addEventListener('change', renderRateTable);
 
@@ -178,6 +302,7 @@ $('form').addEventListener('submit', (e) => {
   const start = $('start').value;
   const end = $('end').value;
   const basis = $('basis').value;
+  const rounding = $('rounding').value;
 
   if (!$('principal').value.trim() || !Number.isFinite(principal)) return showError('Please enter a valid principal amount.');
   if (!start) return showError('Please enter a valid start date.');
@@ -186,7 +311,11 @@ $('form').addEventListener('submit', (e) => {
   if (!rateData[source]) return showError('Interest rates have not loaded yet.');
 
   try {
-    lastResult = { ...calculateInterest({ principal, start, end, spread, basis, rates: rateData[source].rates }), source };
+    lastResult = {
+      ...calculateInterest({ principal, start, end, spread, basis, rounding, rates: rateData[source].rates }),
+      source,
+    };
+    writeQuery(lastResult);
     render(lastResult);
   } catch (err) {
     $('results').hidden = true;
@@ -209,9 +338,11 @@ $('clear').addEventListener('click', () => {
   $('form').reset();
   onSourceChange();
   showError('');
+  history.replaceState(null, '', location.pathname);
 });
 
-const rateBasisLabel = (r) => SOURCES[r.source].label + (r.source === 'prime' ? ` + ${r.spread}%` : '');
+// ---- Downloads ----
+
 const exportName = (r, ext) => `interest_${r.source}_${r.basis.replace('/', '')}_${r.start}_${r.end}.${ext}`;
 
 function download(blob, filename) {
@@ -249,9 +380,12 @@ $('xlsx').addEventListener('click', async () => {
     const wb = buildWorkbook(XLSX, r, {
       rateBasis: rateBasisLabel(r),
       dayCount: BASES[r.basis],
+      rounding: ROUNDINGS[r.rounding],
+      link: location.href,
       ratesTitle: SOURCES[r.source].title,
       sourceUrl: data.source,
       updatedAt: data.updatedAt,
+      crossCheck: data.crossCheck && { ...data.crossCheck, summary: CROSS_CHECK[data.crossCheck.status] },
       rates: relevantRates(data.rates, r),
       formulaText: formula,
     });
@@ -267,16 +401,17 @@ $('xlsx').addEventListener('click', async () => {
 $('csv').addEventListener('click', () => {
   if (!lastResult) return;
   const r = lastResult;
-  const rateBasis = rateBasisLabel(r);
   const lines = [
-    ['Rate Basis', rateBasis],
+    ['Rate Basis', rateBasisLabel(r)],
     ['Day Count Basis', BASES[r.basis]],
+    ['Rounding', ROUNDINGS[r.rounding]],
     ['Principal', money.format(r.principal)],
     ['Start Date', r.start],
     ['End Date', r.end],
     ['Total Interest', money.format(r.totalInterest)],
     ['Total Amount Due', money.format(r.totalDue)],
     ['Total No. of Days', r.totalDays],
+    ['Link', location.href],
     [],
     [
       'Period Start', 'Period End', 'No. of Days',
@@ -291,11 +426,12 @@ $('csv').addEventListener('click', () => {
   ];
   const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
   // BOM so Excel reads the × and ÷ in the formula column as UTF-8
-  const csv = '\uFEFF' + lines.map((l) => l.map(cell).join(',')).join('\n') + '\n';
+  const csv = '﻿' + lines.map((l) => l.map(cell).join(',')).join('\n') + '\n';
   download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), exportName(r, 'csv'));
 });
 
 setDefaultDates();
+readQuery();
 loadRates()
   .then(() => $('form').requestSubmit())
   .catch((err) => showError(err.message));

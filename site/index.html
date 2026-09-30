@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HK Judgment Interest</title>
-  <meta name="description" content="Simple interest on Hong Kong judgment debts using the Judiciary's published rates.">
+  <title>HK Interest Calculator</title>
+  <meta name="description" content="Simple interest on Hong Kong debts at the HK Judiciary judgment debt rate or the HSBC prime rate.">
   <link rel="stylesheet" href="style.css?v=__BUILD__">
 </head>
 <body>
   <main>
     <header>
-      <h1>HK Judgment Debt Interest</h1>
+      <h1>HK Interest Calculator</h1>
       <p class="muted">Simple interest at either the judgment debt rate published by the
         <a href="https://www.judiciary.hk/en/court_services_facilities/interest_rate.html" target="_blank" rel="noopener">HK Judiciary</a>
         or the HSBC best lending (prime) rate published by the
@@ -41,6 +41,12 @@
           <option value="act/360">Actual/360</option>
         </select>
       </label>
+      <label>Rounding
+        <select id="rounding">
+          <option value="total" selected>Round the total only</option>
+          <option value="period">Round each period</option>
+        </select>
+      </label>
       <label id="spreadField" for="spread" hidden>Spread over prime (% p.a.)
         <div class="stepper">
           <button type="button" class="step" data-step="-1" aria-label="Decrease spread by 1%">−</button>
@@ -56,6 +62,7 @@
     </form>
 
     <section id="results" hidden>
+      <dl id="printInputs" class="print-only inputs-list"></dl>
       <div id="warnings"></div>
       <dl class="summary">
         <div><dt>Principal</dt><dd id="summaryPrincipal"></dd></div>
@@ -72,13 +79,17 @@
         </table>
       </div>
       <div class="exports">
+        <button type="button" id="pdf" class="secondary">Save as PDF</button>
         <button type="button" id="xlsx" class="secondary">Download Excel</button>
         <button type="button" id="csv" class="secondary">Download CSV</button>
+        <button type="button" id="share" class="secondary">Copy link</button>
+        <span id="shareStatus" class="muted" role="status"></span>
       </div>
     </section>
 
     <details class="card">
       <summary><span id="rateTitle">Rate table</span> <span id="rateMeta" class="muted"></span></summary>
+      <div id="rateSource" class="rate-source"></div>
       <label class="radio filter"><input type="checkbox" id="relevantOnly" checked disabled> Show only rates used in this calculation
         <span id="relevantHint" class="muted">(calculate first)</span></label>
       <div class="table-wrap">

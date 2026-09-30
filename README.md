@@ -1,4 +1,6 @@
-# HK Judgment Debt Interest Calculator
+# HK Interest Calculator
+
+**Live:** https://app.kevinlhc.com/interestcal/
 
 This tool calculates simple interest on Hong Kong debts. It is a web version of the `Interest Calculator.xlsm` workbook.
 
@@ -6,12 +8,23 @@ You can choose one of two rates:
 
 - **Judgment debt rate**, as [published by the HK Judiciary](https://www.judiciary.hk/en/court_services_facilities/interest_rate.html). This is the default.
 - **HSBC best lending (prime) rate**, taken from [HKMA Monthly Statistical Bulletin table 6.4.1](https://www.hkma.gov.hk/media/eng/doc/market-data-and-statistics/monthly-statistical-bulletin/T060401.xls). You can add a spread over prime, e.g. prime + 2%.
+  The rates are cross-checked daily against [HSBC's own prime rate page](https://www.hsbc.com.hk/zh-hk/investments/market-information/hk/lending-rate/), which lists the current rate and the last 5 changes:
+  - **Match:** the page says so.
+  - **HSBC has a newer change:** the HKMA table is updated monthly, so HSBC can be ahead. The newer change is added and marked "HSBC".
+  - **Disagreement:** the HKMA data is kept, the page shows a warning, and the daily workflow fails so you get an email.
+
+## Features
+
+- **Save as PDF:** prints a clean one-page report with the inputs, results, formula for each period, rates used and source links.
+- **Shareable link:** the inputs are stored in the page address (e.g. `?src=prime&p=1000000&from=2026-01-01&to=2026-09-30&basis=act%2Fact&round=total&spread=1`). **Copy link** copies it.
+- **Excel and CSV export:** the Excel file uses live formulas and has a second sheet with the rate sources.
+- **Rounding:** you can round only the total (periods are added unrounded) or round each period to cents first. The second option makes the rows add up exactly to the total.
 
 ## How interest is calculated
 
 - Each published rate applies from its effective date up to, but not including, the next rate's effective date.
 - The start date earns interest and the end date does not. For example, 1 Jan → 2 Jan is **1 day** at the rate effective on 1 Jan.
-- Interest for each period is `principal × rate × days ÷ year days`. The results table shows this formula for every row. The total is the sum of the unrounded period amounts.
+- Interest for each period is `principal × rate × days ÷ year days`. The results table shows this formula for every row. The **rounding** option sets whether the total is the sum of unrounded amounts (the default) or of amounts already rounded to cents. Rounding is half away from zero, the same as Excel's `ROUND`.
 - The year days depend on the day count basis you choose:
 
   | Basis | Year days | Notes |
@@ -35,7 +48,7 @@ You can choose one of two rates:
 | `site/rates.json` | Judgment debt rates scraped from the Judiciary site |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |
 | `scripts/fetch-rates.mjs` | Fetches and validates both sources, and rewrites a JSON file only when its rates change |
-| `scripts/parse-judiciary.mjs`, `parse-prime.mjs` | Parsers for each source |
+| `scripts/parse-judiciary.mjs`, `parse-prime.mjs`, `parse-hsbc.mjs` | Parsers for each source, plus the HSBC cross-check |
 | `test/` | Tests, including the workbook's saved example (HK$135,436.48, 24 Nov 2025 → 20 Apr 2026 = HK$4,434.64) |
 | `.github/workflows/pages.yml` | Refreshes the rates daily and deploys to GitHub Pages |
 
@@ -57,3 +70,7 @@ npm start            # serve site/ locally
 3. Every push to `main` deploys the site. A daily schedule (09:00 HKT) re-fetches both rate sources, commits any change and redeploys only when something changed. You can also start it manually from the Actions tab, and a manual run always redeploys.
 
 If either source changes its layout, validation stops that source from overwriting good data. The other source still updates, and the workflow is marked as failed so GitHub emails you.
+
+## Licence
+
+[MIT](LICENSE)

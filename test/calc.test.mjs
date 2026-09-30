@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateInterest, isLeapYear } from '../site/calc.js';
+import { calculateInterest, isLeapYear, round2 } from '../site/calc.js';
 
 // Subset of the published table, enough for the cases below.
 const rates = [
@@ -123,6 +123,35 @@ test('Actual/360 over a full year of a single rate', () => {
 
 test('rejects an unknown day count basis', () => {
   assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, basis: '30/360' }), /basis/);
+});
+
+test('round2 rounds half away from zero without float errors', () => {
+  assert.equal(round2(1.005), 1.01);
+  assert.equal(round2(2.675), 2.68);
+  assert.equal(round2(1163.2694926027398), 1163.27);
+  assert.equal(round2(-1.005), -1.01);
+});
+
+test('rounding each period: total is the sum of rounded period amounts', () => {
+  // 7 one-day periods of 1,000 x 8% / 365 = 0.21918 each: unrounded total 1.534 -> 1.53, rounded 7 x 0.22 = 1.54
+  const daily = Array.from({ length: 7 }, (_, i) => ({ effective: `2026-05-0${i + 1}`, rate: 8 + i * 1e-9 }));
+  const total = calculateInterest({ principal: 1000, start: '2026-05-01', end: '2026-05-08', rates: daily, rounding: 'total' });
+  const period = calculateInterest({ principal: 1000, start: '2026-05-01', end: '2026-05-08', rates: daily, rounding: 'period' });
+  assert.equal(total.periods.length, 7);
+  assert.equal(round2(total.totalInterest), 1.53);
+  assert.ok(period.periods.every((p) => p.interest === 0.22));
+  assert.equal(period.totalInterest, 1.54);
+  assert.equal(period.totalDue, 1001.54);
+});
+
+test('rounding each period matches the workbook example to the cent', () => {
+  const r = calculateInterest({ principal: 135436.48, start: '2025-11-24', end: '2026-04-20', rates, rounding: 'period' });
+  assert.deepEqual(r.periods.map((p) => p.interest), [1163.27, 2707.36, 564.01]);
+  assert.equal(r.totalInterest, 4434.64);
+});
+
+test('rejects an unknown rounding mode', () => {
+  assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, rounding: 'up' }), /rounding/);
 });
 
 test('leap year rule', () => {

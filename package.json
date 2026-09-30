@@ -1,7 +1,8 @@
 {
   "name": "interestcal",
   "version": "1.0.0",
-  "description": "Simple interest calculator for Hong Kong judgment debts, using rates published by the HK Judiciary",
+  "description": "HK Interest Calculator: simple interest at the HK Judiciary judgment debt rate or the HSBC prime rate",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {

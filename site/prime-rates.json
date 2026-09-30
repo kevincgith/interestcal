@@ -766,5 +766,11 @@
       "effective": "1971-05-05",
       "rate": 8
     }
-  ]
+  ],
+  "crossCheck": {
+    "source": "https://www.hsbc.com.hk/zh-hk/investments/market-information/hk/lending-rate/",
+    "status": "match",
+    "currentRate": 5,
+    "notes": []
+  }
 }
