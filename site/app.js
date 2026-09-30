@@ -64,6 +64,17 @@ function crossCheckLine(cc) {
   return [before, link(cc.source, HSBC_PAGE), after];
 }
 
+// "Latest effective rate is 5.000% (from 31-Oct-2025), cross-checked with HSBC." (HSBC linked to its official page)
+function latestRateLine(r) {
+  const data = rateData[r.source];
+  const latest = data.rates[0];
+  const before = `Latest effective rate is ${latest.rate.toFixed(3)}% (from ${fmtDate(latest.effective)})`;
+  const cc = data.crossCheck;
+  if (!cc || cc.status === 'mismatch') return { before: `${before}.`, text: `${before}.` };
+  const [prefix, linkText, after] = [`${before}, cross-checked with `, 'HSBC', '.'];
+  return { before: prefix, linkText, url: cc.source, after, text: prefix + linkText + after };
+}
+
 const rateData = {};
 let lastResult = null;
 
@@ -219,22 +230,14 @@ function render(r) {
       `${r.uncoveredDays} day${r.uncoveredDays === 1 ? '' : 's'} before that date earn no interest in this calculation.`,
     ));
   }
-  if (r.end > r.latestRateDate && r.periods.length) {
-    warnings.push(warning(
-      `Latest published rate (from ${fmtDate(r.latestRateDate)}) applied up to the end date.`,
-    ));
-  }
   if (rateData[r.source].crossCheck?.status === 'mismatch') {
     warnings.push(warning(`${CROSS_CHECK.mismatch} See the rate table below for details.`));
   }
   $('warnings').replaceChildren(...warnings);
 
-  // Prime: state the HSBC cross-check next to the results (and in the PDF), linking HSBC's official page
-  const cc = rateData[r.source].crossCheck;
-  $('verified').hidden = !cc || cc.status === 'mismatch';
-  if (cc && cc.status !== 'mismatch') {
-    $('verified').replaceChildren('✓ ', ...crossCheckLine(cc));
-  }
+  // One line under the summary: the latest effective rate, and (prime) that it is cross-checked with HSBC
+  const line = latestRateLine(r);
+  $('verified').replaceChildren(line.before, ...(line.linkText ? [link(line.url, line.linkText), line.after] : []));
 
   $('summaryPrincipal').textContent = money.format(r.principal);
   $('totalInterest').textContent = money.format(r.totalInterest);
@@ -486,6 +489,7 @@ $('pdf').addEventListener('click', () => {
       inputs: printInputItems(r),
       warnings: [...$('warnings').querySelectorAll('.warning')].map((el) => el.textContent),
       crossCheck: cc && cc.status !== 'mismatch' ? { text: CROSS_CHECK[cc.status], linkText: HSBC_PAGE, url: cc.source } : null,
+      summaryLine: latestRateLine(r),
       ratesHeading: `${SOURCES[r.source].title} (${used.length} of ${data.rates.length} rates, used from ${fmtDate(r.start)} to ${fmtDate(r.end)})`,
       source: { name: SOURCES[r.source].sourceName, url: data.source },
       rates: sortRates(used),

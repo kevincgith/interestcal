@@ -22,6 +22,7 @@ const pdfText = (s) =>
  * @param {[string, string][]} ctx.inputs              label/value pairs for the inputs block
  * @param {string[]} ctx.warnings
  * @param {{text: string, linkText: string, url: string} | null} ctx.crossCheck  sentence containing linkText
+ * @param {{text: string, linkText?: string, url?: string}} [ctx.summaryLine]  line under the summary, e.g. latest rate
  * @param {string} ctx.ratesHeading                    e.g. "HSBC prime rates (3 of 191 rates, used from ...)"
  * @param {{name: string, url: string}} ctx.source
  * @param {{effective: string, rate: number, source?: string}[]} ctx.rates  rates used, newest first
@@ -56,6 +57,11 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
   // A sentence with one phrase as a clickable link (the phrase text is shown, never the URL)
   const linkedLine = ({ text, linkText, url }, size = 9) => {
     doc.setFont('helvetica', 'normal').setFontSize(size).setTextColor(20);
+    if (!linkText) {
+      doc.text(pdfText(text), MARGIN, y + size);
+      y += size + 8;
+      return;
+    }
     const [before, after = ''] = pdfText(text).split(pdfText(linkText));
     let x = MARGIN;
     doc.text(before, x, y + size);
@@ -96,7 +102,7 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
     headStyles: { fillColor: false, textColor: MUTED, fontStyle: 'normal', fontSize: 8, lineWidth: 0 },
     bodyStyles: { fontStyle: 'bold', fontSize: 13, lineWidth: { bottom: 0.75 } },
   });
-  if (ctx.crossCheck) linkedLine(ctx.crossCheck);
+  if (ctx.summaryLine) linkedLine(ctx.summaryLine);
 
   // ---- Period breakdown ----
   table({
