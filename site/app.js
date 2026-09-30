@@ -22,6 +22,17 @@ const fmtRateWithSpread = (p) => {
   return `${fmtRate(p.baseRate)} ${sign} ${fmtRate(Math.abs(spread) / 100)} = ${fmtRate(p.rate)}`;
 };
 // Each period's own principal: it changes after a payment
+// Why a row starts where it does, for rows that could otherwise look odd:
+// "+HK$21,366.45 interest compounded" on a compounding date, or "New year: ÷ 365 days" for an Actual/Actual year split
+function periodNote(r, p, i) {
+  if (p.capitalised > 0) return `+HK$${money.format(p.capitalised)} interest compounded`;
+  const prev = r.periods[i - 1];
+  if (prev && r.basis === 'act/act' && p.start.endsWith('-01-01') && p.yearDays !== prev.yearDays) {
+    return `New year: ÷ ${p.yearDays} days`;
+  }
+  return '';
+}
+
 const formula = (p) => {
   const [b, r, d, y] = [money.format(p.principal), fmtRate(p.rate), p.days, p.yearDays];
   if (p.compounding === 'daily') return `${b} × ((1 + ${r} ÷ ${y})^${d} − 1)`;
@@ -423,12 +434,20 @@ function render(r) {
   $('perDiem').textContent = r.perDiem ? money.format(r.perDiem.amount) : '–';
   $('perDiem').title = r.perDiem ? `${fmtRate(r.perDiem.rate)} × principal ÷ ${r.perDiem.yearDays}` : '';
   $('periods').replaceChildren(
-    ...r.periods.map((p) =>
-      row(
+    ...r.periods.map((p, i) => {
+      const tr = row(
         [fmtDate(p.start), fmtDate(p.end), p.days, fmtRateWithSpread(p), formula(p), money.format(p.interest)],
         ['', '', 'num', 'num', 'formula', 'num'],
-      ),
-    ),
+      );
+      const note = periodNote(r, p, i);
+      if (note) {
+        const tag = document.createElement('span');
+        tag.className = 'row-note';
+        tag.textContent = note;
+        tr.cells[0].append(tag);
+      }
+      return tr;
+    }),
   );
   $('results').hidden = false;
   renderRateTable();
@@ -846,6 +865,7 @@ $('xlsx').addEventListener('click', () => {
       rounding: ROUNDINGS[r.rounding],
       allocation: ALLOCATIONS[r.allocation],
       formulaText: formula,
+      periodNote: (p, i) => periodNote(r, p, i),
       compounding: compoundingLabel(r),
       // A fixed rate has no published source: the Rates sheet just states the rate
       ...(publishedKinds(r).length === 0
@@ -894,7 +914,10 @@ $('pdf').addEventListener('click', () => {
             extraSources: kinds.slice(1).map((k) => ({ name: SOURCES[k].sourceName, url: rateData[k].source })),
             rates: sortRates(used),
           }),
-      fmt: { money: (n) => money.format(n), date: fmtDate, rate: fmtRate, rateWithSpread: fmtRateWithSpread, formula },
+      fmt: {
+        money: (n) => money.format(n), date: fmtDate, rate: fmtRate, rateWithSpread: fmtRateWithSpread, formula,
+        note: (p, i) => periodNote(r, p, i),
+      },
       generatedOn: fmtDate(new Date().toLocaleDateString('en-CA')),
     });
     download(doc.output('blob'), exportName(r, 'pdf'));
@@ -904,6 +927,7 @@ $('pdf').addEventListener('click', () => {
 $('csv').addEventListener('click', () => {
   if (!lastResult) return;
   const r = lastResult;
+  const hasNotes = r.periods.some((p, i) => periodNote(r, p, i));
   const lines = [
     ['Rate Basis', rateBasisLabel(r)],
     ['Day Count Basis', BASES[r.basis]],
@@ -941,12 +965,14 @@ $('csv').addEventListener('click', () => {
       ...(r.payments.length || r.additions.length || r.compounding !== 'none' ? ['Principal'] : []),
       ...(r.periods.some((p) => p.spread) ? ['Base Rate', 'Spread'] : []),
       'Interest Rate', 'Year Days', 'Formula', 'Interest Amount',
+      ...(hasNotes ? ['Note'] : []),
     ],
-    ...r.periods.map((p) => [
+    ...r.periods.map((p, i) => [
       p.start, p.end, p.days,
       ...(r.payments.length || r.additions.length || r.compounding !== 'none' ? [money.format(p.principal)] : []),
       ...(r.periods.some((x) => x.spread) ? [fmtRate(p.baseRate), fmtRate(p.spread / 100)] : []),
       fmtRate(p.rate), p.yearDays, formula(p), money.format(p.interest),
+      ...(hasNotes ? [periodNote(r, p, i)] : []),
     ]),
     ...(r.additions.length
       ? [

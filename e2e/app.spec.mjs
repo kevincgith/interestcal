@@ -269,3 +269,16 @@ test('calendar compounding dates from a shared link', async ({ page }) => {
   await expect(page.locator('#compareLine')).toContainText('Compounded monthly (calendar month ends)');
   await expect(page).toHaveURL(/comp=monthly&cdates=calendar/);
 });
+
+test('compounding rows say how much interest was added; a year-end split says why it exists', async ({ page }) => {
+  await page.goto('?src=fixed&rate=8&p=1000000&from=2024-02-15&to=2025-08-15&comp=quarterly');
+  const notes = page.locator('#periods .row-note');
+  await expect(notes).toHaveText([
+    '+HK$19,672.13 interest compounded',
+    '+HK$20,504.88 interest compounded',
+    '+HK$20,917.22 interest compounded',
+    'New year: ÷ 365 days',
+    '+HK$21,366.45 interest compounded',
+    '+HK$21,115.40 interest compounded',
+  ]);
+});

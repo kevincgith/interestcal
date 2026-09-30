@@ -412,6 +412,20 @@ test('calendar monthly compounding: interest to each month end joins the princip
   assert.equal(r.compoundDates, 'calendar');
 });
 
+test('quarterly compounding across a leap-year end: the 1 Jan split is not a compounding date', () => {
+  const r = calculateInterest({ principal: 1000000, start: '2024-02-15', end: '2025-05-15', rates: fixed8, compounding: 'quarterly' });
+  assert.deepEqual(r.periods.map((p) => [p.start, p.yearDays, p.capitalised > 0]), [
+    ['2024-02-15', 366, false],
+    ['2024-05-15', 366, true],
+    ['2024-08-15', 366, true],
+    ['2024-11-15', 366, true],
+    ['2025-01-01', 365, false], // day-count split only: principal unchanged
+    ['2025-02-15', 365, true], // compounds both parts of the Nov-Feb quarter
+  ]);
+  assert.equal(r.periods[4].principal, r.periods[3].principal);
+  close(r.periods[5].capitalised, r.periods[3].interest + r.periods[4].interest);
+});
+
 test('rejects an unknown compounding', () => {
   assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, compounding: 'weekly' }), /compounding/);
 });

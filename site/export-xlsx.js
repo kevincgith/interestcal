@@ -57,6 +57,7 @@ function sheetFrom(XLSX, rows, widths) {
  * @param {string} ctx.updatedAt     "YYYY-MM-DD"
  * @param {{effective: string, rate: number}[]} ctx.rates  the rates used, newest first
  * @param {(p: object) => string} ctx.formulaText  formula text for a period row
+ * @param {(p: object, i: number) => string} [ctx.periodNote]  optional note for a period row
  */
 export function buildWorkbook(XLSX, r, ctx) {
   // ---- Sheet 1: Calculation ----
@@ -102,12 +103,16 @@ export function buildWorkbook(XLSX, r, ctx) {
 
   // With a spread, show Base Rate + Spread = Interest Rate (a live formula); otherwise just the rate.
   // With payments or principal added later, each period has its own principal balance (a Principal column).
-  const withSpread = r.periods.some((p) => p.spread); // spreads can differ per period after a rate switch
+  const withSpread = r.periods.some((p) => p.spread);
+  // Notes such as "+HK$x interest compounded" or "New year: ÷ 365 days"
+  const note = (p, i) => ctx.periodNote?.(p, i) ?? '';
+  const hasNotes = r.periods.some((p, i) => note(p, i)); // spreads can differ per period after a rate switch
   const cols = [
     'Period Start', 'Period End', 'No. of Days',
     ...(withEvents ? ['Principal'] : []),
     ...(withSpread ? ['Base Rate', 'Spread'] : []),
     'Interest Rate', 'Year Days', 'Formula', 'Interest Amount',
+    ...(hasNotes ? ['Note'] : []),
   ];
   const col = (name) => XLSX.utils.encode_col(cols.indexOf(name));
   const [DAYS, RATE, YEAR, INT] = ['No. of Days', 'Interest Rate', 'Year Days', 'Interest Amount'].map(col);
@@ -141,6 +146,7 @@ export function buildWorkbook(XLSX, r, ctx) {
       num(p.yearDays),
       ctx.formulaText(p),
       formula(r.rounding === 'period' ? `ROUND(${interest},2)` : interest, p.interest, MONEY),
+      ...(hasNotes ? [note(p, i)] : []),
     ]);
   });
   const last = first + r.periods.length - 1;
@@ -198,7 +204,7 @@ export function buildWorkbook(XLSX, r, ctx) {
       ]
     : ['Interest per day after end date', '–']);
 
-  const widths = [34, 44, 12, ...(withEvents ? [14] : []), ...(withSpread ? [12, 10] : []), 14, 11, 40, 16];
+  const widths = [34, 44, 12, ...(withEvents ? [14] : []), ...(withSpread ? [12, 10] : []), 14, 11, 40, 16, ...(hasNotes ? [34] : [])];
   const calc = sheetFrom(XLSX, rows, widths);
 
   // ---- Sheet 2: Rates ----

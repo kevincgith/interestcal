@@ -227,7 +227,9 @@ export function calculateInterest({
     const segStart = points[i];
     const segEnd = points[i + 1];
     // On a compounding date: add unpaid interest to principal first, then principal added later, then payments
+    let capitalisedHere = 0; // interest added to principal at the start of this period
     if (capDays.has(segStart) && unpaid) {
+      capitalisedHere = unpaid;
       balance = cents(balance + unpaid);
       totalCapitalised += unpaid;
       unpaid = 0;
@@ -262,6 +264,7 @@ export function calculateInterest({
       yearDays,
       interest,
       compounding: continuousRate ? compounding : 'simple', // how this row's interest was worked out
+      capitalised: capitalisedHere, // monthly / quarterly / yearly: interest compounded into principal on this row's start
     });
     totalInterest += interest;
     totalDays += days;

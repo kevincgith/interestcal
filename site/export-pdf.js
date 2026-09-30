@@ -69,8 +69,10 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
     }
     doc.setFont('helvetica', 'normal').setFontSize(size).setTextColor(20);
     if (!linkText) {
-      doc.text(pdfText(text), x, y + size);
-      y += size + 8;
+      // Plain text wraps to the page width
+      const lines = doc.splitTextToSize(pdfText(text), doc.internal.pageSize.getWidth() - MARGIN - x);
+      doc.text(lines, x, y + size, { lineHeightFactor: 1.3 });
+      y += size * 1.3 * lines.length + 8;
       return;
     }
     const [before, after = ''] = pdfText(text).split(pdfText(linkText));
@@ -135,12 +137,13 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
   // ---- Period breakdown ----
   table({
     head: [['Period start', 'Period end', 'Days', 'Rate', 'Formula: principal × rate × days ÷ year days', 'Interest']],
-    body: r.periods.map((p) => [
+    body: r.periods.map((p, i) => [
       fmt.date(p.start),
       fmt.date(p.end),
       String(p.days),
       pdfText(fmt.rateWithSpread(p, r.spread)),
-      pdfText(fmt.formula(p)),
+      // A note (e.g. "+HK$x interest compounded") goes under the formula, where there is room for it
+      pdfText(fmt.formula(p)) + (fmt.note?.(p, i) ? `\n${pdfText(fmt.note(p, i))}` : ''),
       fmt.money(p.interest),
     ]),
     columnStyles: {
