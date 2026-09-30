@@ -1,5 +1,6 @@
 import { calculateInterest } from './calc.js?v=__BUILD__';
 import { buildWorkbook } from './export-xlsx.js?v=__BUILD__';
+import { buildPdf } from './export-pdf.js?v=__BUILD__';
 
 const $ = (id) => document.getElementById(id);
 const money = new Intl.NumberFormat('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -68,6 +69,17 @@ function crossCheckLine(cc) {
 const rateData = {};
 let lastResult = null;
 
+// Sort order for the detailed rate table (also used for the rates in the PDF and Excel exports)
+const rateSort = { key: 'effective', dir: 'desc' };
+function sortRates(rates) {
+  const sign = rateSort.dir === 'asc' ? 1 : -1;
+  return [...rates].sort((a, b) =>
+    rateSort.key === 'rate'
+      ? sign * (a.rate - b.rate) || b.effective.localeCompare(a.effective)
+      : sign * a.effective.localeCompare(b.effective),
+  );
+}
+
 const currentSource = () => document.querySelector('input[name="source"]:checked').value;
 
 async function loadRates() {
@@ -100,7 +112,7 @@ function renderRateSource(key) {
   const data = rateData[key];
   const lines = [];
   const src = document.createElement('p');
-  src.append('Source: ', link(data.source, SOURCES[key].sourceName));
+  src.append('Source:', document.createElement('br'), link(data.source, SOURCES[key].sourceName));
   lines.push(src);
   if (data.crossCheck) {
     const cc = document.createElement('p');
@@ -121,7 +133,12 @@ function renderRateTable() {
   if (!data) return;
 
   const filtered = $('relevantOnly').checked && lastResult;
-  const shown = filtered ? relevantRates(data.rates, lastResult) : data.rates;
+  const shown = sortRates(filtered ? relevantRates(data.rates, lastResult) : data.rates);
+  document.querySelectorAll('button.sort').forEach((btn) => {
+    const active = btn.dataset.key === rateSort.key;
+    btn.querySelector('.arrow').textContent = active ? (rateSort.dir === 'asc' ? '▲' : '▼') : '';
+    btn.closest('th').setAttribute('aria-sort', active ? (rateSort.dir === 'asc' ? 'ascending' : 'descending') : 'none');
+  });
   $('rateMeta').textContent = filtered
     ? `(${shown.length} of ${data.rates.length} rates, used from ${fmtDate(lastResult.start)} to ${fmtDate(lastResult.end)})`
     : `(${data.rates.length} rates, latest effective ${fmtDate(data.rates[0].effective)}, updated ${fmtDate(data.updatedAt)})`;
@@ -158,18 +175,19 @@ const rateBasisLabel = (r) =>
   SOURCES[r.source].label + (r.source === 'prime' && r.spread ? ` ${r.spread < 0 ? '−' : '+'} ${Math.abs(r.spread)}%` : '');
 
 // Inputs block, shown only when printing / saving as PDF (the form itself is hidden there)
+const printInputItems = (r) => [
+  ['Interest rate', rateBasisLabel(r)],
+  ['Principal (HK$)', money.format(r.principal)],
+  ['Start date', fmtDate(r.start)],
+  ['End date (does not earn interest)', fmtDate(r.end)],
+  ['Day count basis', BASES[r.basis]],
+  ['Rounding', ROUNDINGS[r.rounding]],
+  ['Calculated on', fmtDate(new Date().toLocaleDateString('en-CA'))],
+];
+
 function renderPrintInputs(r) {
-  const items = [
-    ['Interest rate', rateBasisLabel(r)],
-    ['Principal (HK$)', money.format(r.principal)],
-    ['Start date', fmtDate(r.start)],
-    ['End date (does not earn interest)', fmtDate(r.end)],
-    ['Day count basis', BASES[r.basis]],
-    ['Rounding', ROUNDINGS[r.rounding]],
-    ['Calculated on', fmtDate(new Date().toLocaleDateString('en-CA'))],
-  ];
   $('printInputs').replaceChildren(
-    ...items.map(([k, v]) => {
+    ...printInputItems(r).map(([k, v]) => {
       const div = document.createElement('div');
       const dt = document.createElement('dt');
       const dd = document.createElement('dd');
@@ -261,9 +279,18 @@ $('share').addEventListener('click', async () => {
   }
 });
 
-// ---- Save as PDF: the browser's print dialog, with a print stylesheet; show the rates used ----
+// ---- Sorting the detailed rate table: click a header; click again to reverse ----
 
-$('pdf').addEventListener('click', () => window.print());
+document.querySelectorAll('button.sort').forEach((btn) =>
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.key;
+    rateSort.dir = rateSort.key === key && rateSort.dir === 'desc' ? 'asc' : 'desc';
+    rateSort.key = key;
+    renderRateTable();
+  }),
+);
+
+// Keep the rate table expanded when printing with the browser (Ctrl/Cmd+P)
 let detailsWasOpen = false;
 window.addEventListener('beforeprint', () => {
   const details = document.querySelector('details');
@@ -369,28 +396,44 @@ function download(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(a.href), 0);
 }
 
-// SheetJS is only needed for the Excel export, so load it on first use.
-let xlsxLoading = null;
-function loadXlsx() {
-  xlsxLoading ??= new Promise((resolve, reject) => {
+// The export libraries are only loaded on first use, so the page itself stays light.
+const scripts = {};
+function loadScript(src) {
+  scripts[src] ??= new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = 'vendor/xlsx.mini.min.js?v=__BUILD__';
-    script.onload = () => resolve(window.XLSX);
+    script.src = `vendor/${src}?v=__BUILD__`;
+    script.onload = resolve;
     script.onerror = () => {
-      xlsxLoading = null;
-      reject(new Error('Could not load the Excel library. Please try again.'));
+      delete scripts[src];
+      reject(new Error('Could not load the export library. Please try again.'));
     };
     document.head.append(script);
   });
-  return xlsxLoading;
+  return scripts[src];
 }
+const loadXlsx = () => loadScript('xlsx.mini.min.js').then(() => window.XLSX);
+// AutoTable must load after jsPDF; in the browser it exposes window.autoTable(doc, options)
+const loadPdf = () =>
+  loadScript('jspdf.umd.min.js')
+    .then(() => loadScript('jspdf.plugin.autotable.min.js'))
+    .then(() => ({ jsPDF: window.jspdf.jsPDF, autoTable: window.autoTable }));
 
-$('xlsx').addEventListener('click', async () => {
-  if (!lastResult) return;
-  const r = lastResult;
-  const btn = $('xlsx');
+// Busy state for export buttons while a library loads
+async function busy(btn, fn) {
   btn.disabled = true;
   try {
+    await fn();
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+$('xlsx').addEventListener('click', () => {
+  if (!lastResult) return;
+  const r = lastResult;
+  busy($('xlsx'), async () => {
     const XLSX = await loadXlsx();
     const data = rateData[r.source];
     const wb = buildWorkbook(XLSX, r, {
@@ -402,16 +445,34 @@ $('xlsx').addEventListener('click', async () => {
       sourceUrl: data.source,
       updatedAt: data.updatedAt,
       crossCheck: data.crossCheck && { ...data.crossCheck, summary: CROSS_CHECK[data.crossCheck.status] },
-      rates: relevantRates(data.rates, r),
+      rates: sortRates(relevantRates(data.rates, r)),
       formulaText: formula,
     });
     const bytes = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), exportName(r, 'xlsx'));
-  } catch (err) {
-    showError(err.message);
-  } finally {
-    btn.disabled = false;
-  }
+  });
+});
+
+$('pdf').addEventListener('click', () => {
+  if (!lastResult) return;
+  const r = lastResult;
+  busy($('pdf'), async () => {
+    const lib = await loadPdf();
+    const data = rateData[r.source];
+    const used = relevantRates(data.rates, r);
+    const cc = data.crossCheck;
+    const doc = buildPdf(lib, r, {
+      inputs: printInputItems(r),
+      warnings: [...$('warnings').querySelectorAll('.warning')].map((el) => el.textContent),
+      crossCheck: cc && cc.status !== 'mismatch' ? { text: CROSS_CHECK[cc.status], linkText: HSBC_PAGE, url: cc.source } : null,
+      ratesHeading: `${SOURCES[r.source].title} (${used.length} of ${data.rates.length} rates, used from ${fmtDate(r.start)} to ${fmtDate(r.end)})`,
+      source: { name: SOURCES[r.source].sourceName, url: data.source },
+      rates: sortRates(used),
+      fmt: { money: (n) => money.format(n), date: fmtDate, rate: fmtRate, rateWithSpread: fmtRateWithSpread, formula },
+      generatedOn: fmtDate(new Date().toLocaleDateString('en-CA')),
+    });
+    download(doc.output('blob'), exportName(r, 'pdf'));
+  });
 });
 
 $('csv').addEventListener('click', () => {

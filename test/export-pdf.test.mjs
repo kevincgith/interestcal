@@ -1,0 +1,47 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { jsPDF } from 'jspdf';
+import { autoTable } from 'jspdf-autotable';
+import { calculateInterest } from '../site/calc.js';
+import { buildPdf } from '../site/export-pdf.js';
+
+const prime = [
+  { effective: '2025-10-31', rate: 5.0 },
+  { effective: '2025-09-19', rate: 5.125 },
+];
+
+const fmt = {
+  money: (n) => n.toFixed(2),
+  date: (iso) => iso,
+  rate: (x) => `${(x * 100).toFixed(3)}%`,
+  rateWithSpread: (p) => `${(p.baseRate * 100).toFixed(3)}% + 1.000% = ${(p.rate * 100).toFixed(3)}%`,
+  formula: (principal, p) => `${principal} × ${(p.rate * 100).toFixed(3)}% × ${p.days} ÷ ${p.yearDays}`,
+};
+
+test('PDF report: text content, named source links, no raw URLs in the text', () => {
+  const r = calculateInterest({ principal: 100000, start: '2025-10-01', end: '2025-11-10', rates: prime, spread: 1 });
+  const doc = buildPdf({ jsPDF, autoTable }, { ...r, source: 'prime' }, {
+    inputs: [['Interest rate', 'HSBC prime + 1%'], ['Principal (HK$)', '100000.00']],
+    warnings: ['Days on or after 31-Oct-2025 use the latest published rate.'],
+    crossCheck: {
+      text: 'Cross-checked daily against HSBC’s official prime rate page: matches.',
+      linkText: 'HSBC’s official prime rate page',
+      url: 'https://www.hsbc.com.hk/investments/market-information/hk/lending-rate/',
+    },
+    ratesHeading: 'HSBC prime rates (2 of 191 rates)',
+    source: { name: 'HKMA Monthly Statistical Bulletin, table 6.4.1', url: 'https://www.hkma.gov.hk/x.xls' },
+    rates: prime,
+    fmt,
+    generatedOn: '30-Sep-2026',
+  });
+  const pdf = doc.output();
+  assert.ok(pdf.startsWith('%PDF-'));
+  assert.equal(doc.getNumberOfPages(), 1);
+  for (const s of ['HK Interest Calculator', 'Total interest', '5.125% + 1.000% =', '100000 × 6.125% × 30 ÷ 365', 'HKMA Monthly Statistical Bulletin', 'Source:', 'Page 1 of 1']) {
+    assert.ok(pdf.includes(s), `missing: ${s}`);
+  }
+  // Links are annotations (clickable), not printed text
+  assert.match(pdf, /\/URI \(https:\/\/www\.hkma\.gov\.hk\/x\.xls\)/);
+  assert.match(pdf, /\/URI \(https:\/\/www\.hsbc\.com\.hk\//);
+  assert.ok(!/\(https:\/\/www\.hkma[^)]*\) Tj/.test(pdf), 'URL should not be printed as text');
+});

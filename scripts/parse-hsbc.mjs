@@ -1,11 +1,12 @@
 // Cross-checks the HKMA prime rate history against HSBC's own page:
-// https://www.hsbc.com.hk/zh-hk/investments/market-information/hk/lending-rate/
+// https://www.hsbc.com.hk/investments/market-information/hk/lending-rate/
 // The page shows the current HKD prime rate and the last 5 changes, e.g.
-//   現時滙豐的港元最優惠利率：5.00% (只供參考)
-//   生效日 | 滙豐的港元最優惠利率 | 2025年10月31日 | 5.00% | 2025年9月19日 | 5.125% | ...
+//   HSBC's Current Hong Kong Dollar Best Lending Rate: 5.00%(for reference only)
+//   Effective Date | HSBC's Hong Kong Dollar Best Lending Rate | 31 Oct 2025 | 5.00% | 19 Sep 2025 | 5.125% | ...
 
-export const HSBC_URL = 'https://www.hsbc.com.hk/zh-hk/investments/market-information/hk/lending-rate/';
+export const HSBC_URL = 'https://www.hsbc.com.hk/investments/market-information/hk/lending-rate/';
 
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 const pad = (n) => String(n).padStart(2, '0');
 
 /** @returns {{current: number, history: {effective: string, rate: number}[]}} history newest first */
@@ -13,15 +14,16 @@ export function parseHsbcHtml(html) {
   // The page repeats the table for desktop and mobile layouts; the first one is enough.
   const table = /<table[\s\S]*?<\/table>/i.exec(html)?.[0];
   if (!table) throw new Error('HSBC prime rate table not found');
-  const text = table.replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/g, ' ').replace(/\s+/g, ' ');
+  const text = table.replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/g, ' ').replace(/&#39;|&rsquo;/g, "'").replace(/\s+/g, ' ');
 
-  const current = /最優惠利率[：:]\s*([\d.]+)\s*%/.exec(text);
+  const current = /Current Hong Kong Dollar Best Lending Rate:\s*([\d.]+)\s*%/i.exec(text);
   if (!current) throw new Error('HSBC current prime rate not found');
 
-  const history = [...text.matchAll(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*([\d.]+)\s*%/g)].map(([, y, m, d, rate]) => ({
-    effective: `${y}-${pad(m)}-${pad(d)}`,
-    rate: Number(rate),
-  }));
+  const history = [...text.matchAll(/\b(\d{1,2}) ([A-Za-z]{3})[a-z]* (\d{4})\s*([\d.]+)\s*%/g)].map(([, d, mon, y, rate]) => {
+    const m = MONTHS.indexOf(mon.toLowerCase()) + 1;
+    if (!m) throw new Error(`Unknown month in HSBC date: ${mon}`);
+    return { effective: `${y}-${pad(m)}-${pad(d)}`, rate: Number(rate) };
+  });
   if (history.length === 0) throw new Error('HSBC prime rate history not found');
   history.sort((a, b) => b.effective.localeCompare(a.effective));
   return { current: Number(current[1]), history };

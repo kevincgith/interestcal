@@ -5,14 +5,14 @@ import { parseHsbcHtml, crossCheckPrime } from '../scripts/parse-hsbc.mjs';
 // Shaped like the HSBC page: a desktop table, then a mobile table with the same data.
 const html = `
 <div class="table-wrapper"><table>
-  <caption>現時滙豐的港元最優惠利率：5.00% (只供參考)</caption>
-  <tr><td colspan="2">最近5次改動最優惠利率的記錄，只供參考：</td></tr>
-  <tr><th>生效日</th><th>滙豐的港元最優惠利率</th></tr>
-  <tr><td>2025年10月31日</td><td>5.00%</td></tr>
-  <tr><td>2025年9月19日</td><td>5.125%</td></tr>
-  <tr><td>2024年12月20日</td><td>5.25%</td></tr>
+  <caption>HSBC&#39;s Current Hong Kong Dollar Best Lending Rate: 5.00%(for reference only)</caption>
+  <tr><td colspan="2">Last 5 best lending rate change records for reference only:</td></tr>
+  <tr><th>Effective Date</th><th>HSBC's Hong Kong Dollar Best Lending Rate</th></tr>
+  <tr><td>31 Oct 2025</td><td>5.00%</td></tr>
+  <tr><td>19 Sep 2025</td><td>5.125%</td></tr>
+  <tr><td>20 Dec 2024</td><td>5.25%</td></tr>
 </table></div>
-<table><tr><td>生效日</td><td>2099年1月1日</td><td>9.99%</td></tr></table>`;
+<table><tr><td>Effective Date</td><td>1 Jan 2099</td><td>9.99%</td></tr></table>`;
 
 const hkma = [
   { effective: '2025-10-31', rate: 5 },

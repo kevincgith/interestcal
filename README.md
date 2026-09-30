@@ -8,14 +8,15 @@ You can choose one of two rates:
 
 - **Judgment debt rate**, as [published by the HK Judiciary](https://www.judiciary.hk/en/court_services_facilities/interest_rate.html). This is the default.
 - **HSBC best lending (prime) rate**, taken from [HKMA Monthly Statistical Bulletin table 6.4.1](https://www.hkma.gov.hk/media/eng/doc/market-data-and-statistics/monthly-statistical-bulletin/T060401.xls). You can add a spread over prime, e.g. prime + 2%.
-  The rates are cross-checked daily against [HSBC's own prime rate page](https://www.hsbc.com.hk/zh-hk/investments/market-information/hk/lending-rate/), which lists the current rate and the last 5 changes:
+  The rates are cross-checked daily against [HSBC's own prime rate page](https://www.hsbc.com.hk/investments/market-information/hk/lending-rate/), which lists the current rate and the last 5 changes:
   - **Match:** the page says so.
   - **HSBC has a newer change:** the HKMA table is updated monthly, so HSBC can be ahead. The newer change is added and marked "HSBC".
   - **Disagreement:** the HKMA data is kept, the page shows a warning, and the daily workflow fails so you get an email.
 
 ## Features
 
-- **Save as PDF:** prints a clean one-page report with the inputs, results, formula for each period, rates used and source links.
+- **Download PDF:** downloads a report straight away (built in the browser with [jsPDF](https://github.com/parallax/jsPDF)): inputs, results, the formula for each period, the rates used, and the sources as named, clickable links. No raw URLs are printed.
+- **Sortable rate table:** click **Effective date** or **Rate** to sort; click again to reverse. The PDF and Excel exports use the same order.
 - **Shareable link:** the inputs are stored in the page address (e.g. `?src=prime&p=1000000&from=2026-01-01&to=2026-09-30&basis=act%2Fact&round=total&spread=1`). **Copy link** copies it.
 - **Excel and CSV export:** the Excel file uses live formulas and has a second sheet with the rate sources.
 - **Rounding:** you can round only the total (periods are added unrounded) or round each period to cents first. The second option makes the rows add up exactly to the total.
@@ -45,6 +46,7 @@ You can choose one of two rates:
 | `site/index.html`, `app.js`, `style.css` | Static web UI. Amounts are shown as `xxx,xxx.xx`, and a spread is shown as `base + spread = rate`. |
 | `site/export-xlsx.js` | Excel export. The **Calculation** sheet has live formulas (days, base + spread, `principal × rate × days ÷ year days`, totals). The **Rates** sheet has the source URL and the rates used. A CSV export is also available. |
 | `site/vendor/xlsx.mini.min.js` | SheetJS 0.20.3 mini build (Apache-2.0), loaded only when you click Download Excel. It's copied from `node_modules/xlsx/dist/`. |
+| `site/export-pdf.js`, `site/vendor/jspdf*.js` | PDF report, using jsPDF 4 and jsPDF-AutoTable 5 (both MIT). They load only when you click Download PDF and are copied from `node_modules`. |
 | `site/rates.json` | Judgment debt rates scraped from the Judiciary site |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |
 | `scripts/fetch-rates.mjs` | Fetches and validates both sources, and rewrites a JSON file only when its rates change |

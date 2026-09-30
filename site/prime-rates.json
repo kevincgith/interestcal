@@ -768,7 +768,7 @@
     }
   ],
   "crossCheck": {
-    "source": "https://www.hsbc.com.hk/zh-hk/investments/market-information/hk/lending-rate/",
+    "source": "https://www.hsbc.com.hk/investments/market-information/hk/lending-rate/",
     "status": "match",
     "currentRate": 5,
     "notes": []

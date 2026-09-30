@@ -16,7 +16,7 @@
         or the HSBC best lending (prime) rate published by the
         <a href="https://www.hkma.gov.hk/eng/data-publications-and-research/data-and-statistics/monthly-statistical-bulletin/" target="_blank" rel="noopener">HKMA</a>
         and cross-checked daily against
-        <a href="https://www.hsbc.com.hk/zh-hk/investments/market-information/hk/lending-rate/" target="_blank" rel="noopener">HSBC’s official prime rate page</a>.
+        <a href="https://www.hsbc.com.hk/investments/market-information/hk/lending-rate/" target="_blank" rel="noopener">HSBC’s official prime rate page</a>.
         The start date earns interest and the end date does not.
         Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.</p>
     </header>
@@ -82,7 +82,7 @@
         </table>
       </div>
       <div class="exports">
-        <button type="button" id="pdf" class="secondary">Save as PDF</button>
+        <button type="button" id="pdf" class="secondary">Download PDF</button>
         <button type="button" id="xlsx" class="secondary">Download Excel</button>
         <button type="button" id="csv" class="secondary">Download CSV</button>
         <button type="button" id="share" class="secondary">Copy link</button>
@@ -97,7 +97,7 @@
         <span id="relevantHint" class="muted">(calculate first)</span></label>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Effective date</th><th class="num">Rate (% p.a.)</th></tr></thead>
+          <thead><tr><th aria-sort="descending"><button type="button" class="sort" data-key="effective">Effective date <span class="arrow">▼</span></button></th><th class="num" aria-sort="none"><button type="button" class="sort" data-key="rate">Rate (% p.a.) <span class="arrow"></span></button></th></tr></thead>
           <tbody id="rates"></tbody>
         </table>
       </div>
