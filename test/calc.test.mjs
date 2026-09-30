@@ -391,6 +391,27 @@ test('a rate table can switch source and spread on a date', () => {
   ]);
 });
 
+test('calendar compounding dates: 1st of each month / quarter / year after the start', () => {
+  const capStarts = (compounding, start, end) =>
+    calculateInterest({ principal: 1000, start, end, rates: fixed8, compounding, compoundDates: 'calendar', basis: 'act/365' })
+      .periods.map((p) => p.start);
+  assert.deepEqual(capStarts('monthly', '2026-01-15', '2026-04-15'), ['2026-01-15', '2026-02-01', '2026-03-01', '2026-04-01']);
+  assert.deepEqual(capStarts('quarterly', '2026-02-10', '2026-12-31'), ['2026-02-10', '2026-04-01', '2026-07-01', '2026-10-01']);
+  assert.deepEqual(capStarts('yearly', '2025-06-01', '2027-03-01'), ['2025-06-01', '2026-01-01', '2027-01-01']);
+  // A start on a boundary compounds at the next one, not on the start date itself
+  assert.deepEqual(capStarts('quarterly', '2026-04-01', '2026-10-15'), ['2026-04-01', '2026-07-01', '2026-10-01']);
+});
+
+test('calendar monthly compounding: interest to each month end joins the principal', () => {
+  const r = calculateInterest({
+    principal: 100000, start: '2026-01-15', end: '2026-03-01', rates: fixed8, compounding: 'monthly', compoundDates: 'calendar',
+  });
+  const jan = (100000 * 0.08 * 17) / 365; // 15 Jan -> 1 Feb
+  close(r.periods[1].principal, 100000 + jan);
+  close(r.totalInterest, jan + ((100000 + jan) * 0.08 * 28) / 365);
+  assert.equal(r.compoundDates, 'calendar');
+});
+
 test('rejects an unknown compounding', () => {
   assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, compounding: 'weekly' }), /compounding/);
 });

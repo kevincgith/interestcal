@@ -212,6 +212,11 @@ test('advanced settings are closed by default and compounding defaults to simple
   await expect(page.locator('#basis')).toHaveValue('act/act');
   await expect(page.locator('#rounding')).toHaveValue('total');
   await expect(page.locator('#switchFields')).toBeHidden();
+  await expect(page.locator('#compoundDatesField')).toBeHidden();
+  await page.locator('#compounding').selectOption('quarterly');
+  await expect(page.locator('#compoundDatesField')).toBeVisible();
+  await page.locator('#compounding').selectOption('daily');
+  await expect(page.locator('#compoundDatesField')).toBeHidden();
 });
 
 test('monthly compounding from a shared link, compared with simple interest', async ({ page }) => {
@@ -219,7 +224,7 @@ test('monthly compounding from a shared link, compared with simple interest', as
   await expect(page.locator('#advanced')).toHaveAttribute('open', '');
   await expect(total(page)).toHaveText('1,985.59');
   await expect(page.locator('#compareLine')).toHaveText(
-    'Compounded monthly: HK$1,985.59 interest, vs HK$1,972.60 as simple interest (+HK$12.98). Interest added to principal: HK$1,297.32.',
+    'Compounded monthly (from the start date): HK$1,985.59 interest, vs HK$1,972.60 as simple interest (+HK$12.98). Interest added to principal: HK$1,297.32.',
   );
   await expect(page.locator('#periods tr')).toHaveCount(3);
 });
@@ -255,4 +260,12 @@ test('a shared link with a non-default day count opens Advanced settings', async
   await page.goto('?src=judgment&p=1000&from=2026-01-01&to=2026-02-01&basis=act%2F360');
   await expect(page.locator('#advanced')).toHaveAttribute('open', '');
   await expect(page.locator('#basis')).toHaveValue('act/360');
+});
+
+test('calendar compounding dates from a shared link', async ({ page }) => {
+  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-15&to=2026-04-15&comp=monthly&cdates=calendar');
+  await expect(page.locator('#compoundDates')).toHaveValue('calendar');
+  await expect(page.locator('#periods tr td:first-child')).toHaveText(['15-Jan-2026', '01-Feb-2026', '01-Mar-2026', '01-Apr-2026']);
+  await expect(page.locator('#compareLine')).toContainText('Compounded monthly (calendar month ends)');
+  await expect(page).toHaveURL(/comp=monthly&cdates=calendar/);
 });

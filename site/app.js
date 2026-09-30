@@ -46,6 +46,16 @@ const COMPOUNDINGS = {
   continuous: 'Continuous',
 };
 
+const PERIOD_NAME = { monthly: 'month', quarterly: 'quarter', yearly: 'year' };
+// "Monthly (calendar month ends)", "Quarterly (from the start date)", "Daily", ...
+const compoundingLabel = (r) =>
+  COMPOUNDINGS[r.compounding] +
+  (PERIOD_NAME[r.compounding]
+    ? r.compoundDates === 'calendar'
+      ? ` (calendar ${PERIOD_NAME[r.compounding]} ends)`
+      : ' (from the start date)'
+    : '');
+
 // Short names for a rate kind, used when a calculation switches rate on a date
 const KIND_LABEL = { judgment: 'Judgment', prime: 'HSBC prime', fixed: 'Fixed' };
 
@@ -309,7 +319,7 @@ const printInputItems = (r) => [
   ['End date (does not earn interest)', fmtDate(r.end)],
   ['Day count basis', BASES[r.basis]],
   ['Rounding', ROUNDINGS[r.rounding]],
-  ...(r.compounding !== 'none' ? [['Compounding', COMPOUNDINGS[r.compounding]]] : []),
+  ...(r.compounding !== 'none' ? [['Compounding', compoundingLabel(r)]] : []),
   ...(r.additions.length || r.ignoredAdditions.length
     ? [['Principal added later', String(r.additions.length + r.ignoredAdditions.length)]]
     : []),
@@ -369,7 +379,7 @@ function render(r) {
   if (r.compounding !== 'none') {
     const extra = r.totalInterest - r.simpleInterest;
     $('compareLine').textContent =
-      `Compounded ${COMPOUNDINGS[r.compounding].toLowerCase()}: HK$${money.format(r.totalInterest)} interest, ` +
+      `Compounded ${compoundingLabel(r).toLowerCase()}: HK$${money.format(r.totalInterest)} interest, ` +
       `vs HK$${money.format(r.simpleInterest)} as simple interest (${extra >= 0 ? '+' : '−'}HK$${money.format(Math.abs(extra))}). ` +
       `Interest added to principal: HK$${money.format(r.totalCapitalised)}.`;
   }
@@ -432,6 +442,7 @@ function writeQuery(r) {
   if (r.source === 'prime') q.set('spread', String(r.spreadA ?? r.spread));
   if (isFixed(r)) q.set('rate', String(r.fixedRate));
   if (r.compounding !== 'none') q.set('comp', r.compounding);
+  if (PERIOD_NAME[r.compounding] && r.compoundDates === 'calendar') q.set('cdates', 'calendar');
   if (r.switch) {
     q.set('sw', r.switch.date);
     q.set('src2', r.switch.source);
@@ -473,6 +484,7 @@ function readQuery() {
   if (q.get('alloc') in ALLOCATIONS) $('allocation').value = q.get('alloc');
   // Advanced settings: open the section if the link uses them
   if (q.get('comp') in COMPOUNDINGS) $('compounding').value = q.get('comp');
+  if (q.get('cdates') === 'calendar') $('compoundDates').value = 'calendar';
   if (isIsoDate(q.get('sw'))) {
     $('switchOn').checked = true;
     $('switchDate').value = q.get('sw');
@@ -503,6 +515,7 @@ function showSourceFields() {
   $('switchFields').hidden = !$('switchOn').checked;
   $('spread2Field').hidden = currentSource2() !== 'prime';
   $('fixed2Field').hidden = currentSource2() !== 'fixed';
+  $('compoundDatesField').hidden = !PERIOD_NAME[$('compounding').value];
 }
 
 function flash(msg) {
@@ -618,6 +631,7 @@ function readEventRows(kind) {
 
 document.querySelectorAll('input[name="source2"]').forEach((el) => el.addEventListener('change', showSourceFields));
 $('switchOn').addEventListener('change', showSourceFields);
+$('compounding').addEventListener('change', showSourceFields);
 
 $('addPayment').addEventListener('click', () => {
   addEventRow('payment').querySelector('.pay-date').focus();
@@ -688,6 +702,7 @@ $('form').addEventListener('submit', (e) => {
   const fixedRate = source === 'fixed' ? parseNumber($('fixedRate').value) : null;
   const allocation = $('allocation').value;
   const compounding = $('compounding').value;
+  const compoundDates = $('compoundDates').value;
 
   // Advanced: switch to another rate from a date
   let switchTo = null;
@@ -735,7 +750,7 @@ $('form').addEventListener('submit', (e) => {
 
   try {
     lastResult = {
-      ...calculateInterest({ ...calcInput, compounding }),
+      ...calculateInterest({ ...calcInput, compounding, compoundDates }),
       // For the comparison line: the same calculation as simple interest
       simpleInterest: compounding === 'none' ? null : calculateInterest({ ...calcInput, compounding: 'none' }).totalInterest,
       source,
@@ -831,7 +846,7 @@ $('xlsx').addEventListener('click', () => {
       rounding: ROUNDINGS[r.rounding],
       allocation: ALLOCATIONS[r.allocation],
       formulaText: formula,
-      compounding: COMPOUNDINGS[r.compounding],
+      compounding: compoundingLabel(r),
       // A fixed rate has no published source: the Rates sheet just states the rate
       ...(publishedKinds(r).length === 0
         ? { ratesTitle: 'Fixed rate', rates: [] }
@@ -895,7 +910,7 @@ $('csv').addEventListener('click', () => {
     ['Rounding', ROUNDINGS[r.rounding]],
     ...(r.compounding !== 'none'
       ? [
-          ['Compounding', COMPOUNDINGS[r.compounding]],
+          ['Compounding', compoundingLabel(r)],
           ['Simple Interest (For Comparison)', money.format(r.simpleInterest)],
           ['Interest Added To Principal', money.format(r.totalCapitalised)],
         ]

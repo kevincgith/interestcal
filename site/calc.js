@@ -47,6 +47,7 @@ const jan1 = (y) => Date.UTC(y, 0, 1) / MS_PER_DAY;
 export const ALLOCATIONS = ['interest', 'principal'];
 export const COMPOUNDING = ['none', 'monthly', 'quarterly', 'yearly', 'daily', 'continuous'];
 const COMPOUND_MONTHS = { monthly: 1, quarterly: 3, yearly: 12 };
+export const COMPOUND_DATES = ['start', 'calendar'];
 
 const daysInMonth = (y, m0) => new Date(Date.UTC(y, m0 + 1, 0)).getUTCDate();
 
@@ -79,9 +80,13 @@ export function addMonths(iso, n) {
  *   ('interest', the usual rule) or principal.
  * @param {'none' | 'monthly' | 'quarterly' | 'yearly' | 'daily' | 'continuous'} [input.compounding]
  *   'none' (default): simple interest, unpaid interest never earns interest.
- *   monthly/quarterly/yearly: on each anniversary of the start date, unpaid interest is added to principal.
+ *   monthly/quarterly/yearly: unpaid interest is added to principal on each compounding date (see compoundDates).
  *   daily: principal x ((1 + rate / year days)^days - 1) within each period, added to principal as it accrues.
  *   continuous: principal x (e^(rate x days / year days) - 1), added to principal as it accrues.
+ * @param {'start' | 'calendar'} [input.compoundDates]  for monthly/quarterly/yearly compounding:
+ *   'start' (default): anniversaries of the start date (start 15 Mar, monthly: 15 Apr, 15 May, ...).
+ *   'calendar': calendar period ends, i.e. interest joins the principal from the 1st of each month / 1 Jan, Apr, Jul,
+ *   Oct / 1 Jan.
  */
 export function calculateInterest({
   principal,
@@ -95,6 +100,7 @@ export function calculateInterest({
   additions = [],
   allocation = 'interest',
   compounding = 'none',
+  compoundDates = 'start',
 }) {
   if (!Number.isFinite(principal)) throw new Error('Principal must be a number');
   const loanStart = toDay(start);
@@ -106,6 +112,7 @@ export function calculateInterest({
   if (!ROUNDING.includes(rounding)) throw new Error(`Unknown rounding: ${rounding}`);
   if (!ALLOCATIONS.includes(allocation)) throw new Error(`Unknown payment allocation: ${allocation}`);
   if (!COMPOUNDING.includes(compounding)) throw new Error(`Unknown compounding: ${compounding}`);
+  if (!COMPOUND_DATES.includes(compoundDates)) throw new Error(`Unknown compounding dates: ${compoundDates}`);
 
   const sorted = rates
     .map((r) => {
@@ -141,14 +148,22 @@ export function calculateInterest({
   }
   for (const p of applied) cuts.add(p.day);
   for (const a of added) cuts.add(a.day);
-  // Compounding dates: anniversaries of the start date (monthly / quarterly / yearly)
+  // Compounding dates (monthly / quarterly / yearly): anniversaries of the start date, or the 1st of each calendar
+  // month / quarter / year (interest accrued to a period end joins the principal from the next day)
   const capDays = new Set();
-  if (COMPOUND_MONTHS[compounding]) {
+  const step = COMPOUND_MONTHS[compounding];
+  if (step) {
+    const [y, m] = start.split('-').map(Number);
+    // First calendar boundary after the start: the next 1st of a month that is a multiple of `step` from January
+    const firstCalendar = `${y}-${String(Math.floor((m - 1) / step) * step + 1).padStart(2, '0')}-01`;
     for (let k = 1; ; k++) {
-      const day = toDay(addMonths(start, k * COMPOUND_MONTHS[compounding]));
+      const iso = compoundDates === 'calendar' ? addMonths(firstCalendar, k * step) : addMonths(start, k * step);
+      const day = toDay(iso);
       if (day >= loanEnd) break;
-      capDays.add(day);
-      cuts.add(day);
+      if (day > loanStart) {
+        capDays.add(day);
+        cuts.add(day);
+      }
     }
   }
   const points = [...cuts].sort((a, b) => a - b);
@@ -292,6 +307,7 @@ export function calculateInterest({
     ignoredAdditions,
     totalAdded,
     compounding,
+    compoundDates,
     totalCapitalised,
     totalInterest,
     totalPaid: totals.paid,

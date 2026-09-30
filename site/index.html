@@ -85,6 +85,12 @@
               <option value="continuous">Continuous</option>
             </select>
           </label>
+          <label id="compoundDatesField" hidden>Compounding dates
+            <select id="compoundDates">
+              <option value="start" selected>From the start date (anniversaries)</option>
+              <option value="calendar">Calendar period ends</option>
+            </select>
+          </label>
           <label class="radio switch-toggle"><input type="checkbox" id="switchOn"> Switch to a different rate from a date</label>
           <div id="switchFields" class="switch-fields" hidden>
             <label>Switch date (new rate applies from this day)
