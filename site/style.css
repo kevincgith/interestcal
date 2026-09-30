@@ -55,7 +55,7 @@ form {
   gap: 16px;
 }
 label { display: grid; gap: 6px; font-size: 0.9rem; font-weight: 600; }
-input {
+input, select {
   font: inherit;
   padding: 8px 10px;
   border: 1px solid var(--border);
@@ -104,6 +104,7 @@ button.secondary { background: transparent; color: var(--accent); }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
 th { font-size: 0.85rem; color: var(--muted); }
+td.formula { color: var(--muted); font-size: 0.9rem; }
 .num { text-align: right; }
 
 details summary { cursor: pointer; font-weight: 600; }

@@ -9,8 +9,17 @@ const fmtDate = (iso) => {
   const [y, m, d] = iso.split('-');
   return `${d}-${MONTHS[Number(m) - 1]}-${y}`;
 };
-const fmtRate = (r) => `${(r * 100).toFixed(3)}%`;
+// At least 3 decimals like the published tables, more only if a spread needs them (e.g. 7.0625%)
+const fmtRate = (r) =>
+  `${Number((r * 100).toFixed(6)).toLocaleString('en', { minimumFractionDigits: 3, maximumFractionDigits: 6 })}%`;
+const formula = (principal, p) => `${money.format(principal)} × ${fmtRate(p.rate)} × ${p.days} ÷ ${p.yearDays}`;
 const parseNumber = (s) => Number(s.replace(/[,\s$%]/g, '').replace(/^HK/i, ''));
+
+const BASES = {
+  'act/act': 'Actual/Actual',
+  'act/365': 'Actual/365',
+  'act/360': 'Actual/360',
+};
 
 const SOURCES = {
   judgment: {
@@ -51,16 +60,16 @@ function renderRateTable() {
   $('rateMeta').textContent =
     `(${data.rates.length} rates, latest effective ${fmtDate(data.rates[0].effective)}, updated ${fmtDate(data.updatedAt)})`;
   $('rates').replaceChildren(
-    ...data.rates.map((r) => row([fmtDate(r.effective), r.rate.toFixed(3)], [false, true])),
+    ...data.rates.map((r) => row([fmtDate(r.effective), r.rate.toFixed(3)], ['', 'num'])),
   );
 }
 
-function row(cells, numeric = []) {
+function row(cells, classes = []) {
   const tr = document.createElement('tr');
   cells.forEach((text, i) => {
     const td = document.createElement('td');
     td.textContent = text;
-    if (numeric[i]) td.className = 'num';
+    if (classes[i]) td.className = classes[i];
     tr.append(td);
   });
   return tr;
@@ -99,8 +108,8 @@ function render(r) {
   $('periods').replaceChildren(
     ...r.periods.map((p) =>
       row(
-        [fmtDate(p.start), fmtDate(p.end), p.days, fmtRate(p.rate), p.leap ? 'Yes' : 'No', money.format(p.interest)],
-        [false, false, true, true, false, true],
+        [fmtDate(p.start), fmtDate(p.end), p.days, fmtRate(p.rate), formula(r.principal, p), money.format(p.interest)],
+        ['', '', 'num', 'num', 'formula', 'num'],
       ),
     ),
   );
@@ -115,6 +124,16 @@ function onSourceChange() {
 }
 
 document.querySelectorAll('input[name="source"]').forEach((el) => el.addEventListener('change', onSourceChange));
+// Show the principal as xxx,xxx.xx once the user leaves the field
+$('principal').addEventListener('blur', () => {
+  const n = parseNumber($('principal').value);
+  if ($('principal').value.trim() && Number.isFinite(n)) $('principal').value = money.format(n);
+});
+
+$('basis').addEventListener('change', () => {
+  $('results').hidden = true;
+  lastResult = null;
+});
 
 $('form').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -124,6 +143,7 @@ $('form').addEventListener('submit', (e) => {
   const spread = source === 'prime' ? parseNumber($('spread').value || '0') : 0;
   const start = $('start').value;
   const end = $('end').value;
+  const basis = $('basis').value;
 
   if (!$('principal').value.trim() || !Number.isFinite(principal)) return showError('Please enter a valid principal amount.');
   if (!start) return showError('Please enter a valid start date.');
@@ -132,7 +152,7 @@ $('form').addEventListener('submit', (e) => {
   if (!rateData[source]) return showError('Interest rates have not loaded yet.');
 
   try {
-    lastResult = { ...calculateInterest({ principal, start, end, spread, rates: rateData[source].rates }), source };
+    lastResult = { ...calculateInterest({ principal, start, end, spread, basis, rates: rateData[source].rates }), source };
     render(lastResult);
   } catch (err) {
     $('results').hidden = true;
@@ -149,23 +169,29 @@ $('clear').addEventListener('click', () => {
 $('csv').addEventListener('click', () => {
   if (!lastResult) return;
   const r = lastResult;
-  const basis = SOURCES[r.source].label + (r.source === 'prime' ? ` + ${r.spread}%` : '');
+  const rateBasis = SOURCES[r.source].label + (r.source === 'prime' ? ` + ${r.spread}%` : '');
   const lines = [
-    ['Rate Basis', `"${basis}"`],
-    ['Principal', r.principal.toFixed(2)],
+    ['Rate Basis', rateBasis],
+    ['Day Count Basis', BASES[r.basis]],
+    ['Principal', money.format(r.principal)],
     ['Start Date', r.start],
     ['End Date', r.end],
-    ['Total Interest', r.totalInterest.toFixed(2)],
-    ['Total Amount Due', r.totalDue.toFixed(2)],
+    ['Total Interest', money.format(r.totalInterest)],
+    ['Total Amount Due', money.format(r.totalDue)],
     ['Total No. of Days', r.totalDays],
     [],
-    ['Period Start', 'Period End', 'No. of Days', 'Interest Rate', 'Leap Year?', 'Interest Amount'],
-    ...r.periods.map((p) => [p.start, p.end, p.days, fmtRate(p.rate), p.leap ? 'Yes' : 'No', p.interest.toFixed(2)]),
+    ['Period Start', 'Period End', 'No. of Days', 'Interest Rate', 'Year Days', 'Formula', 'Interest Amount'],
+    ...r.periods.map((p) => [
+      p.start, p.end, p.days, fmtRate(p.rate), p.yearDays, formula(r.principal, p), money.format(p.interest),
+    ]),
   ];
-  const blob = new Blob([lines.map((l) => l.join(',')).join('\n') + '\n'], { type: 'text/csv' });
+  const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
+  // BOM so Excel reads the × and ÷ in the formula column as UTF-8
+  const csv = '\uFEFF' + lines.map((l) => l.map(cell).join(',')).join('\n') + '\n';
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `interest_${r.source}_${r.start}_${r.end}.csv`;
+  a.download = `interest_${r.source}_${r.basis.replace('/', '')}_${r.start}_${r.end}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
 });

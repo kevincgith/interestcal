@@ -11,8 +11,15 @@ You can choose one of two rates:
 
 - Each published rate applies from its effective date up to, but not including, the next rate's effective date.
 - The start date earns interest and the end date does not. For example, 1 Jan → 2 Jan is **1 day** at the rate effective on 1 Jan.
-- Periods are split at 1 January. Each day uses its own year's basis: **366** in a leap year, **365** otherwise. This follows HK court practice.
-- Interest for each period is `principal × rate × days ÷ basis`. The total is the sum of the unrounded period amounts.
+- Interest for each period is `principal × rate × days ÷ year days`. The results table shows this formula for every row. The total is the sum of the unrounded period amounts.
+- The year days depend on the day count basis you choose:
+
+  | Basis | Year days | Notes |
+  |---|---|---|
+  | **Actual/Actual** (default) | 366 in a leap year, 365 otherwise | Periods are split at 1 January so each day uses its own year's count (ISDA style). This is the convention the HK courts use. |
+  | Actual/365 | always 365 | Also known as Actual/365 Fixed |
+  | Actual/360 | always 360 | |
+
 - The latest published rate keeps applying after its effective date.
 - Days before the earliest published rate earn no interest, and the page shows a warning when that happens. The earliest rates are currently 1 Jul 2000 for the judgment rate and 5 May 1971 for prime.
 - Prime rates change on any date, not just at quarter starts, and the same rules apply. Some dates in the HKMA table record only a deposit-rate change; those rows are dropped, so every row kept is a real prime change.
@@ -22,7 +29,7 @@ You can choose one of two rates:
 | Path | Purpose |
 |---|---|
 | `site/calc.js` | The calculation, a pure function ported from the VBA macro |
-| `site/index.html`, `app.js`, `style.css` | Static web UI with a CSV export |
+| `site/index.html`, `app.js`, `style.css` | Static web UI with a CSV export. Amounts are shown as `xxx,xxx.xx`. |
 | `site/rates.json` | Judgment debt rates scraped from the Judiciary site |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |
 | `scripts/fetch-rates.mjs` | Fetches and validates both sources, and rewrites a JSON file only when its rates change |

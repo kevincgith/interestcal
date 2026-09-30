@@ -55,10 +55,10 @@ test('day before a rate change uses the old rate', () => {
 test('splits at year end and uses a 366-day basis in leap years', () => {
   const r = calculateInterest({ principal: 100000, start: '2023-12-01', end: '2024-02-01', rates });
   assert.deepEqual(
-    r.periods.map((p) => [p.start, p.end, p.days, p.leap]),
+    r.periods.map((p) => [p.start, p.end, p.days, p.yearDays]),
     [
-      ['2023-12-01', '2024-01-01', 31, false],
-      ['2024-01-01', '2024-02-01', 31, true],
+      ['2023-12-01', '2024-01-01', 31, 365],
+      ['2024-01-01', '2024-02-01', 31, 366],
     ],
   );
   close(r.periods[1].interest, (100000 * 0.08875 * 31) / 366);
@@ -92,6 +92,36 @@ test('spread is added to every rate (e.g. prime + 2%)', () => {
     ['2025-10-31', '2025-11-10', 10, 7],
   ]);
   close(r.totalInterest, (100000 * 0.07125 * 30) / 365 + (100000 * 0.07 * 10) / 365);
+});
+
+test('Actual/365 Fixed uses 365 in a leap year and does not split at year end', () => {
+  const r = calculateInterest({ principal: 100000, start: '2023-12-01', end: '2024-02-01', rates, basis: 'act/365' });
+  assert.deepEqual(r.periods.map((p) => [p.start, p.end, p.days, p.yearDays]), [
+    ['2023-12-01', '2024-01-01', 31, 365],
+    ['2024-01-01', '2024-02-01', 31, 365],
+  ]);
+  close(r.periods[1].interest, (100000 * 0.08875 * 31) / 365);
+});
+
+test('Actual/360 keeps rate changes but not year-end splits', () => {
+  const r = calculateInterest({ principal: 135436.48, start: '2025-11-24', end: '2026-04-20', rates, basis: 'act/360' });
+  assert.deepEqual(r.periods.map((p) => [p.start, p.end, p.days, p.yearDays]), [
+    ['2025-11-24', '2026-01-01', 38, 360],
+    ['2026-01-01', '2026-04-01', 90, 360],
+    ['2026-04-01', '2026-04-20', 19, 360],
+  ]);
+  close(r.totalInterest, (135436.48 * (0.0825 * 38 + 0.08107 * 90 + 0.08 * 19)) / 360);
+});
+
+test('Actual/360 over a full year of a single rate', () => {
+  const r = calculateInterest({ principal: 360000, start: '2026-04-01', end: '2027-04-01', rates, basis: 'act/360' });
+  assert.equal(r.periods.length, 1);
+  assert.equal(r.totalDays, 365);
+  close(r.totalInterest, 360000 * 0.08 * 365 / 360);
+});
+
+test('rejects an unknown day count basis', () => {
+  assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, basis: '30/360' }), /basis/);
 });
 
 test('leap year rule', () => {

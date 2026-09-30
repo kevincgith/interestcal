@@ -15,7 +15,8 @@
         <a href="https://www.judiciary.hk/en/court_services_facilities/interest_rate.html" target="_blank" rel="noopener">HK Judiciary</a>
         or the HSBC best lending (prime) rate published by the
         <a href="https://www.hkma.gov.hk/eng/data-publications-and-research/data-and-statistics/monthly-statistical-bulletin/" target="_blank" rel="noopener">HKMA</a>.
-        The start date earns interest and the end date does not. Each day uses a 365-day basis, or 366 in a leap year.</p>
+        The start date earns interest and the end date does not.
+        Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.</p>
     </header>
 
     <form id="form" class="card" novalidate>
@@ -32,6 +33,13 @@
       </label>
       <label>End date
         <input id="end" type="date" required>
+      </label>
+      <label>Day count basis
+        <select id="basis">
+          <option value="act/act" selected>Actual/Actual (365, or 366 in a leap year)</option>
+          <option value="act/365">Actual/365 (always 365)</option>
+          <option value="act/360">Actual/360 (always 360)</option>
+        </select>
       </label>
       <label id="spreadField" hidden>Spread over prime (% p.a.)
         <input id="spread" type="text" inputmode="decimal" autocomplete="off" value="0" placeholder="0">
@@ -53,7 +61,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Period start</th><th>Period end</th><th class="num">Days</th><th class="num">Rate</th><th>Leap year?</th><th class="num">Interest</th></tr>
+            <tr><th>Period start</th><th>Period end</th><th class="num">Days</th><th class="num">Rate</th><th>Formula: principal × rate × days ÷ year days</th><th class="num">Interest</th></tr>
           </thead>
           <tbody id="periods"></tbody>
         </table>
