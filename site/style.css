@@ -282,3 +282,8 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 @media (prefers-color-scheme: dark) {
   .chart { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --grid: #34342f; }
 }
+/* Wide mortgage tables (comparison; 10-column HIBOR schedule): compact so they fit on laptop screens with any font */
+.compare th, .compare td, .schedule-wrap th, .schedule-wrap td, #mYearlyWrap th, #mYearlyWrap td {
+  padding: 6px 7px;
+  font-size: 0.88rem;
+}
