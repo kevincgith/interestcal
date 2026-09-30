@@ -12,15 +12,6 @@
     <header>
       <h1>HK Interest Calculator</h1>
       <p id="asAt" class="as-at"></p>
-      <p class="muted">Simple interest at the judgment debt rate published by the
-        <a href="https://www.judiciary.hk/en/court_services_facilities/interest_rate.html" target="_blank" rel="noopener">HK Judiciary</a>,
-        the HSBC best lending (prime) rate published by the
-        <a href="https://www.hkma.gov.hk/eng/data-publications-and-research/data-and-statistics/monthly-statistical-bulletin/" target="_blank" rel="noopener">HKMA</a>
-        and cross-checked daily against
-        <a href="https://www.hsbc.com.hk/investments/market-information/hk/lending-rate/" target="_blank" rel="noopener">HSBC’s official prime rate page</a>,
-        or a fixed rate, with optional partial payments.
-        The start date earns interest and the end date does not.
-        Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.</p>
     </header>
 
     <form id="form" class="card" novalidate>
@@ -136,6 +127,17 @@
         </table>
       </div>
     </details>
+    <footer class="about">
+      <p>Simple interest at the judgment debt rate published by the
+        <a href="https://www.judiciary.hk/en/court_services_facilities/interest_rate.html" target="_blank" rel="noopener">HK Judiciary</a>,
+        the HSBC best lending (prime) rate published by the
+        <a href="https://www.hkma.gov.hk/eng/data-publications-and-research/data-and-statistics/monthly-statistical-bulletin/" target="_blank" rel="noopener">HKMA</a>
+        and cross-checked daily against
+        <a href="https://www.hsbc.com.hk/investments/market-information/hk/lending-rate/" target="_blank" rel="noopener">HSBC’s official prime rate page</a>,
+        or a fixed rate, with optional partial payments.
+        The start date earns interest and the end date does not.
+        Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.</p>
+    </footer>
   </main>
   <script type="module" src="app.js?v=__BUILD__"></script>
 </body>

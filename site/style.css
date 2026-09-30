@@ -180,6 +180,8 @@ details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
 }
 #results.stale > :not(.stale-note) { opacity: 0.45; }
 .verified { margin: -8px 0 16px; font-size: 0.9rem; color: var(--muted); overflow-wrap: anywhere; }
+.about { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.9rem; }
+.about p { margin: 0; }
 .rate-source p { margin: 10px 0 0; font-size: 0.9rem; overflow-wrap: anywhere; }
 .print-only { display: none; }
 
@@ -199,7 +201,7 @@ details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
   @page { margin: 14mm; }
   body { font-size: 11pt; background: #fff; }
   main { max-width: none; padding: 0; }
-  header p:not(.as-at), form, .exports, label.filter, .stale-note, details summary::marker { display: none; }
+  header p:not(.as-at), .about, form, .exports, label.filter, .stale-note, details summary::marker { display: none; }
   .print-only { display: grid; }
   .inputs-list {
     grid-template-columns: max-content 1fr;
