@@ -41,14 +41,12 @@ const SOURCES = {
     title: 'Judgment debt rates',
     sourceName: 'HK Judiciary: interest rates on judgment debts',
     label: 'Judgment debt rate (HK Judiciary)',
-    staleNote: 'Check the Judiciary website for any newer rate.',
   },
   prime: {
     file: 'prime-rates.json',
     title: 'HSBC prime rates',
     sourceName: 'HKMA Monthly Statistical Bulletin, table 6.4.1',
     label: 'HSBC best lending rate (HKMA table 6.4.1)',
-    staleNote: 'Rates come from the HKMA table (updated monthly), cross-checked daily against HSBC’s official prime rate page.',
   },
 };
 
@@ -223,7 +221,7 @@ function render(r) {
   }
   if (r.end > r.latestRateDate && r.periods.length) {
     warnings.push(warning(
-      `Days on or after ${fmtDate(r.latestRateDate)} use the latest published rate. ${SOURCES[r.source].staleNote}`,
+      `Latest published rate (from ${fmtDate(r.latestRateDate)}) applied up to the end date.`,
     ));
   }
   if (rateData[r.source].crossCheck?.status === 'mismatch') {
