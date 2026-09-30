@@ -44,6 +44,8 @@ export const round2 = (x) => (Math.sign(x) * Math.round(Number((Math.abs(x) * 10
 const yearOf = (day) => new Date(day * MS_PER_DAY).getUTCFullYear();
 const jan1 = (y) => Date.UTC(y, 0, 1) / MS_PER_DAY;
 
+export const ALLOCATIONS = ['interest', 'principal'];
+
 /**
  * @param {object} input
  * @param {number} input.principal
@@ -54,8 +56,22 @@ const jan1 = (y) => Date.UTC(y, 0, 1) / MS_PER_DAY;
  * @param {'act/act' | 'act/365' | 'act/360'} [input.basis]  day count basis
  * @param {'total' | 'period'} [input.rounding]  'total': add unrounded period amounts, round only for display;
  *   'period': round each period's interest to cents, total = sum of the rounded amounts
+ * @param {{date: string, amount: number}[]} [input.payments]  partial payments; a payment on a date counts from that
+ *   day (like the end date, the payment date itself no longer earns interest on the amount paid)
+ * @param {'interest' | 'principal'} [input.allocation]  what a payment pays off first: accrued unpaid interest
+ *   ('interest', the usual rule) or principal. Interest is always simple: unpaid interest never earns interest.
  */
-export function calculateInterest({ principal, start, end, rates, spread = 0, basis = 'act/act', rounding = 'total' }) {
+export function calculateInterest({
+  principal,
+  start,
+  end,
+  rates,
+  spread = 0,
+  basis = 'act/act',
+  rounding = 'total',
+  payments = [],
+  allocation = 'interest',
+}) {
   if (!Number.isFinite(principal)) throw new Error('Principal must be a number');
   const loanStart = toDay(start);
   const loanEnd = toDay(end);
@@ -64,57 +80,119 @@ export function calculateInterest({ principal, start, end, rates, spread = 0, ba
   if (!Number.isFinite(spread)) throw new Error('Spread must be a number');
   if (!DAY_COUNT_BASES.includes(basis)) throw new Error(`Unknown day count basis: ${basis}`);
   if (!ROUNDING.includes(rounding)) throw new Error(`Unknown rounding: ${rounding}`);
+  if (!ALLOCATIONS.includes(allocation)) throw new Error(`Unknown payment allocation: ${allocation}`);
 
   const sorted = rates
     .map((r) => ({ day: toDay(r.effective), baseRate: r.rate / 100, rate: (r.rate + spread) / 100 }))
     .sort((a, b) => a.day - b.day);
 
-  const periods = [];
+  const pays = payments
+    .map((p, i) => {
+      if (!(Number.isFinite(p.amount) && p.amount > 0)) throw new Error(`Payment ${i + 1}: amount must be more than 0`);
+      return { day: toDay(p.date), date: p.date, amount: p.amount };
+    })
+    .sort((a, b) => a.day - b.day);
+  // Only payments from the start date up to (not including) the end date affect the calculation
+  const applied = pays.filter((p) => p.day >= loanStart && p.day < loanEnd);
+  const ignoredPayments = pays.filter((p) => !applied.includes(p)).map(({ date, amount }) => ({ date, amount }));
+
+  // Split [start, end) at every rate change, every 1 January (Actual/Actual only) and every payment date
+  const cuts = new Set([loanStart, loanEnd]);
+  for (const r of sorted) if (r.day > loanStart && r.day < loanEnd) cuts.add(r.day);
+  if (basis === 'act/act') {
+    for (let y = yearOf(loanStart) + 1; jan1(y) < loanEnd; y++) cuts.add(jan1(y));
+  }
+  for (const p of applied) cuts.add(p.day);
+  const points = [...cuts].sort((a, b) => a - b);
+
+  let balance = principal; // principal still owed
+  let unpaid = 0; // interest accrued and not yet paid
   let totalInterest = 0;
   let totalDays = 0;
+  const totals = { paid: 0, toInterest: 0, toPrincipal: 0, excess: 0 };
+  const periods = [];
+  const paymentRows = [];
 
-  for (let i = 0; i < sorted.length; i++) {
-    const boundary = i < sorted.length - 1 ? sorted[i + 1].day : loanEnd;
-    const calcStart = Math.max(sorted[i].day, loanStart);
-    const calcEnd = Math.min(boundary, loanEnd);
+  // In 'period' rounding everything is kept in whole cents, so floating point dust never shows
+  const cents = (x) => (rounding === 'period' ? round2(x) : x);
 
-    let subStart = calcStart;
-    while (subStart < calcEnd) {
-      // Only Actual/Actual needs a split at year end; fixed bases use one row per rate period.
-      const year = yearOf(subStart);
-      const subEnd = basis === 'act/act' ? Math.min(jan1(year + 1), calcEnd) : calcEnd;
-      const days = subEnd - subStart;
-      const yearDays = basis === 'act/360' ? 360 : basis === 'act/365' ? 365 : isLeapYear(year) ? 366 : 365;
-      const exact = (principal * sorted[i].rate * days) / yearDays;
-      const interest = rounding === 'period' ? round2(exact) : exact;
-
-      periods.push({
-        start: fromDay(subStart),
-        end: fromDay(subEnd),
-        days,
-        baseRate: sorted[i].baseRate, // published rate, before spread
-        rate: sorted[i].rate, // rate applied = baseRate + spread
-        yearDays,
-        interest,
+  const applyPayments = (day) => {
+    for (const p of applied.filter((x) => x.day === day)) {
+      const takeInterest = (amt) => Math.min(amt, unpaid);
+      const takePrincipal = (amt) => Math.min(amt, balance);
+      let toInterest;
+      let toPrincipal;
+      if (allocation === 'interest') {
+        toInterest = takeInterest(p.amount);
+        toPrincipal = takePrincipal(cents(p.amount - toInterest));
+      } else {
+        toPrincipal = takePrincipal(p.amount);
+        toInterest = takeInterest(cents(p.amount - toPrincipal));
+      }
+      const excess = cents(p.amount - toInterest - toPrincipal); // paid more than was owed
+      unpaid = cents(unpaid - toInterest);
+      balance = cents(balance - toPrincipal);
+      totals.paid += p.amount;
+      totals.toInterest += toInterest;
+      totals.toPrincipal += toPrincipal;
+      totals.excess += excess;
+      paymentRows.push({
+        date: p.date,
+        amount: p.amount,
+        toInterest,
+        toPrincipal,
+        excess,
+        principalAfter: balance,
+        unpaidInterestAfter: unpaid,
       });
-      totalInterest += interest;
-      totalDays += days;
-      subStart = subEnd;
     }
+  };
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const segStart = points[i];
+    const segEnd = points[i + 1];
+    applyPayments(segStart);
+
+    const r = sorted.filter((x) => x.day <= segStart).at(-1);
+    if (!r) continue; // before the earliest known rate: no interest (reported as uncoveredDays)
+
+    const days = segEnd - segStart;
+    const year = yearOf(segStart);
+    const yearDays = basis === 'act/360' ? 360 : basis === 'act/365' ? 365 : isLeapYear(year) ? 366 : 365;
+    const exact = (balance * r.rate * days) / yearDays;
+    const interest = rounding === 'period' ? round2(exact) : exact;
+
+    periods.push({
+      start: fromDay(segStart),
+      end: fromDay(segEnd),
+      days,
+      principal: balance, // principal the interest is charged on in this period
+      baseRate: r.baseRate, // published rate, before spread
+      rate: r.rate, // rate applied = baseRate + spread
+      yearDays,
+      interest,
+    });
+    unpaid = cents(unpaid + interest);
+    totalInterest += interest;
+    totalDays += days;
   }
 
   // Adding rounded cents in floating point can leave dust (e.g. 0.30000000000000004)
-  if (rounding === 'period') totalInterest = round2(totalInterest);
+  if (rounding === 'period') {
+    totalInterest = round2(totalInterest);
+    unpaid = round2(unpaid);
+    balance = round2(balance);
+  }
 
   // Days before the earliest known rate earn nothing; report them rather than hide them.
   const uncoveredDays = Math.max(0, Math.min(loanEnd, sorted[0].day) - loanStart);
 
-  // Daily interest from the end date onwards: principal x rate in force on the end date / that day's year days.
-  // Used for "...plus HK$X per day until payment". null if no rate applies on the end date.
+  // Daily interest from the end date onwards: principal still owed x rate in force on the end date / that day's
+  // year days. Used for "...plus HK$X per day until payment". null if no rate applies on the end date.
   const atEnd = sorted.filter((r) => r.day <= loanEnd).at(-1);
   const endYearDays = basis === 'act/360' ? 360 : basis === 'act/365' ? 365 : isLeapYear(yearOf(loanEnd)) ? 366 : 365;
   const perDiem = atEnd
-    ? { amount: (principal * atEnd.rate) / endYearDays, rate: atEnd.rate, baseRate: atEnd.baseRate, yearDays: endYearDays }
+    ? { amount: (balance * atEnd.rate) / endYearDays, rate: atEnd.rate, baseRate: atEnd.baseRate, yearDays: endYearDays }
     : null;
 
   return {
@@ -124,9 +202,18 @@ export function calculateInterest({ principal, start, end, rates, spread = 0, ba
     spread,
     basis,
     rounding,
+    allocation,
     periods,
+    payments: paymentRows,
+    ignoredPayments,
     totalInterest,
-    totalDue: principal + totalInterest,
+    totalPaid: totals.paid,
+    interestPaid: totals.toInterest,
+    principalPaid: totals.toPrincipal,
+    excessPaid: totals.excess,
+    outstandingPrincipal: balance,
+    outstandingInterest: unpaid,
+    totalDue: cents(balance + unpaid), // with no payments: principal + total interest
     totalDays,
     uncoveredDays,
     perDiem,

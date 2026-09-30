@@ -48,10 +48,11 @@ test('fixed rate: interest, daily interest, and no published rate table', async 
 });
 
 test('form fields share one height and never overlap; no sideways scrolling', async ({ page }) => {
-  await page.goto('?src=prime');
+  await page.goto('?src=prime&pay=2026-03-01:1000');
   const ids = ['principal', 'start', 'end', 'basis', 'rounding'];
   const boxes = await Promise.all(ids.map((id) => page.locator(`#${id}`).boundingBox()));
   boxes.push(await page.locator('.stepper').boundingBox());
+  for (const sel of ['.pay-date', '.pay-amount', '.payment-row .remove']) boxes.push(await page.locator(sel).boundingBox());
 
   const heights = boxes.map((b) => Math.round(b.height));
   expect(new Set(heights).size, `field heights ${heights}`).toBe(1);
@@ -96,4 +97,47 @@ test('PDF, Excel and CSV download with the right names; exports omit the site ad
       expect(csv).not.toContain('127.0.0.1');
     }
   }
+});
+
+test('partial payment from a shared link: applied interest first, outstanding shown', async ({ page }) => {
+  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-12-31&basis=act%2Fact&round=total&pay=2026-07-01:10000&alloc=interest');
+  await expect(page.locator('.payment-row')).toHaveCount(1);
+  await expect(page.locator('.pay-amount')).toHaveValue('10,000.00');
+  await expect(total(page)).toHaveText('7,736.11');
+  await expect(page.locator('#totalPaid')).toHaveText('10,000.00');
+  await expect(page.locator('#totalDue')).toHaveText('97,736.11');
+  await expect(page.locator('#paymentsTable tr')).toHaveCount(1);
+  await expect(page.locator('#paymentsTable tr td')).toHaveText(['01-Jul-2026', '10,000.00', '3,967.12', '6,032.88', '93,967.12', '0.00']);
+  await expect(page.locator('#outstandingLine')).toContainText('principal 93,967.12 + unpaid interest 3,768.98');
+});
+
+test('payments can be added and removed in the form; nothing recalculates until Calculate', async ({ page }) => {
+  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-12-31&basis=act%2Fact&round=total');
+  await expect(total(page)).toHaveText('7,978.08');
+  await expect(page.locator('#allocationField')).toBeHidden();
+
+  await page.getByRole('button', { name: '+ Add payment' }).click();
+  await page.getByLabel('Payment date').fill('2026-07-01');
+  await page.getByLabel('Payment amount').fill('10000');
+  await page.locator('#allocation').selectOption('principal');
+  await expect(page.locator('#staleNote')).toBeVisible();
+  await expect(total(page)).toHaveText('7,978.08');
+
+  await page.getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#paymentsTable tr td').nth(3)).toHaveText('10,000.00'); // all to principal
+  await expect(page).toHaveURL(/pay=2026-07-01%3A10000&alloc=principal/);
+
+  await page.getByRole('button', { name: 'Remove payment' }).click();
+  await expect(page.locator('#staleNote')).toBeVisible();
+  await page.getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#paymentsResult')).toBeHidden();
+  await expect(total(page)).toHaveText('7,978.08');
+});
+
+test('a half-filled payment row shows an error instead of calculating', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: '+ Add payment' }).click();
+  await page.getByLabel('Payment amount').fill('5000');
+  await page.getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#error')).toHaveText('Payment 1: enter a date and an amount above 0.');
 });

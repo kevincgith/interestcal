@@ -20,7 +20,8 @@ const fmtRateWithSpread = (p, spread) => {
   const sign = spread < 0 ? '−' : '+';
   return `${fmtRate(p.baseRate)} ${sign} ${fmtRate(Math.abs(spread) / 100)} = ${fmtRate(p.rate)}`;
 };
-const formula = (principal, p) => `${money.format(principal)} × ${fmtRate(p.rate)} × ${p.days} ÷ ${p.yearDays}`;
+// Each period's own principal: it changes after a payment
+const formula = (p) => `${money.format(p.principal)} × ${fmtRate(p.rate)} × ${p.days} ÷ ${p.yearDays}`;
 const parseNumber = (s) => Number(s.replace(/[,\s$%]/g, '').replace(/^HK/i, ''));
 const isIsoDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s ?? '');
 
@@ -28,6 +29,11 @@ const BASES = {
   'act/act': 'Actual/Actual',
   'act/365': 'Actual/365',
   'act/360': 'Actual/360',
+};
+
+const ALLOCATIONS = {
+  interest: 'Interest first, then principal',
+  principal: 'Principal first, then interest',
 };
 
 const ROUNDINGS = {
@@ -218,6 +224,9 @@ const printInputItems = (r) => [
   ['End date (does not earn interest)', fmtDate(r.end)],
   ['Day count basis', BASES[r.basis]],
   ['Rounding', ROUNDINGS[r.rounding]],
+  ...(r.payments.length || r.ignoredPayments.length
+    ? [['Payments', `${r.payments.length + r.ignoredPayments.length} (${ALLOCATIONS[r.allocation].toLowerCase()})`]]
+    : []),
   ...(isFixed(r) ? [] : [['Rates as at', fmtDate(asAt(r.source))]]),
   ['Calculated on', fmtDate(new Date().toLocaleDateString('en-CA'))],
 ];
@@ -244,6 +253,16 @@ function render(r) {
       `${r.uncoveredDays} day${r.uncoveredDays === 1 ? '' : 's'} before that date earn no interest in this calculation.`,
     ));
   }
+  if (r.ignoredPayments.length) {
+    warnings.push(warning(
+      `Payments outside the calculation period were ignored: ${r.ignoredPayments
+        .map((p) => `${fmtDate(p.date)} (${money.format(p.amount)})`)
+        .join(', ')}.`,
+    ));
+  }
+  if (r.excessPaid > 0.005) {
+    warnings.push(warning(`Payments exceed the amount owed by HK$${money.format(r.excessPaid)}.`));
+  }
   if (rateData[r.source]?.crossCheck?.status === 'mismatch') {
     warnings.push(warning(`${CROSS_CHECK.mismatch} See the rate table below for details.`));
   }
@@ -256,13 +275,29 @@ function render(r) {
   $('summaryPrincipal').textContent = money.format(r.principal);
   $('totalInterest').textContent = money.format(r.totalInterest);
   $('totalDue').textContent = money.format(r.totalDue);
+  const hasPayments = r.payments.length > 0;
+  $('paidTile').hidden = !hasPayments;
+  $('totalPaid').textContent = money.format(r.totalPaid);
+  $('paymentsResult').hidden = !hasPayments;
+  $('outstandingLine').textContent = hasPayments
+    ? `Outstanding: principal ${money.format(r.outstandingPrincipal)} + unpaid interest ${money.format(r.outstandingInterest)} ` +
+      `= ${money.format(r.totalDue)}. Payments applied ${ALLOCATIONS[r.allocation].toLowerCase()}.`
+    : '';
+  $('paymentsTable').replaceChildren(
+    ...r.payments.map((p) =>
+      row(
+        [fmtDate(p.date), money.format(p.amount), money.format(p.toInterest), money.format(p.toPrincipal), money.format(p.principalAfter), money.format(p.unpaidInterestAfter)],
+        ['', 'num', 'num', 'num', 'num', 'num'],
+      ),
+    ),
+  );
   $('totalDays').textContent = r.totalDays;
   $('perDiem').textContent = r.perDiem ? money.format(r.perDiem.amount) : '–';
   $('perDiem').title = r.perDiem ? `${fmtRate(r.perDiem.rate)} × principal ÷ ${r.perDiem.yearDays}` : '';
   $('periods').replaceChildren(
     ...r.periods.map((p) =>
       row(
-        [fmtDate(p.start), fmtDate(p.end), p.days, fmtRateWithSpread(p, r.spread), formula(r.principal, p), money.format(p.interest)],
+        [fmtDate(p.start), fmtDate(p.end), p.days, fmtRateWithSpread(p, r.spread), formula(p), money.format(p.interest)],
         ['', '', 'num', 'num', 'formula', 'num'],
       ),
     ),
@@ -278,6 +313,12 @@ function writeQuery(r) {
   const q = new URLSearchParams({ src: r.source, p: String(r.principal), from: r.start, to: r.end, basis: r.basis, round: r.rounding });
   if (r.source === 'prime') q.set('spread', String(r.spread));
   if (isFixed(r)) q.set('rate', String(r.fixedRate));
+  // Payments as date:amount pairs, e.g. pay=2026-07-01:10000,2026-10-01:5000
+  const pays = [...r.payments.map((p) => [p.date, p.amount]), ...r.ignoredPayments.map((p) => [p.date, p.amount])];
+  if (pays.length) {
+    q.set('pay', pays.map(([d, a]) => `${d}:${a}`).join(','));
+    q.set('alloc', r.allocation);
+  }
   history.replaceState(null, '', `${location.pathname}?${q}`);
 }
 
@@ -293,6 +334,11 @@ function readQuery() {
   if (q.get('round') in ROUNDINGS) $('rounding').value = q.get('round');
   const spread = Number(q.get('spread'));
   if (q.has('spread') && Number.isFinite(spread)) $('spread').value = String(spread);
+  for (const pair of (q.get('pay') ?? '').split(',').filter(Boolean)) {
+    const [date, amount] = pair.split(':');
+    if (isIsoDate(date) && Number(amount) > 0) addPaymentRow(date, Number(amount));
+  }
+  if (q.get('alloc') in ALLOCATIONS) $('allocation').value = q.get('alloc');
   const rate = Number(q.get('rate'));
   if (q.has('rate') && Number.isFinite(rate)) $('fixedRate').value = String(rate);
   showSourceFields();
@@ -339,6 +385,69 @@ window.addEventListener('beforeprint', () => {
 });
 window.addEventListener('afterprint', () => {
   document.querySelector('details').open = detailsWasOpen;
+});
+
+// ---- Payments received: rows of date + amount ----
+
+function addPaymentRow(date = '', amount = '') {
+  const row = document.createElement('div');
+  row.className = 'payment-row';
+  const d = document.createElement('input');
+  d.type = 'date';
+  d.className = 'pay-date';
+  d.value = date;
+  d.setAttribute('aria-label', 'Payment date');
+  const a = document.createElement('input');
+  a.type = 'text';
+  a.inputMode = 'decimal';
+  a.autocomplete = 'off';
+  a.className = 'pay-amount';
+  a.placeholder = 'Amount (HK$)';
+  a.value = amount === '' ? '' : money.format(amount);
+  a.setAttribute('aria-label', 'Payment amount');
+  a.addEventListener('blur', () => {
+    const n = parseNumber(a.value);
+    if (a.value.trim() && Number.isFinite(n)) a.value = money.format(n);
+  });
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'secondary remove';
+  remove.textContent = '×';
+  remove.setAttribute('aria-label', 'Remove payment');
+  remove.addEventListener('click', () => {
+    row.remove();
+    updatePaymentFields();
+    markStale();
+  });
+  row.append(d, a, remove);
+  $('paymentRows').append(row);
+  updatePaymentFields();
+  return row;
+}
+
+function updatePaymentFields() {
+  $('allocationField').hidden = !$('paymentRows').children.length;
+}
+
+/** @returns {{date: string, amount: number}[]} throws a user-facing message for half-filled rows */
+function readPayments() {
+  const out = [];
+  [...$('paymentRows').children].forEach((row, i) => {
+    const date = row.querySelector('.pay-date').value;
+    const raw = row.querySelector('.pay-amount').value.trim();
+    if (!date && !raw) return; // empty row: ignore
+    const amount = parseNumber(raw);
+    if (!date || !raw || !Number.isFinite(amount) || amount <= 0) {
+      throw new Error(`Payment ${i + 1}: enter a date and an amount above 0.`);
+    }
+    out.push({ date, amount });
+  });
+  return out;
+}
+
+$('addPayment').addEventListener('click', () => {
+  addPaymentRow().querySelector('.pay-date').focus();
+  markStale();
 });
 
 // ---- Form ----
@@ -396,6 +505,13 @@ $('form').addEventListener('submit', (e) => {
   const basis = $('basis').value;
   const rounding = $('rounding').value;
   const fixedRate = source === 'fixed' ? parseNumber($('fixedRate').value) : null;
+  const allocation = $('allocation').value;
+  let payments;
+  try {
+    payments = readPayments();
+  } catch (err) {
+    return showError(err.message);
+  }
 
   if (!$('principal').value.trim() || !Number.isFinite(principal)) return showError('Please enter a valid principal amount.');
   if (!start) return showError('Please enter a valid start date.');
@@ -409,7 +525,7 @@ $('form').addEventListener('submit', (e) => {
 
   try {
     lastResult = {
-      ...calculateInterest({ principal, start, end, spread, basis, rounding, rates }),
+      ...calculateInterest({ principal, start, end, spread, basis, rounding, rates, payments, allocation }),
       source,
       fixedRate,
     };
@@ -433,6 +549,8 @@ function setDefaultDates() {
 
 $('clear').addEventListener('click', () => {
   $('form').reset();
+  $('paymentRows').replaceChildren();
+  updatePaymentFields();
   showSourceFields();
   clearResults();
   showError('');
@@ -495,6 +613,7 @@ $('xlsx').addEventListener('click', () => {
       rateBasis: rateBasisLabel(r),
       dayCount: BASES[r.basis],
       rounding: ROUNDINGS[r.rounding],
+      allocation: ALLOCATIONS[r.allocation],
       formulaText: formula,
       // A fixed rate has no published source: the Rates sheet just states the rate
       ...(isFixed(r)
@@ -526,6 +645,7 @@ $('pdf').addEventListener('click', () => {
       crossCheck: cc && cc.status !== 'mismatch' ? { text: CROSS_CHECK[cc.status], linkText: HSBC_PAGE, url: cc.source } : null,
       summaryLine: latestRateLine(r),
       perDiem: perDiemText(r),
+      allocation: `Payments applied ${ALLOCATIONS[r.allocation].toLowerCase()}.`,
       // No "rates used" section for a fixed rate
       ...(isFixed(r)
         ? {}
@@ -552,6 +672,14 @@ $('csv').addEventListener('click', () => {
     ['Start Date', r.start],
     ['End Date', r.end],
     ['Total Interest', money.format(r.totalInterest)],
+    ...(r.payments.length
+      ? [
+          ['Payments Received', money.format(r.totalPaid)],
+          ['Payments Applied', ALLOCATIONS[r.allocation]],
+          ['Outstanding Principal', money.format(r.outstandingPrincipal)],
+          ['Unpaid Interest', money.format(r.outstandingInterest)],
+        ]
+      : []),
     ['Total Amount Due', money.format(r.totalDue)],
     ['Total No. of Days', r.totalDays],
     ['Interest Per Day After End Date', perDiemText(r)],
@@ -562,14 +690,26 @@ $('csv').addEventListener('click', () => {
     [],
     [
       'Period Start', 'Period End', 'No. of Days',
+      ...(r.payments.length ? ['Principal'] : []),
       ...(r.spread ? ['Base Rate', 'Spread'] : []),
       'Interest Rate', 'Year Days', 'Formula', 'Interest Amount',
     ],
     ...r.periods.map((p) => [
       p.start, p.end, p.days,
+      ...(r.payments.length ? [money.format(p.principal)] : []),
       ...(r.spread ? [fmtRate(p.baseRate), fmtRate(r.spread / 100)] : []),
-      fmtRate(p.rate), p.yearDays, formula(r.principal, p), money.format(p.interest),
+      fmtRate(p.rate), p.yearDays, formula(p), money.format(p.interest),
     ]),
+    ...(r.payments.length
+      ? [
+          [],
+          ['Payment Date', 'Amount', 'To Interest', 'To Principal', 'Principal After', 'Unpaid Interest After'],
+          ...r.payments.map((p) => [
+            p.date, money.format(p.amount), money.format(p.toInterest), money.format(p.toPrincipal),
+            money.format(p.principalAfter), money.format(p.unpaidInterestAfter),
+          ]),
+        ]
+      : []),
   ];
   const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
   // BOM so Excel reads the × and ÷ in the formula column as UTF-8

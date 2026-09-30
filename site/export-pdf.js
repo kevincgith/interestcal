@@ -23,6 +23,7 @@ const pdfText = (s) =>
  * @param {string[]} ctx.warnings
  * @param {{text: string, linkText: string, url: string} | null} ctx.crossCheck  sentence containing linkText
  * @param {{text: string, linkText?: string, url?: string}} [ctx.summaryLine]  line under the summary, e.g. latest rate
+ * @param {string} [ctx.allocation]                  e.g. "Payments applied interest first, then principal."
  * @param {string} [ctx.perDiem]                     e.g. "219.18 (at 8.000% ÷ 365)"
  * @param {string} [ctx.ratesHeading]                  e.g. "HSBC prime rates (3 of 191 rates, used from ...)"
  * @param {{name: string, url: string}} [ctx.source]   omitted for a fixed rate: no "rates used" section
@@ -97,9 +98,17 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
   if (ctx.warnings.length) y += 6;
 
   // ---- Summary ----
+  const payments = r.payments ?? [];
+  const paid = payments.length > 0;
   table({
-    head: [['Principal', 'Total interest', 'Total amount due', 'Total no. of days']],
-    body: [[fmt.money(r.principal), fmt.money(r.totalInterest), fmt.money(r.totalDue), String(r.totalDays)]],
+    head: [['Principal', 'Total interest', ...(paid ? ['Payments received'] : []), 'Total amount due', 'Total no. of days']],
+    body: [[
+      fmt.money(r.principal),
+      fmt.money(r.totalInterest),
+      ...(paid ? [fmt.money(r.totalPaid)] : []),
+      fmt.money(r.totalDue),
+      String(r.totalDays),
+    ]],
     headStyles: { fillColor: false, textColor: MUTED, fontStyle: 'normal', fontSize: 8, lineWidth: 0 },
     bodyStyles: { fontStyle: 'bold', fontSize: 13, lineWidth: { bottom: 0.75 } },
   });
@@ -114,7 +123,7 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
       fmt.date(p.end),
       String(p.days),
       pdfText(fmt.rateWithSpread(p, r.spread)),
-      pdfText(fmt.formula(r.principal, p)),
+      pdfText(fmt.formula(p)),
       fmt.money(p.interest),
     ]),
     columnStyles: {
@@ -129,6 +138,31 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
       if (section === 'head' && [2, 3, 5].includes(column.index)) cell.styles.halign = 'right';
     },
   });
+
+  // ---- Payments ----
+  if (paid) {
+    heading('Payments', 11);
+    linkedLine({
+      text:
+        `Outstanding: principal ${fmt.money(r.outstandingPrincipal)} + unpaid interest ${fmt.money(r.outstandingInterest)}` +
+        ` = ${fmt.money(r.totalDue)}. ${ctx.allocation ?? ''}`,
+    });
+    table({
+      head: [['Date', 'Amount', 'To interest', 'To principal', 'Principal after', 'Unpaid interest after']],
+      body: payments.map((p) => [
+        fmt.date(p.date),
+        fmt.money(p.amount),
+        fmt.money(p.toInterest),
+        fmt.money(p.toPrincipal),
+        fmt.money(p.principalAfter),
+        fmt.money(p.unpaidInterestAfter),
+      ]),
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
+      didParseCell: ({ section, column, cell }) => {
+        if (section === 'head' && column.index > 0) cell.styles.halign = 'right';
+      },
+    });
+  }
 
   // ---- Rates used (not for a fixed rate, which has no published source) ----
   if (ctx.source) {

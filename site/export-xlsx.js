@@ -50,12 +50,13 @@ function sheetFrom(XLSX, rows, widths) {
  * @param {string} ctx.rateBasis     e.g. "HSBC best lending rate (HKMA table 6.4.1) + 1%"
  * @param {string} ctx.dayCount      e.g. "Actual/Actual"
  * @param {string} ctx.rounding      rounding description
+ * @param {string} [ctx.allocation]  how payments are applied, e.g. "Interest first, then principal"
  * @param {{status: string, summary: string, source: string, notes: string[]}} [ctx.crossCheck]  HSBC cross-check (prime)
  * @param {string} ctx.ratesTitle    e.g. "HSBC prime rates"
  * @param {string} ctx.sourceUrl
  * @param {string} ctx.updatedAt     "YYYY-MM-DD"
  * @param {{effective: string, rate: number}[]} ctx.rates  the rates used, newest first
- * @param {(principal: number, p: object) => string} ctx.formulaText
+ * @param {(p: object) => string} ctx.formulaText  formula text for a period row
  */
 export function buildWorkbook(XLSX, r, ctx) {
   // ---- Sheet 1: Calculation ----
@@ -74,16 +75,28 @@ export function buildWorkbook(XLSX, r, ctx) {
   rows.push(['Start date', date(r.start)]);
   rows.push(['End date (does not earn interest)', date(r.end)]);
 
+  const payments = r.payments ?? [];
+  const withPayments = payments.length > 0;
+  if (withPayments) rows.push(['Payments applied', ctx.allocation]);
+
+  // Totals: placeholders, filled once we know where the tables land
   const totalsRow = rows.length;
-  // Placeholders; filled once we know where the period table lands
-  rows.push([], [], [], []);
+  const totalLabels = withPayments
+    ? ['Total interest', 'Payments received', 'Outstanding principal', 'Unpaid interest', 'Total amount due', 'Total no. of days', 'perDiem']
+    : ['Total interest', 'Total amount due', 'Total no. of days', 'perDiem'];
+  const totalAt = (label) => totalsRow + 1 + totalLabels.indexOf(label); // 1-based Excel row
+  totalLabels.forEach(() => rows.push([]));
   rows.push([]);
 
   // With a spread, show Base Rate + Spread = Interest Rate (a live formula); otherwise just the rate.
+  // With payments, each period has its own principal balance (a Principal column).
   const withSpread = r.spread !== 0;
-  const cols = withSpread
-    ? ['Period Start', 'Period End', 'No. of Days', 'Base Rate', 'Spread', 'Interest Rate', 'Year Days', 'Formula', 'Interest Amount']
-    : ['Period Start', 'Period End', 'No. of Days', 'Interest Rate', 'Year Days', 'Formula', 'Interest Amount'];
+  const cols = [
+    'Period Start', 'Period End', 'No. of Days',
+    ...(withPayments ? ['Principal'] : []),
+    ...(withSpread ? ['Base Rate', 'Spread'] : []),
+    'Interest Rate', 'Year Days', 'Formula', 'Interest Amount',
+  ];
   const col = (name) => XLSX.utils.encode_col(cols.indexOf(name));
   const [DAYS, RATE, YEAR, INT] = ['No. of Days', 'Interest Rate', 'Year Days', 'Interest Amount'].map(col);
 
@@ -92,6 +105,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   const first = headerRow + 2; // 1-based Excel row of the first period
   r.periods.forEach((p, i) => {
     const n = first + i;
+    const base = withPayments ? `${col('Principal')}${n}` : P;
     const rate = withSpread
       ? [
           num(tidy(p.baseRate), PCT),
@@ -99,37 +113,63 @@ export function buildWorkbook(XLSX, r, ctx) {
           formula(`${col('Base Rate')}${n}+${col('Spread')}${n}`, tidy(p.rate), PCT),
         ]
       : [num(tidy(p.rate), PCT)];
+    const interest = `${base}*${RATE}${n}*${DAYS}${n}/${YEAR}${n}`;
     rows.push([
       date(p.start),
       date(p.end),
       formula(`B${n}-A${n}`, p.days),
+      ...(withPayments ? [num(p.principal, MONEY)] : []),
       ...rate,
       num(p.yearDays),
-      ctx.formulaText(r.principal, p),
-      formula(
-        r.rounding === 'period'
-          ? `ROUND(${P}*${RATE}${n}*${DAYS}${n}/${YEAR}${n},2)`
-          : `${P}*${RATE}${n}*${DAYS}${n}/${YEAR}${n}`,
-        p.interest,
-        MONEY,
-      ),
+      ctx.formulaText(p),
+      formula(r.rounding === 'period' ? `ROUND(${interest},2)` : interest, p.interest, MONEY),
     ]);
   });
   const last = first + r.periods.length - 1;
   const hasPeriods = r.periods.length > 0;
 
-  rows[totalsRow] = ['Total interest', formula(hasPeriods ? `SUM(${INT}${first}:${INT}${last})` : '0', r.totalInterest, MONEY)];
-  rows[totalsRow + 1] = ['Total amount due', formula(`${P}+B${totalsRow + 1}`, r.totalDue, MONEY)];
-  rows[totalsRow + 2] = ['Total no. of days', formula(hasPeriods ? `SUM(${DAYS}${first}:${DAYS}${last})` : '0', r.totalDays)];
-  // Daily interest after the end date: principal x rate in force on the end date / year days (live formula)
-  rows[totalsRow + 3] = r.perDiem
+  // Payments table below the periods
+  let payFirst = 0;
+  if (withPayments) {
+    rows.push([], [text('Payments')], ['Date', 'Amount', 'To Interest', 'To Principal', 'Principal After', 'Unpaid Interest After']);
+    payFirst = rows.length + 1;
+    for (const p of payments) {
+      rows.push([
+        date(p.date),
+        num(p.amount, MONEY),
+        num(p.toInterest, MONEY),
+        num(p.toPrincipal, MONEY),
+        num(p.principalAfter, MONEY),
+        num(p.unpaidInterestAfter, MONEY),
+      ]);
+    }
+  }
+  const payLast = payFirst + payments.length - 1;
+
+  const set = (label, cells) => (rows[totalAt(label) - 1] = cells);
+  set('Total interest', ['Total interest', formula(hasPeriods ? `SUM(${INT}${first}:${INT}${last})` : '0', r.totalInterest, MONEY)]);
+  if (withPayments) {
+    set('Payments received', ['Payments received', formula(`SUM(B${payFirst}:B${payLast})`, r.totalPaid, MONEY)]);
+    set('Outstanding principal', ['Outstanding principal', num(r.outstandingPrincipal, MONEY)]);
+    set('Unpaid interest', ['Unpaid interest', num(r.outstandingInterest, MONEY)]);
+    set('Total amount due', [
+      'Total amount due',
+      formula(`B${totalAt('Outstanding principal')}+B${totalAt('Unpaid interest')}`, r.totalDue, MONEY),
+    ]);
+  } else {
+    set('Total amount due', ['Total amount due', formula(`${P}+B${totalAt('Total interest')}`, r.totalDue, MONEY)]);
+  }
+  set('Total no. of days', ['Total no. of days', formula(hasPeriods ? `SUM(${DAYS}${first}:${DAYS}${last})` : '0', r.totalDays)]);
+  // Daily interest after the end date: principal still owed x rate in force on the end date / year days
+  const owed = withPayments ? `B${totalAt('Outstanding principal')}` : P;
+  set('perDiem', r.perDiem
     ? [
         `Interest per day after end date (at ${(r.perDiem.rate * 100).toFixed(3)}% ÷ ${r.perDiem.yearDays})`,
-        formula(`${P}*${tidy(r.perDiem.rate)}/${r.perDiem.yearDays}`, r.perDiem.amount, MONEY),
+        formula(`${owed}*${tidy(r.perDiem.rate)}/${r.perDiem.yearDays}`, r.perDiem.amount, MONEY),
       ]
-    : ['Interest per day after end date', '–'];
+    : ['Interest per day after end date', '–']);
 
-  const widths = withSpread ? [34, 44, 12, 12, 10, 14, 11, 40, 16] : [34, 44, 12, 14, 11, 40, 16];
+  const widths = [34, 44, 12, ...(withPayments ? [14] : []), ...(withSpread ? [12, 10] : []), 14, 11, 40, 16];
   const calc = sheetFrom(XLSX, rows, widths);
 
   // ---- Sheet 2: Rates ----

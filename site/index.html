@@ -12,12 +12,13 @@
     <header>
       <h1>HK Interest Calculator</h1>
       <p id="asAt" class="as-at"></p>
-      <p class="muted">Simple interest at either the judgment debt rate published by the
-        <a href="https://www.judiciary.hk/en/court_services_facilities/interest_rate.html" target="_blank" rel="noopener">HK Judiciary</a>
-        or the HSBC best lending (prime) rate published by the
+      <p class="muted">Simple interest at the judgment debt rate published by the
+        <a href="https://www.judiciary.hk/en/court_services_facilities/interest_rate.html" target="_blank" rel="noopener">HK Judiciary</a>,
+        the HSBC best lending (prime) rate published by the
         <a href="https://www.hkma.gov.hk/eng/data-publications-and-research/data-and-statistics/monthly-statistical-bulletin/" target="_blank" rel="noopener">HKMA</a>
         and cross-checked daily against
-        <a href="https://www.hsbc.com.hk/investments/market-information/hk/lending-rate/" target="_blank" rel="noopener">HSBC’s official prime rate page</a>.
+        <a href="https://www.hsbc.com.hk/investments/market-information/hk/lending-rate/" target="_blank" rel="noopener">HSBC’s official prime rate page</a>,
+        or a fixed rate, with optional partial payments.
         The start date earns interest and the end date does not.
         Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.</p>
     </header>
@@ -61,6 +62,19 @@
           <button type="button" class="step" data-step="1" aria-label="Increase spread by 1%">+</button>
         </div>
       </label>
+      <fieldset class="payments">
+        <legend>Payments received <span class="muted">(optional)</span></legend>
+        <div id="paymentRows"></div>
+        <div class="payments-actions">
+          <button type="button" id="addPayment" class="secondary">+ Add payment</button>
+          <label id="allocationField" class="inline" hidden>Apply payments to
+            <select id="allocation">
+              <option value="interest" selected>Interest first, then principal</option>
+              <option value="principal">Principal first, then interest</option>
+            </select>
+          </label>
+        </div>
+      </fieldset>
       <div class="actions">
         <button type="submit">Calculate</button>
         <button type="button" id="clear" class="secondary">Reset</button>
@@ -75,6 +89,7 @@
       <dl class="summary">
         <div><dt>Principal</dt><dd id="summaryPrincipal"></dd></div>
         <div><dt>Total interest</dt><dd id="totalInterest"></dd></div>
+        <div id="paidTile" hidden><dt>Payments received</dt><dd id="totalPaid"></dd></div>
         <div><dt>Total amount due</dt><dd id="totalDue"></dd></div>
         <div><dt>Total no. of days</dt><dd id="totalDays"></dd></div>
         <div><dt>Interest per day after end date</dt><dd id="perDiem"></dd></div>
@@ -88,6 +103,18 @@
           <tbody id="periods"></tbody>
         </table>
       </div>
+      <section id="paymentsResult" hidden>
+        <h2>Payments</h2>
+        <p id="outstandingLine" class="muted"></p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Date</th><th class="num">Amount</th><th class="num">To interest</th><th class="num">To principal</th><th class="num">Principal after</th><th class="num">Unpaid interest after</th></tr>
+            </thead>
+            <tbody id="paymentsTable"></tbody>
+          </table>
+        </div>
+      </section>
       <div class="exports">
         <button type="button" id="pdf" class="secondary">Download PDF</button>
         <button type="button" id="xlsx" class="secondary">Download Excel</button>

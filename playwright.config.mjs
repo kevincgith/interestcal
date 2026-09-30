@@ -16,7 +16,7 @@ export default defineConfig({
     { name: 'iphone-safari', use: { ...devices['iPhone 13'] } },
   ],
   webServer: {
-    command: `python3 -m http.server ${PORT} --bind 127.0.0.1 -d site`,
+    command: `node scripts/serve.mjs ${PORT}`,
     url: `http://127.0.0.1:${PORT}/`,
     reuseExistingServer: !process.env.CI,
     stderr: 'ignore',

@@ -17,6 +17,12 @@ You can choose one of three rates:
 
 ## Features
 
+- **Partial payments:** add any number of payments (date + amount). Choose how they're applied:
+  - **Interest first, then principal** (default): each payment clears accrued unpaid interest, and the rest reduces the principal.
+  - **Principal first, then interest.**
+
+  Interest stays simple either way: unpaid interest never earns interest. A payment on a date counts from that day. Payments before the start date, or on or after the end date, are ignored with a warning, and any overpayment is flagged. The results show a payments table and the outstanding principal plus unpaid interest. The exports include these too; in Excel, each period's interest uses that period's principal as a live formula.
+
 - **Interest per day after end date:** principal × the rate in force on the end date ÷ that day's year days. Use it for wording like "…plus HK$219.18 per day until payment". It appears on the page and in the PDF, Excel and CSV files; in Excel it's a live formula.
 
 - **Download PDF:** downloads a report straight away (built in the browser with [jsPDF](https://github.com/parallax/jsPDF)): inputs, results, the formula for each period, the rates used, and the sources as named, clickable links. No raw URLs are printed.
@@ -68,7 +74,7 @@ npm test             # unit tests: calculation, parsers, exports, vendored libra
 npm run test:e2e     # browser tests (desktop Chrome + iPhone Safari engine); first run: npx playwright install chromium webkit
 npm run fetch-rates  # refresh both rate files
 npm run vendor       # re-copy the export libraries into site/vendor after updating them
-npm start            # serve site/ locally
+npm start            # serve site/ at http://127.0.0.1:4173 (no dependencies)
 ```
 
 The browser tests check the page itself: the sample calculation, shared links, no recalculation before **Calculate**, the fixed rate, field layout (one height, no overlap, no sideways scrolling, including on iPhone), rate sorting, and the three downloads. Every deploy runs them first, so a broken page is not published.

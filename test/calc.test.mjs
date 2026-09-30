@@ -183,6 +183,111 @@ test('a fixed rate is a single rate from the start of time', () => {
   assert.deepEqual(r.periods.map((p) => [p.days, p.yearDays, pct(p)]), [[31, 365, 8], [31, 366, 8]]);
 });
 
+// ---- Partial payments ----
+// 100,000 at a fixed 8% over 2026 (not a leap year): 1 Jan -> 1 Jul is 181 days, 1 Jul -> 31 Dec is 183 days.
+const fixed8 = [{ effective: '1900-01-01', rate: 8 }];
+const i1 = (100000 * 0.08 * 181) / 365; // interest to 1 Jul = 3,967.12...
+
+test('payment, interest first: clears accrued interest, the rest reduces principal', () => {
+  const r = calculateInterest({
+    principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed8,
+    payments: [{ date: '2026-07-01', amount: 10000 }],
+  });
+  const p = r.payments[0];
+  close(p.toInterest, i1);
+  close(p.toPrincipal, 10000 - i1);
+  close(p.principalAfter, 100000 - (10000 - i1));
+  assert.deepEqual(r.periods.map((x) => [x.start, x.end, x.days]), [['2026-01-01', '2026-07-01', 181], ['2026-07-01', '2026-12-31', 183]]);
+  const i2 = (p.principalAfter * 0.08 * 183) / 365;
+  close(r.periods[1].interest, i2);
+  close(r.periods[1].principal, p.principalAfter);
+  close(r.outstandingInterest, i2);
+  close(r.totalDue, p.principalAfter + i2);
+  close(r.totalInterest, i1 + i2);
+  close(r.totalPaid, 10000);
+});
+
+test('payment, principal first: reduces principal, accrued interest stays owed', () => {
+  const r = calculateInterest({
+    principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed8, allocation: 'principal',
+    payments: [{ date: '2026-07-01', amount: 10000 }],
+  });
+  const i2 = (90000 * 0.08 * 183) / 365;
+  assert.equal(r.payments[0].toPrincipal, 10000);
+  assert.equal(r.payments[0].toInterest, 0);
+  close(r.outstandingPrincipal, 90000);
+  close(r.outstandingInterest, i1 + i2);
+  close(r.totalDue, 90000 + i1 + i2);
+});
+
+test('a payment smaller than accrued interest leaves principal unchanged (simple interest, no compounding)', () => {
+  const r = calculateInterest({
+    principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed8,
+    payments: [{ date: '2026-07-01', amount: 1000 }],
+  });
+  assert.equal(r.payments[0].toPrincipal, 0);
+  close(r.periods[1].interest, (100000 * 0.08 * 183) / 365); // still on 100,000, not on unpaid interest
+  close(r.outstandingInterest, i1 - 1000 + (100000 * 0.08 * 183) / 365);
+});
+
+test('overpayment is reported and nothing accrues afterwards', () => {
+  const r = calculateInterest({
+    principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed8,
+    payments: [{ date: '2026-07-01', amount: 200000 }],
+  });
+  close(r.excessPaid, 200000 - 100000 - i1);
+  assert.equal(r.outstandingPrincipal, 0);
+  assert.equal(r.periods[1].interest, 0);
+  close(r.totalDue, 0);
+  assert.equal(r.perDiem.amount, 0);
+});
+
+test('a payment on the start date reduces principal before any interest; outside dates are ignored', () => {
+  const r = calculateInterest({
+    principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed8,
+    payments: [
+      { date: '2026-01-01', amount: 50000 },
+      { date: '2025-12-01', amount: 1 },
+      { date: '2026-12-31', amount: 2 },
+    ],
+  });
+  assert.equal(r.payments.length, 1);
+  assert.equal(r.periods[0].principal, 50000);
+  close(r.totalInterest, (50000 * 0.08 * 364) / 365);
+  assert.deepEqual(r.ignoredPayments, [{ date: '2025-12-01', amount: 1 }, { date: '2026-12-31', amount: 2 }]);
+});
+
+test('payments split periods alongside rate changes and year ends', () => {
+  const r = calculateInterest({
+    principal: 135436.48, start: '2025-11-24', end: '2026-04-20', rates,
+    payments: [{ date: '2026-02-15', amount: 50000 }],
+  });
+  assert.deepEqual(r.periods.map((x) => [x.start, x.end]), [
+    ['2025-11-24', '2026-01-01'],
+    ['2026-01-01', '2026-02-15'],
+    ['2026-02-15', '2026-04-01'],
+    ['2026-04-01', '2026-04-20'],
+  ]);
+  assert.equal(r.totalDays, 147);
+  assert.ok(r.periods[2].principal < 135436.48);
+});
+
+test('rounding each period with payments keeps cents exact', () => {
+  const r = calculateInterest({
+    principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed8, rounding: 'period',
+    payments: [{ date: '2026-07-01', amount: 10000 }],
+  });
+  assert.equal(r.payments[0].toInterest, 3967.12);
+  assert.equal(r.outstandingPrincipal, 93967.12);
+  assert.equal(r.totalDue, round2(r.outstandingPrincipal + r.outstandingInterest));
+});
+
+test('rejects invalid payments and allocation', () => {
+  assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, payments: [{ date: '2026-01-05', amount: 0 }] }), /amount/);
+  assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, payments: [{ date: 'x', amount: 1 }] }), /date/i);
+  assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, allocation: 'x' }), /allocation/);
+});
+
 test('leap year rule', () => {
   assert.equal(isLeapYear(2024), true);
   assert.equal(isLeapYear(1900), false);

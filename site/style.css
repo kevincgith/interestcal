@@ -28,6 +28,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; } /* the hidden attribute always wins over layout rules */
 
 body {
   margin: 0;
@@ -36,7 +37,7 @@ body {
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
 h1 { margin: 0 0 8px; font-size: 1.6rem; }
 .as-at { margin: 0 0 8px; font-size: 0.9rem; font-weight: 600; color: var(--accent); }
 a { color: var(--accent); }
@@ -103,6 +104,15 @@ input, select {
 label.radio { display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 1rem; }
 label[hidden] { display: none; }
 .actions { grid-column: 1 / -1; display: flex; gap: 12px; }
+.payments { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; min-width: 0; }
+.payments legend { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; padding: 0; }
+#paymentRows { display: grid; gap: 8px; margin-bottom: 8px; }
+.payment-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; gap: 8px; }
+.payment-row .remove { width: 44px; height: 44px; padding: 0; font-size: 1.2rem; line-height: 1; }
+.payments-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+label.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+label.inline select { width: auto; }
+#paymentsResult h2 { font-size: 1.05rem; margin: 8px 0 4px; }
 
 button {
   font: inherit;
@@ -141,7 +151,7 @@ th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: 
 th { font-size: 0.85rem; color: var(--muted); }
 .exports { display: flex; flex-wrap: wrap; gap: 12px; }
 button:disabled { opacity: 0.6; cursor: progress; }
-td.formula { color: var(--muted); font-size: 0.9rem; }
+td.formula { color: var(--muted); font-size: 0.9rem; white-space: normal; min-width: 170px; }
 .num { text-align: right; }
 
 details summary { cursor: pointer; font-weight: 600; }

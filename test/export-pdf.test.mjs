@@ -15,7 +15,7 @@ const fmt = {
   date: (iso) => iso,
   rate: (x) => `${(x * 100).toFixed(3)}%`,
   rateWithSpread: (p) => `${(p.baseRate * 100).toFixed(3)}% + 1.000% = ${(p.rate * 100).toFixed(3)}%`,
-  formula: (principal, p) => `${principal} × ${(p.rate * 100).toFixed(3)}% × ${p.days} ÷ ${p.yearDays}`,
+  formula: (p) => `${p.principal} × ${(p.rate * 100).toFixed(3)}% × ${p.days} ÷ ${p.yearDays}`,
 };
 
 test('PDF report: text content, named source links, no raw URLs in the text', () => {
@@ -63,4 +63,24 @@ test('PDF report: fixed rate has no rates section; daily interest is shown', () 
   assert.ok(pdf.includes('Fixed rate of 8.000% p.a.'));
   assert.ok(!pdf.includes('Source:'));
   assert.ok(!pdf.includes('Effective date'));
+});
+
+test('PDF report with payments: payments column, payments table and outstanding line', () => {
+  const fixed = [{ effective: '1900-01-01', rate: 8 }];
+  const r = calculateInterest({
+    principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed,
+    payments: [{ date: '2026-07-01', amount: 10000 }],
+  });
+  const doc = buildPdf({ jsPDF, autoTable }, { ...r, source: 'fixed' }, {
+    inputs: [['Interest rate', 'Fixed rate of 8.000% p.a.']],
+    warnings: [],
+    crossCheck: null,
+    allocation: 'Payments applied interest first, then principal.',
+    fmt: { ...fmt, rateWithSpread: (p) => `${(p.rate * 100).toFixed(3)}%` },
+    generatedOn: '30-Sep-2026',
+  });
+  const pdf = doc.output();
+  for (const s of ['Payments received', '10000.00', 'Unpaid interest after', 'Outstanding: principal', 'interest first, then principal']) {
+    assert.ok(pdf.includes(s), `missing: ${s}`);
+  }
 });

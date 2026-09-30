@@ -8,7 +8,7 @@
   "scripts": {
     "test": "node --test \"test/*.test.mjs\"",
     "fetch-rates": "node scripts/fetch-rates.mjs",
-    "start": "npx --yes serve site",
+    "start": "node scripts/serve.mjs",
     "vendor": "node scripts/vendor.mjs",
     "test:e2e": "playwright test"
   },

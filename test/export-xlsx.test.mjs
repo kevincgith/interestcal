@@ -113,3 +113,33 @@ test('Excel export: a fixed rate has no source rows or rate table', () => {
   assert.equal(rates.findIndex((x) => x[0] === 'Effective Date'), -1);
   assert.deepEqual(rates.find((x) => x[0] === 'Rate'), ['Rate', 'Fixed rate of 8.000% p.a. (no published rate source)']);
 });
+
+test('Excel export with payments: principal column, payments table, outstanding totals', () => {
+  const fixed = [{ effective: '1900-01-01', rate: 8 }];
+  const r = calculateInterest({
+    principal: 100000, start: '2026-01-01', end: '2026-12-31', rates: fixed,
+    payments: [{ date: '2026-07-01', amount: 10000 }],
+  });
+  const wb = buildWorkbook(XLSX, { ...r, source: 'fixed' }, {
+    rateBasis: 'Fixed', dayCount: 'Actual/Actual', rounding: 'x', allocation: 'Interest first, then principal',
+    ratesTitle: 'Fixed rate', rates: [], formulaText: () => '',
+  });
+  const out = XLSX.read(XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }), { type: 'buffer', cellFormula: true });
+  const ws = out.Sheets.Calculation;
+  const calc = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  const find = (label) => calc.findIndex((x) => x[0] === label);
+
+  const head = find('Period Start');
+  assert.deepEqual(calc[head], ['Period Start', 'Period End', 'No. of Days', 'Principal', 'Interest Rate', 'Year Days', 'Formula', 'Interest Amount']);
+  const second = head + 3; // 1-based row of the second period
+  assert.equal(ws[`H${second}`].f, `D${second}*E${second}*C${second}/F${second}`);
+  assert.ok(Math.abs(ws[`D${second}`].v - r.payments[0].principalAfter) < 1e-9);
+
+  const payHead = find('Date');
+  assert.deepEqual(calc[payHead].slice(0, 6), ['Date', 'Amount', 'To Interest', 'To Principal', 'Principal After', 'Unpaid Interest After']);
+  assert.equal(ws[`B${find('Payments received') + 1}`].f, `SUM(B${payHead + 2}:B${payHead + 2})`);
+  const due = ws[`B${find('Total amount due') + 1}`];
+  assert.equal(due.f, `B${find('Outstanding principal') + 1}+B${find('Unpaid interest') + 1}`);
+  assert.ok(Math.abs(due.v - r.totalDue) < 1e-9);
+  assert.equal(calc[find('Payments applied')][1], 'Interest first, then principal');
+});
