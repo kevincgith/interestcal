@@ -28,7 +28,7 @@ You can choose one of two rates:
 | `scripts/fetch-rates.mjs` | Fetches and validates both sources, and rewrites a JSON file only when its rates change |
 | `scripts/parse-judiciary.mjs`, `parse-prime.mjs` | Parsers for each source |
 | `test/` | Tests, including the workbook's saved example (HK$135,436.48, 24 Nov 2025 → 20 Apr 2026 = HK$4,434.64) |
-| `.github/workflows/pages.yml` | Refreshes the rates weekly and deploys to GitHub Pages |
+| `.github/workflows/pages.yml` | Refreshes the rates daily and deploys to GitHub Pages |
 
 The website itself has no dependencies and no build step. The rate updater uses [SheetJS](https://sheetjs.com) to read the HKMA `.xls` file. You need Node 20 or later to run the tests and the updater.
 
@@ -45,6 +45,6 @@ npm start            # serve site/ locally
 
 1. Push to GitHub on the `main` branch.
 2. Go to **Settings → Pages** and set the **Source** to **GitHub Actions**.
-3. Every push to `main` deploys the site. The weekly schedule, which you can also start manually from the Actions tab, re-scrapes the rates, commits any change and redeploys.
+3. Every push to `main` deploys the site. A daily schedule (09:00 HKT) re-fetches both rate sources, commits any change and redeploys only when something changed. You can also start it manually from the Actions tab, and a manual run always redeploys.
 
 If either source changes its layout, validation stops that source from overwriting good data. The other source still updates, and the workflow is marked as failed so GitHub emails you.

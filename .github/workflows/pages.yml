@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '0 1 * * 1' # Mondays 01:00 UTC (09:00 HKT)
+    - cron: '0 1 * * *' # daily 01:00 UTC (09:00 HKT)
   workflow_dispatch:
 
 permissions:
@@ -21,6 +21,8 @@ jobs:
   refresh-rates:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -35,10 +37,13 @@ jobs:
         run: npm run fetch-rates
       - run: npm test
       - name: Commit if rates changed
+        id: commit
         run: |
           if git diff --quiet site/; then
             echo "Rates unchanged."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git commit -am "Update interest rate data"
@@ -58,8 +63,9 @@ jobs:
 
   deploy:
     needs: refresh-rates
-    # Deploy even if a rate source failed, so any source that did update still goes live.
-    if: ${{ !cancelled() }}
+    # Scheduled runs deploy only when rates changed; pushes and manual runs always deploy.
+    # Runs even if a rate source failed, so any source that did update still goes live.
+    if: ${{ !cancelled() && (github.event_name != 'schedule' || needs.refresh-rates.outputs.changed == 'true') }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
