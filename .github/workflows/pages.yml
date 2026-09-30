@@ -1,0 +1,61 @@
+name: Update rates and deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 1 * * 1' # Mondays 01:00 UTC (09:00 HKT)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  refresh-rates:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: npm run fetch-rates
+      - run: npm test
+      - name: Commit if rates changed
+        run: |
+          if git diff --quiet site/rates.json; then
+            echo "Rates unchanged."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "Update judgment debt interest rates"
+            git push
+          fi
+
+  deploy:
+    needs: refresh-rates
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main # pick up the commit refresh-rates may have just pushed
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: npm test
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

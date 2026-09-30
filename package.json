@@ -1,0 +1,15 @@
+{
+  "name": "interestcal",
+  "version": "1.0.0",
+  "description": "Simple interest calculator for Hong Kong judgment debts, using rates published by the HK Judiciary",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
+    "fetch-rates": "node scripts/fetch-rates.mjs",
+    "start": "npx --yes serve site"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
