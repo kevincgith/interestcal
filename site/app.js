@@ -1,5 +1,5 @@
-import { calculateInterest } from './calc.js';
-import { buildWorkbook } from './export-xlsx.js';
+import { calculateInterest } from './calc.js?v=__BUILD__';
+import { buildWorkbook } from './export-xlsx.js?v=__BUILD__';
 
 const $ = (id) => document.getElementById(id);
 const money = new Intl.NumberFormat('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -227,7 +227,7 @@ let xlsxLoading = null;
 function loadXlsx() {
   xlsxLoading ??= new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = 'vendor/xlsx.mini.min.js';
+    script.src = 'vendor/xlsx.mini.min.js?v=__BUILD__';
     script.onload = () => resolve(window.XLSX);
     script.onerror = () => {
       xlsxLoading = null;
