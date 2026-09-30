@@ -79,6 +79,47 @@ test('rate tables: P - x, fixed, and H + x capped at P - y', () => {
   assert.deepEqual(mortgageRates({ type: 'hibor', prime, hibor: 1.0, margin: 1.3, capDiscount: 1.75 }).map((r) => r.rate), [2.3, 2.3]);
 });
 
+test('HIBOR-based with history: past resets use actual fixings, later ones the assumed rate', () => {
+  const prime = [{ effective: '2020-01-01', rate: 5 }];
+  const hiborHistory = [
+    { effective: '2026-01-14', rate: 1.0 }, // fixing before the 15 Jan reset (e.g. a holiday)
+    { effective: '2026-02-16', rate: 2.0 },
+    { effective: '2026-03-13', rate: 3.0 },
+  ];
+  const monthly = mortgageRates({
+    type: 'hibor', prime, hiborHistory, hibor: 0.5, margin: 1.3, capDiscount: 1.75, start: '2026-01-15', years: 1, resetMonths: 1,
+  });
+  assert.deepEqual(monthly.slice(0, 5).map((r) => [r.effective, Number(r.rate.toFixed(6))]), [
+    ['2026-01-15', 2.3], // 1.0 + 1.3
+    ['2026-02-15', 2.3], // latest fixing on/before 15 Feb is still 1.0
+    ['2026-03-15', 3.25], // 3.0 + 1.3 = 4.3, capped at 5 - 1.75
+    ['2026-04-15', 1.8], // after the history: assumed 0.5 + 1.3
+    ['2026-05-15', 1.8],
+  ]);
+  const quarterly = mortgageRates({
+    type: 'hibor', prime, hiborHistory, hibor: 0.5, margin: 1.3, capDiscount: 1.75, start: '2026-01-15', years: 1, resetMonths: 3,
+  });
+  assert.deepEqual(quarterly.map((r) => r.effective), ['2026-01-15', '2026-04-15', '2026-07-15', '2026-10-15', '2027-01-15']);
+});
+
+test('HIBOR cap follows a prime change between resets', () => {
+  const prime = [{ effective: '2020-01-01', rate: 5 }, { effective: '2026-02-01', rate: 4 }];
+  const r = mortgageRates({
+    type: 'hibor', prime, hiborHistory: [], hibor: 3, margin: 1.3, capDiscount: 1.75, start: '2026-01-15', years: 1,
+  });
+  assert.deepEqual(r.slice(0, 3).map((x) => [x.effective, x.rate]), [['2026-01-15', 3.25], ['2026-02-01', 2.25], ['2026-02-15', 2.25]]);
+});
+
+test('textbook method: every month charges rate / 12, whatever its length', () => {
+  const s = mortgageSchedule({ loan: 1_000_000, start: '2026-01-15', years: 30, rates: fixed(3), method: 'monthly' });
+  assert.equal(s.rows[0].interest, 2500); // 1,000,000 x 3% / 12 (a 31-day month)
+  assert.equal(s.rows[1].interest, round((1_000_000 - (4216.04 - 2500)) * 0.03 / 12)); // February: same 1/12
+  assert.ok(s.rows.slice(0, -1).every((r) => r.payment === 4216.04));
+  assert.equal(s.rows.length, 360);
+  assert.ok(Math.abs(s.rows.at(-1).payment - 4216.04) < 1, `last payment ${s.rows.at(-1).payment}`); // only rounding left over
+  assert.throws(() => mortgageSchedule({ loan: 1, start: '2026-01-15', years: 1, rates: fixed(3), method: 'x' }), /method/);
+});
+
 test('input checks', () => {
   assert.throws(() => mortgageSchedule({ loan: 0, start: '2026-01-01', years: 30, rates: fixed(3) }), /Loan/);
   assert.throws(() => mortgageSchedule({ loan: 1, start: '2026-01-01', years: 0, rates: fixed(3) }), /Tenor/);

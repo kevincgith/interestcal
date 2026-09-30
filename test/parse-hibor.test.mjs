@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseHiborJson } from '../scripts/parse-hibor.mjs';
+import { parseHiborJson, mergeHibor } from '../scripts/parse-hibor.mjs';
 
 test('parses 1-month HIBOR from the HKMA API shape, newest first, skipping blanks', () => {
   const json = {
@@ -23,4 +23,14 @@ test('parses 1-month HIBOR from the HKMA API shape, newest first, skipping blank
 test('reports API errors and empty data', () => {
   assert.throws(() => parseHiborJson({ header: { success: false, err_msg: 'Bad request' } }), /Bad request/);
   assert.throws(() => parseHiborJson({ header: { success: true }, result: { records: [] } }), /No HIBOR/);
+});
+
+test('merging keeps history and lets newer fixings win', () => {
+  const older = [{ effective: '2026-08-28', rate: 2.8 }, { effective: '1996-07-01', rate: 5.5 }];
+  const newer = [{ effective: '2026-08-31', rate: 2.85 }, { effective: '2026-08-28', rate: 2.85 }];
+  assert.deepEqual(mergeHibor(older, newer), [
+    { effective: '2026-08-31', rate: 2.85 },
+    { effective: '2026-08-28', rate: 2.85 },
+    { effective: '1996-07-01', rate: 5.5 },
+  ]);
 });

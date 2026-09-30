@@ -41,12 +41,28 @@ test('extra repayment: saves interest, ends sooner, goes into the link', async (
   await expect(page).toHaveURL(/x=2027-06-01%3A200000/);
 });
 
-test('HIBOR-based: rate is the lower of H + margin and P - cap', async ({ page }) => {
-  await page.goto('?tab=mortgage&mt=hibor&h=2.85&mg=1.3&cap=1.75&price=8000000&ltv=70&yrs=30&from=2026-01-15');
+test('HIBOR-based: the lower of H + margin and P - cap; future resets use the entered HIBOR', async ({ page }) => {
+  // A drawdown after the HIBOR history ends, so every reset uses the entered future HIBOR
+  await page.goto('?tab=mortgage&mt=hibor&h=2.85&mg=1.3&cap=1.75&price=8000000&ltv=70&yrs=30&from=2035-01-15');
   await expect(page.locator('#mRateLine')).toContainText('Rate at drawdown: 3.250% p.a.');
-  await expect(page.locator('#mRateHint')).toContainText('→ 3.25% p.a.');
-  await page.goto('?tab=mortgage&mt=hibor&h=1&mg=1.3&cap=1.75&price=8000000&ltv=70&yrs=30&from=2026-01-15');
+  await expect(page.locator('#mHibor')).toHaveValue('2.85');
+  await page.goto('?tab=mortgage&mt=hibor&h=1&mg=1.3&cap=1.75&price=8000000&ltv=70&yrs=30&from=2035-01-15&ht=3m');
+  await expect(page.locator('#mTenor')).toHaveValue('3m');
   await expect(page.locator('#mRateLine')).toContainText('Rate at drawdown: 2.300% p.a.');
+  await expect(page.locator('#mRateHint')).toContainText('3-month HIBOR');
+});
+
+test('HIBOR-based over past dates uses actual fixings', async ({ page }) => {
+  await page.goto('?tab=mortgage&mt=hibor&mg=1.3&cap=1.75&price=8000000&ltv=70&yrs=30&from=2025-01-15');
+  await expect(page.locator('#mRateHint')).toContainText('Past resets use actual 1-month HIBOR fixings (HKMA');
+  // Rates vary month to month in the past, then settle at the future assumption
+  const rates = await page.locator('#mSchedule tr td:nth-child(3)').allTextContents();
+  expect(new Set(rates.slice(0, 18)).size).toBeGreaterThan(1);
+});
+
+test('loan-to-value defaults to 100%', async ({ page }) => {
+  await page.goto('?tab=mortgage');
+  await expect(page.locator('#mLtv')).toHaveValue('100');
 });
 
 test('stress test and debt-servicing ratio', async ({ page }) => {
@@ -77,4 +93,36 @@ test('mortgage form layout: one field height, no overlap, no sideways scroll', a
   const heights = new Set([...boxes.slice(4).map((b) => Math.round(b.height)), Math.round(boxes[0].height)]);
   expect(heights.size, `heights ${[...heights]}`).toBe(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+});
+
+test('textbook interest method: rate / 12 each month, from the Advanced settings or a link', async ({ page }) => {
+  await page.goto(FIXED);
+  await page.locator('#mAdvanced summary').click();
+  await page.locator('#mMethod').selectOption('monthly');
+  await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#mSchedule tr').first().locator('td').nth(4)).toHaveText('2,500.00');
+  await expect(page.locator('#mRateLine')).toContainText('balance × rate ÷ 12 (textbook method)');
+  await expect(page).toHaveURL(/meth=monthly/);
+  await page.goto(page.url());
+  await expect(page.locator('#mAdvanced')).toHaveAttribute('open', '');
+  await expect(page.locator('#mMethod')).toHaveValue('monthly');
+});
+
+test('HIBOR-based is the default plan, then prime-based, then fixed', async ({ page }) => {
+  await page.goto('?tab=mortgage');
+  await expect(page.locator('input[name="mtype"]')).toHaveCount(3);
+  const order = await page.locator('input[name="mtype"]').evaluateAll((els) => els.map((e) => e.value));
+  expect(order).toEqual(['hibor', 'prime', 'fixed']);
+  await expect(page.locator('input[name="mtype"][value="hibor"]')).toBeChecked();
+  await expect(page.locator('#mHibor')).not.toHaveValue('');
+  await expect(page.locator('#mPayment')).not.toHaveText('');
+});
+
+test('warns when a HIBOR loan starts before the saved HIBOR history', async ({ page }) => {
+  await page.goto('?tab=mortgage&mt=hibor&mg=1.3&cap=1.75&price=5000000&yrs=20&from=2005-03-01');
+  await expect(page.locator('#mWarn')).toBeVisible();
+  await expect(page.locator('#mWarn')).toContainText('HIBOR history on this site starts on');
+  await page.goto('?tab=mortgage&mt=hibor&mg=1.3&cap=1.75&price=5000000&yrs=20&from=2020-03-01');
+  await expect(page.locator('#mPayment')).not.toHaveText('');
+  await expect(page.locator('#mWarn')).toBeHidden();
 });

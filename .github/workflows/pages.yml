@@ -21,6 +21,7 @@ jobs:
   refresh-rates:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 20 # never let a stalled source hold the job
     outputs:
       changed: ${{ steps.commit.outputs.changed }}
     steps:
@@ -67,6 +68,7 @@ jobs:
     # Runs even if a rate source failed, so any source that did update still goes live.
     if: ${{ !cancelled() && (github.event_name != 'schedule' || needs.refresh-rates.outputs.changed == 'true') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

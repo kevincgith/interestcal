@@ -3,3 +3,4 @@ node_modules/
 .claude/
 test-results/
 playwright-report/
+.hibor-cache.json

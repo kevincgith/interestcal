@@ -11,7 +11,32 @@ const TYPES = { prime: 'Prime-based', hibor: 'HIBOR-based', fixed: 'Fixed rate' 
 const pct = (n) => `${Number(n.toFixed(4)).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}%`;
 
 let prime = null; // HSBC prime rate history (prime-rates.json)
-let hibor = null; // 1-month HIBOR fixings (hibor.json), optional
+const hibor = {}; // HIBOR history by tenor ('1m' -> hibor.json, '3m' -> hibor-3m.json), loaded when first needed
+let hiborEdited = false; // once the user types their own future HIBOR, switching tenor no longer overwrites it
+const TENOR_NAME = { '1m': '1-month', '3m': '3-month' };
+const currentTenor = () => $('mTenor').value;
+
+async function loadHibor(tenor) {
+  if (tenor in hibor) return hibor[tenor];
+  try {
+    const res = await fetch(tenor === '1m' ? 'hibor.json' : `hibor-${tenor}.json`, { cache: 'no-cache' });
+    hibor[tenor] = res.ok ? await res.json() : null;
+  } catch {
+    hibor[tenor] = null; // optional: the future-HIBOR box can be filled in by hand
+  }
+  return hibor[tenor];
+}
+
+// Fill the future-HIBOR box with the latest fixing for the tenor (unless the user has typed their own)
+async function prefillHibor() {
+  const data = await loadHibor(currentTenor());
+  const latest = data?.rates?.[0];
+  if (latest && !hiborEdited) {
+    $('mHibor').value = String(latest.rate);
+    $('mHibor').defaultValue = String(latest.rate);
+  }
+  updateHints();
+}
 let last = null; // last calculation
 let lastQuery = '';
 registerQuery('mortgage', () => lastQuery);
@@ -35,6 +60,7 @@ function updateHints() {
   const type = currentType();
   $('mDiscountField').hidden = type !== 'prime';
   $('mHiborField').hidden = type !== 'hibor';
+  $('mTenorField').hidden = type !== 'hibor';
   $('mMarginField').hidden = type !== 'hibor';
   $('mCapField').hidden = type !== 'hibor';
   $('mFixedField').hidden = type !== 'fixed';
@@ -53,12 +79,13 @@ function updateHints() {
   } else if (type === 'hibor' && p) {
     const [h, m, c] = ['mHibor', 'mMargin', 'mCap'].map((id) => parseNumber($(id).value));
     if ([h, m, c].every(Number.isFinite)) {
-      const hLeg = h + m;
-      const cap = p.rate - c;
-      hint = `Now: the lower of HIBOR ${pct(h)} + ${pct(m)} = ${pct(hLeg)} and prime ${pct(p.rate)} − ${pct(c)} = ${pct(cap)}` +
-        ` → ${pct(Math.min(hLeg, cap))} p.a.`;
-      const h0 = hibor?.rates?.[0];
-      if (h0) hint += ` (1-month HIBOR ${pct(h0.rate)} on ${fmtDate(h0.effective)}, HKMA; edit it for today's figure.)`;
+      const name = TENOR_NAME[currentTenor()];
+      const hist = hibor[currentTenor()]?.rates;
+      hint = `Rate = the lower of ${name} HIBOR + ${pct(m)} and prime − ${pct(c)} (now ${pct(p.rate - c)}), ` +
+        `reset ${currentTenor() === '1m' ? 'monthly' : 'every 3 months'} from drawdown. ` +
+        (hist?.length
+          ? `Past resets use actual ${name} HIBOR fixings (HKMA, ${fmtDate(hist.at(-1).effective)} to ${fmtDate(hist[0].effective)}); later ones use ${pct(h)}.`
+          : `Every reset uses ${pct(h)} (no HIBOR history loaded).`);
     }
   }
   $('mRateHint').textContent = hint;
@@ -146,10 +173,14 @@ function readInputs() {
   if (!isIsoDate(start)) throw new Error('Please enter the drawdown date.');
   const rateParams = { type };
   if (type === 'prime') rateParams.discount = num('mDiscount');
-  if (type === 'hibor') Object.assign(rateParams, { hibor: num('mHibor'), margin: num('mMargin'), capDiscount: num('mCap') });
+  if (type === 'hibor') {
+    Object.assign(rateParams, { hibor: num('mHibor'), margin: num('mMargin'), capDiscount: num('mCap'), tenor: currentTenor() });
+  }
   if (type === 'fixed') rateParams.fixedRate = num('mFixed');
   for (const [k, v] of Object.entries(rateParams)) {
-    if (k !== 'type' && !Number.isFinite(v)) throw new Error(k === 'hibor' ? 'Please enter the 1-month HIBOR.' : 'Please enter a valid rate.');
+    if (k !== 'type' && k !== 'tenor' && !Number.isFinite(v)) {
+      throw new Error(k === 'hibor' ? 'Please enter the HIBOR to use for future months.' : 'Please enter a valid rate.');
+    }
   }
   if (type !== 'fixed' && !prime) throw new Error('Prime rates have not loaded yet.');
   const incomeRaw = $('mIncome').value.trim();
@@ -158,22 +189,38 @@ function readInputs() {
   return {
     type, price, ltv, loan, years, start, rateParams, income,
     stress: Number($('mStress').value),
+    method: $('mMethod').value,
     extras: readExtras(),
   };
 }
 
-$('mform').addEventListener('submit', (e) => {
+$('mform').addEventListener('submit', async (e) => {
   e.preventDefault();
   showError('');
   let inputs;
   try {
     inputs = readInputs();
-    const rates = mortgageRates({ ...inputs.rateParams, prime: prime?.rates ?? [] });
+    const p = inputs.rateParams;
+    const extra = p.type === 'hibor'
+      ? {
+          hiborHistory: (await loadHibor(p.tenor))?.rates ?? [],
+          start: inputs.start,
+          years: inputs.years,
+          resetMonths: p.tenor === '3m' ? 3 : 1,
+        }
+      : {};
+    const rates = mortgageRates({ ...p, ...extra, prime: prime?.rates ?? [] });
     const summary = mortgageSummary(
-      { loan: inputs.loan, start: inputs.start, years: inputs.years, rates, prepayments: inputs.extras },
+      { loan: inputs.loan, start: inputs.start, years: inputs.years, rates, prepayments: inputs.extras, method: inputs.method },
       { stressAdd: inputs.stress, monthlyIncome: inputs.income },
     );
-    last = { ...summary, inputs };
+    // HIBOR history may not reach back to the drawdown date (the daily update fills in older years gradually)
+    const earliest = p.type === 'hibor' ? extra.hiborHistory.at(-1)?.effective : null;
+    const warning = earliest && inputs.start < earliest
+      ? `HIBOR history on this site starts on ${fmtDate(earliest)}. Resets before then use that first fixing, ` +
+        'so rates before it are estimates.'
+      : '';
+    last = { ...summary, inputs, warning };
   } catch (err) {
     showError(err.message);
     return;
@@ -186,7 +233,9 @@ $('mform').addEventListener('submit', (e) => {
 const rateLabel = (inputs) => {
   const p = inputs.rateParams;
   if (inputs.type === 'prime') return `HSBC prime − ${pct(p.discount)}`;
-  if (inputs.type === 'hibor') return `1-month HIBOR (${pct(p.hibor)}) + ${pct(p.margin)}, capped at prime − ${pct(p.capDiscount)}`;
+  if (inputs.type === 'hibor') {
+    return `${TENOR_NAME[p.tenor]} HIBOR + ${pct(p.margin)}, capped at prime − ${pct(p.capDiscount)}; future HIBOR ${pct(p.hibor)}`;
+  }
   return `Fixed ${pct(p.fixedRate)}`;
 };
 
@@ -199,7 +248,10 @@ const duration = (months) => {
 function resultLines(m) {
   const { inputs } = m;
   const lines = {
-    rate: `Rate at drawdown: ${fmtRate(m.firstRate)} p.a. (${rateLabel(inputs)}). Interest each month = balance × rate × days ÷ 365.`,
+    rate: `Rate at drawdown: ${fmtRate(m.firstRate)} p.a. (${rateLabel(inputs)}). ` +
+      (inputs.method === 'monthly'
+        ? 'Interest each month = balance × rate ÷ 12 (textbook method).'
+        : 'Interest each month = balance × rate × days ÷ 365.'),
     stress:
       `Stress test at +${m.stressAdd}% (${fmtRate(m.firstRate + m.stressAdd / 100)}): instalment HK$${money.format(m.stressedPayment)}` +
       ` (+HK$${money.format(m.stressedPayment - m.firstPayment)} a month).`,
@@ -219,6 +271,8 @@ function resultLines(m) {
 }
 
 function render(m) {
+  $('mWarn').hidden = !m.warning;
+  $('mWarn').textContent = m.warning;
   $('mLoanOut').textContent = money.format(m.loan);
   $('mPayment').textContent = money.format(m.firstPayment);
   $('mInterest').textContent = money.format(m.totalInterest);
@@ -256,9 +310,11 @@ function writeQuery(m) {
     q.set('h', String(p.hibor));
     q.set('mg', String(p.margin));
     q.set('cap', String(p.capDiscount));
+    if (p.tenor !== '1m') q.set('ht', p.tenor);
   }
   if (i.type === 'fixed') q.set('fx', String(p.fixedRate));
   if (i.stress !== 2) q.set('stress', String(i.stress));
+  if (i.method !== 'actual') q.set('meth', i.method);
   if (i.income) q.set('inc', String(i.income));
   if (i.extras.length) q.set('x', i.extras.map((x) => `${x.date}:${x.amount}`).join(','));
   lastQuery = `?${q}`;
@@ -281,21 +337,25 @@ function readQuery() {
   setNum('h', 'mHibor');
   setNum('mg', 'mMargin');
   setNum('cap', 'mCap');
+  if (q.get('ht') === '3m') $('mTenor').value = '3m';
+  if (q.has('h')) hiborEdited = true; // the link's HIBOR wins over the latest fixing
   setNum('fx', 'mFixed');
   if (['2', '3'].includes(q.get('stress'))) $('mStress').value = q.get('stress');
+  if (q.get('meth') === 'monthly') $('mMethod').value = 'monthly';
   setNum('inc', 'mIncome', (v) => money.format(v));
   for (const pair of (q.get('x') ?? '').split(',').filter(Boolean)) {
     const [date, amount] = pair.split(':');
     if (isIsoDate(date) && Number(amount) > 0) addExtraRow(date, Number(amount));
   }
-  if (q.get('stress') === '3' || q.has('inc')) $('mAdvanced').open = true;
+  if (q.get('stress') === '3' || q.has('inc') || q.get('meth') === 'monthly') $('mAdvanced').open = true;
 }
 
 $('mReset').addEventListener('click', () => {
   $('mform').reset();
   $('mExtraRows').replaceChildren();
   $('mAdvanced').open = false;
-  if (hibor?.rates?.[0]) $('mHibor').value = String(hibor.rates[0].rate);
+  hiborEdited = false;
+  prefillHibor();
   $('mResults').hidden = true;
   last = null;
   setStale(false);
@@ -318,6 +378,7 @@ const inputItems = (m) => [
   ['Down payment (HK$)', money.format(m.inputs.price - m.loan)],
   ['Tenor', `${m.inputs.years} years (${m.months} instalments)`],
   ['Drawdown date', fmtDate(m.inputs.start)],
+  ['Interest method', m.inputs.method === 'monthly' ? 'Rate ÷ 12 each month (textbook)' : 'Actual days ÷ 365 (HK banks)'],
   ...(m.inputs.extras.length ? [['Extra repayments', m.inputs.extras.map((x) => `${fmtDate(x.date)}: ${money.format(x.amount)}`).join('; ')]] : []),
   ['Calculated on', fmtDate(todayIso())],
 ];
@@ -330,7 +391,7 @@ $('mPdf').addEventListener('click', () => {
     const lines = resultLines(m);
     const doc = buildMortgagePdf(lib, m, {
       inputs: inputItems(m),
-      lines: [lines.rate, lines.stress, lines.dsr, lines.saved].filter(Boolean),
+      lines: [m.warning, lines.rate, lines.stress, lines.dsr, lines.saved].filter(Boolean),
       fmt: { money: (n) => money.format(n), date: fmtDate, rate: fmtRate, duration },
       generatedOn: fmtDate(todayIso()),
     });
@@ -348,7 +409,7 @@ $('mXlsx').addEventListener('click', () => {
       inputs: inputItems(m),
       lines: [lines.rate, lines.stress, lines.dsr, lines.saved].filter(Boolean),
       primeSource: m.inputs.type === 'fixed' ? null : prime?.source,
-      hiborSource: m.inputs.type === 'hibor' ? hibor?.source : null,
+      hiborSource: m.inputs.type === 'hibor' ? hibor[m.inputs.rateParams.tenor]?.source : null,
     });
     const bytes = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), exportName(m, 'xlsx'));
@@ -390,12 +451,14 @@ async function loadData() {
     return res.json();
   };
   prime = await get('prime-rates.json');
-  hibor = await get('hibor.json').catch(() => null); // optional: the HIBOR box can be filled in by hand
-  if (!$('mHibor').value && hibor?.rates?.[0]) {
-    $('mHibor').value = String(hibor.rates[0].rate);
-    $('mHibor').defaultValue = String(hibor.rates[0].rate);
-  }
+  if (currentType() === 'hibor') await prefillHibor(); // otherwise HIBOR history loads when HIBOR is chosen
 }
+
+$('mHibor').addEventListener('input', () => (hiborEdited = true));
+$('mTenor').addEventListener('change', prefillHibor);
+document.querySelectorAll('input[name="mtype"]').forEach((el) =>
+  el.addEventListener('change', () => currentType() === 'hibor' && prefillHibor()),
+);
 
 readQuery();
 updateHints();

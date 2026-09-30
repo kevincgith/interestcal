@@ -224,8 +224,8 @@
       <form id="mform" class="card" novalidate>
         <fieldset class="source">
           <legend>Mortgage rate</legend>
-          <label class="radio"><input type="radio" name="mtype" value="prime" checked> Prime-based (P − x%)</label>
-          <label class="radio"><input type="radio" name="mtype" value="hibor"> HIBOR-based (H + x%, capped)</label>
+          <label class="radio"><input type="radio" name="mtype" value="hibor" checked> HIBOR-based (H + x%, capped)</label>
+          <label class="radio"><input type="radio" name="mtype" value="prime"> Prime-based (P − x%)</label>
           <label class="radio"><input type="radio" name="mtype" value="fixed"> Fixed rate</label>
         </fieldset>
         <label>Property price (HK$)
@@ -234,7 +234,7 @@
         <label for="mLtv">Loan-to-value (%)
           <div class="stepper">
             <button type="button" class="step" data-step="-5" aria-label="Decrease loan-to-value by 5%">−</button>
-            <input id="mLtv" type="text" inputmode="decimal" autocomplete="off" value="70" data-min="0" data-max="100">
+            <input id="mLtv" type="text" inputmode="decimal" autocomplete="off" value="100" data-min="0" data-max="100">
             <button type="button" class="step" data-step="5" aria-label="Increase loan-to-value by 5%">+</button>
           </div>
         </label>
@@ -250,24 +250,30 @@
         </label>
         <p id="mLoanLine" class="loan-line"></p>
 
-        <label id="mDiscountField" for="mDiscount">Discount below prime (% p.a.)
+        <label id="mDiscountField" for="mDiscount" hidden>Discount below prime (% p.a.)
           <div class="stepper">
             <button type="button" class="step" data-step="-0.25" aria-label="Decrease discount below prime by 0.25%">−</button>
             <input id="mDiscount" type="text" inputmode="decimal" autocomplete="off" value="1.75">
             <button type="button" class="step" data-step="0.25" aria-label="Increase discount below prime by 0.25%">+</button>
           </div>
         </label>
-        <label id="mHiborField" hidden>1-month HIBOR (% p.a.)
+        <label id="mTenorField">HIBOR tenor
+          <select id="mTenor">
+            <option value="1m" selected>1-month (resets monthly)</option>
+            <option value="3m">3-month (resets every 3 months)</option>
+          </select>
+        </label>
+        <label id="mHiborField">HIBOR for future months (% p.a.)
           <input id="mHibor" type="text" inputmode="decimal" autocomplete="off" value="">
         </label>
-        <label id="mMarginField" for="mMargin" hidden>Margin over HIBOR (% p.a.)
+        <label id="mMarginField" for="mMargin">Margin over HIBOR (% p.a.)
           <div class="stepper">
             <button type="button" class="step" data-step="-0.1" aria-label="Decrease margin over HIBOR by 0.1%">−</button>
             <input id="mMargin" type="text" inputmode="decimal" autocomplete="off" value="1.3">
             <button type="button" class="step" data-step="0.1" aria-label="Increase margin over HIBOR by 0.1%">+</button>
           </div>
         </label>
-        <label id="mCapField" for="mCap" hidden>Cap (P − x%)
+        <label id="mCapField" for="mCap">Cap (P − x%)
           <div class="stepper">
             <button type="button" class="step" data-step="-0.25" aria-label="Decrease cap discount by 0.25%">−</button>
             <input id="mCap" type="text" inputmode="decimal" autocomplete="off" value="1.75">
@@ -284,8 +290,14 @@
         <p id="mRateHint" class="loan-line"></p>
 
         <details id="mAdvanced" class="advanced">
-          <summary>Advanced settings <span class="muted">(stress test, income)</span></summary>
+          <summary>Advanced settings <span class="muted">(interest method, stress test, income)</span></summary>
           <div class="advanced-body">
+            <label>Interest method
+              <select id="mMethod">
+                <option value="actual" selected>Actual days ÷ 365 (HK banks)</option>
+                <option value="monthly">Rate ÷ 12 each month (textbook)</option>
+              </select>
+            </label>
             <label>Stress test
               <select id="mStress">
                 <option value="2" selected>Rate + 2%</option>
@@ -314,6 +326,7 @@
 
       <section id="mResults" hidden>
         <p id="mStale" class="stale-note" role="status" hidden>Inputs changed. Press <strong>Calculate</strong> to recalculate.</p>
+        <p id="mWarn" class="warning" hidden></p>
         <dl class="summary">
           <div><dt>Loan amount</dt><dd id="mLoanOut"></dd></div>
           <div><dt>Monthly instalment</dt><dd id="mPayment"></dd></div>

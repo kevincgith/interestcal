@@ -18,10 +18,10 @@ You can choose one of three rates:
 ## Features
 
 - **Mortgage tab:** equal monthly instalments on HK bank conventions.
-  - **Loan:** property price × loan-to-value gives the loan and down payment. Choose a tenor and a drawdown date; instalments fall due on the drawdown day each month.
+  - **Loan:** property price × loan-to-value (100% by default) gives the loan and down payment. Choose a tenor and a drawdown date; instalments fall due on the drawdown day each month.
   - **Rate:**
     - **Prime-based (P − x%):** uses the HSBC prime history; future months use the latest prime.
-    - **HIBOR-based (H + x%, capped at P − y%):** 1-month HIBOR is fetched daily from the HKMA open API and can be edited. Note that it lags about a month.
+    - **HIBOR-based (H + x%, capped at P − y%):** choose 1-month HIBOR (resets monthly) or 3-month HIBOR (resets every 3 months), counted from the drawdown date. Past resets use the actual fixing on or before each reset date, from HKMA history back to 1996. Resets after the latest fixing use the "HIBOR for future months" rate, which defaults to the latest fixing. HKMA's data lags about a month. The prime cap follows the real prime history.
     - **Fixed.**
   - **Interest:** each month's interest = balance × rate × actual days ÷ 365. The instalment is recalculated when the rate changes.
   - **Extra repayments:** these keep the instalment the same, so the loan ends sooner. The results show interest and months saved.
@@ -84,7 +84,7 @@ You can choose one of three rates:
 | `site/vendor/xlsx.mini.min.js` | SheetJS 0.20.3 mini build (Apache-2.0), loaded only when you click Download Excel. It's copied from `node_modules/xlsx/dist/`. |
 | `site/export-pdf.js`, `site/vendor/jspdf*.js` | PDF report, using jsPDF 4 and jsPDF-AutoTable 5 (both MIT). They load only when you click Download PDF and are copied from `node_modules`. |
 | `site/rates.json` | Judgment debt rates scraped from the Judiciary site |
-| `site/hibor.json` | 1-month HIBOR fixings from the HKMA API (optional: an outage only logs a warning) |
+| `site/hibor.json`, `hibor-3m.json` | 1-month and 3-month HIBOR fixings from the HKMA API since 1996. `scripts/backfill-hibor.mjs` downloads the history (it saves what it gets if the API gives up part-way). The daily update merges in recent fixings and fetches a few older pages per run until the history reaches 1996. Every download has a time limit, and the job is capped at 20 minutes. These are optional sources: an outage only logs a warning. |
 | `site/mortgage.js`, `mortgage-app.js`, `mortgage-export.js` | Mortgage calculation, tab and exports |
 | `site/shared.js`, `tabs.js` | Helpers shared by both tabs; tab switching |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |

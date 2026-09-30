@@ -5,12 +5,44 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { parseRatesHtml, validateRates } from './parse-judiciary.mjs';
 import { parsePrimeXls } from './parse-prime.mjs';
 import { HSBC_URL, parseHsbcHtml, crossCheckPrime } from './parse-hsbc.mjs';
-import { HIBOR_URL, parseHiborJson } from './parse-hibor.mjs';
+import { HIBOR_URL, HIBOR_TENORS, HIBOR_HISTORY_START, parseHiborJson, mergeHibor } from './parse-hibor.mjs';
+
+// Older HIBOR pages (newest first, 100 per page), shared by both tenors within a run
+const hiborPages = new Map();
+function hiborPage(offset) {
+  if (!hiborPages.has(offset)) {
+    const url = `${HIBOR_URL.replace(/pagesize=\d+/, 'pagesize=100')}&offset=${offset}`;
+    hiborPages.set(offset, fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(20_000) }).then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    }));
+  }
+  return hiborPages.get(offset);
+}
+
+/** Until the history reaches 1996, fetch a few older pages per run; failures just wait for the next run */
+async function fillOlderHibor(rates, tenor, pagesPerRun = 5) {
+  let merged = rates;
+  for (let i = 0; i < pagesPerRun && merged.at(-1)?.effective > HIBOR_HISTORY_START; i++) {
+    const offset = Math.max(0, merged.length - 20); // overlap a little: some days have no fixing for a tenor
+    try {
+      const older = parseHiborJson(await hiborPage(offset), { tenor, allowEmpty: true });
+      const before = merged.length;
+      merged = mergeHibor(merged, older);
+      if (merged.length === before) break; // nothing new (end of the series)
+    } catch (err) {
+      console.log(`${tenor} HIBOR history: older page not fetched (${err.message}); will retry next run.`);
+      break;
+    }
+  }
+  return merged;
+}
 
 const HEADERS = { 'User-Agent': 'Mozilla/5.0 (interestcal rate updater)' };
 
 async function get(url) {
-  const res = await fetch(url, { headers: HEADERS });
+  // A stalled server must not hold the daily job: give up after a minute (the next run retries)
+  const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(60_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
   return res;
 }
@@ -47,15 +79,19 @@ const SOURCES = [
       }
     },
   },
-  {
-    name: '1-month HIBOR',
+  // HIBOR: recent fixings only (a small, reliable request), merged into the history (scripts/backfill-hibor.mjs).
+  // Only pre-fills the mortgage tab (the HIBOR box stays editable), so an outage is a warning, not a failure.
+  ...HIBOR_TENORS.map((tenor) => ({
+    name: `${tenor.replace('m', '-month')} HIBOR`,
     url: HIBOR_URL,
-    out: 'hibor.json',
-    parse: async (res) => ({ rates: parseHiborJson(await res.json()) }),
-    validate: { minRows: 1, maxRate: 30 },
-    // Only pre-fills the mortgage tab (the HIBOR box stays editable), so an outage is a warning, not a failure
+    out: tenor === '1m' ? 'hibor.json' : `hibor-${tenor}.json`,
+    parse: async (res, previous) => ({
+      rates: await fillOlderHibor(mergeHibor(previous?.rates ?? [], parseHiborJson(await res.json(), { tenor })), tenor),
+    }),
+    validate: { minRows: 1, maxRate: 100 }, // HIBOR spiked above 30% in 1997
+    compact: true, // thousands of daily fixings: keep the file small
     optional: true,
-  },
+  })),
 ];
 
 async function update(source) {
@@ -84,7 +120,7 @@ async function update(source) {
     checkedAt: warnings.length ? (previous?.checkedAt ?? previous?.updatedAt ?? today) : today,
     ...content,
   };
-  await writeFile(file, JSON.stringify(data, null, 2) + '\n');
+  await writeFile(file, (source.compact ? JSON.stringify(data) : JSON.stringify(data, null, 2)) + '\n');
   console.log(`${name}: ${changed ? 'updated' : 'no change'} (${latest}), checked ${data.checkedAt}.`);
   if (meta.crossCheck) console.log(`${name}: HSBC cross-check ${meta.crossCheck.status}.`);
   if (warnings.length) throw new Error(warnings.join('\n  '));
