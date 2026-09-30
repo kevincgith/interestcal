@@ -64,6 +64,27 @@ input, select {
   background: var(--bg);
   color: var(--text);
 }
+.stepper {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.stepper:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; }
+.stepper input { border: 0; border-radius: 0; background: transparent; text-align: center; outline: none; }
+.stepper .step {
+  flex: none;
+  width: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.stepper .step:hover { background: var(--surface); }
 .source { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; }
 .source legend { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; padding: 0; }
 label.radio { display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 1rem; }

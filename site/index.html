@@ -41,8 +41,12 @@
           <option value="act/360">Actual/360</option>
         </select>
       </label>
-      <label id="spreadField" hidden>Spread over prime (% p.a.)
-        <input id="spread" type="text" inputmode="decimal" autocomplete="off" value="0" placeholder="0">
+      <label id="spreadField" for="spread" hidden>Spread over prime (% p.a.)
+        <div class="stepper">
+          <button type="button" class="step" data-step="-1" aria-label="Decrease spread by 1%">−</button>
+          <input id="spread" type="text" inputmode="decimal" autocomplete="off" value="1" placeholder="0">
+          <button type="button" class="step" data-step="1" aria-label="Increase spread by 1%">+</button>
+        </div>
       </label>
       <div class="actions">
         <button type="submit">Calculate</button>
@@ -54,6 +58,7 @@
     <section id="results" hidden>
       <div id="warnings"></div>
       <dl class="summary">
+        <div><dt>Principal</dt><dd id="summaryPrincipal"></dd></div>
         <div><dt>Total interest</dt><dd id="totalInterest"></dd></div>
         <div><dt>Total amount due</dt><dd id="totalDue"></dd></div>
         <div><dt>Total no. of days</dt><dd id="totalDays"></dd></div>

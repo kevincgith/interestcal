@@ -114,6 +114,7 @@ function render(r) {
   }
   $('warnings').replaceChildren(...warnings);
 
+  $('summaryPrincipal').textContent = money.format(r.principal);
   $('totalInterest').textContent = money.format(r.totalInterest);
   $('totalDue').textContent = money.format(r.totalDue);
   $('totalDays').textContent = r.totalDays;
@@ -142,6 +143,16 @@ $('principal').addEventListener('blur', () => {
   const n = parseNumber($('principal').value);
   if ($('principal').value.trim() && Number.isFinite(n)) $('principal').value = money.format(n);
 });
+
+// +1 / -1 buttons for the spread; keeps any decimals the user typed (1.5 -> 2.5)
+document.querySelectorAll('.stepper .step').forEach((btn) =>
+  btn.addEventListener('click', () => {
+    const current = parseNumber($('spread').value || '0');
+    const next = (Number.isFinite(current) ? current : 0) + Number(btn.dataset.step);
+    $('spread').value = String(Number(next.toFixed(6)));
+    if (lastResult) $('form').requestSubmit();
+  }),
+);
 
 $('basis').addEventListener('change', () => {
   $('results').hidden = true;
