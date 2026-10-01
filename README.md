@@ -120,7 +120,7 @@ Dependabot opens a weekly pull request when jsPDF, jsPDF-AutoTable, Playwright o
 
 1. Push to GitHub on the `main` branch.
 2. Go to **Settings → Pages** and set the **Source** to **GitHub Actions**.
-3. Every push to `main` deploys the site. A daily schedule (09:00 HKT) re-fetches both rate sources, commits any change and redeploys only when something changed. You can also start it manually from the Actions tab, and a manual run always redeploys.
+3. Every push to `main` deploys the site. A daily schedule (09:17 HKT) re-fetches both rate sources, commits any change and redeploys only when something changed. You can also start it manually from the Actions tab, and a manual run always redeploys.
 
 If either source changes its layout, validation stops that source from overwriting good data. The other source still updates, and the workflow is marked as failed so GitHub emails you.
 
