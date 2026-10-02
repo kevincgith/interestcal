@@ -119,7 +119,7 @@ test('HIBOR-based is the default plan, then prime-based, then fixed', async ({ p
 });
 
 test('warns when a HIBOR loan starts before the saved HIBOR history', async ({ page }) => {
-  await page.goto('?tab=mortgage&mt=hibor&mg=1.3&cap=1.75&price=5000000&yrs=20&from=2005-03-01');
+  await page.goto('?tab=mortgage&mt=hibor&mg=1.3&cap=1.75&price=5000000&yrs=20&from=1995-03-01');
   await expect(page.locator('#mWarn')).toBeVisible();
   await expect(page.locator('#mWarn')).toContainText('HIBOR history on this site starts on');
   await page.goto('?tab=mortgage&mt=hibor&mg=1.3&cap=1.75&price=5000000&yrs=20&from=2020-03-01');
