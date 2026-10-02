@@ -1,60 +1,75 @@
-// One-off: download the full HIBOR history (1-month and 3-month, HKMA API, from 1996) into site/hibor.json and
-// site/hibor-3m.json. The daily update then only fetches recent fixings and merges them in.
-// The API is slow on some pages, so each page is retried and progress is cached (.hibor-cache.json) so a rerun resumes.
-// Usage: node scripts/backfill-hibor.mjs
+// Fill in older HIBOR history (1-month and 3-month, HKMA API, back to 1996) in site/hibor.json and site/hibor-3m.json.
+// It resumes from the oldest fixing already saved and works in small batches: small pages, a pause between requests,
+// and the files are saved after every batch, so stopping it (or the API giving up) loses nothing.
+// The daily update does the same a few pages per run; this just gets there sooner.
+// Usage: node scripts/backfill-hibor.mjs [pageSize=50] [pagesPerBatch=4] [maxBatches=Infinity]
 import { writeFile, readFile } from 'node:fs/promises';
-import { HIBOR_TENORS, parseHiborJson, mergeHibor } from './parse-hibor.mjs';
+import { HIBOR_TENORS, HIBOR_HISTORY_START, parseHiborJson, mergeHibor } from './parse-hibor.mjs';
 
 const BASE =
   'https://api.hkma.gov.hk/public/market-data-and-statistics/monthly-statistical-bulletin/er-ir/hk-interbank-ir-daily?segment=hibor.fixing&sortby=end_of_day&sortorder=desc';
-const PAGE = 100; // small pages: large ones often hang on the HKMA API
+const [PAGE = 50, BATCH = 4, MAX_BATCHES = Infinity] = process.argv.slice(2).map(Number);
+const PAUSE = 3000; // between requests, to go easy on the API
 const root = new URL('../', import.meta.url);
-const cacheFile = new URL('.hibor-cache.json', root);
-const cache = JSON.parse(await readFile(cacheFile, 'utf8').catch(() => '{}')); // offset -> records
+const fileFor = (tenor) => new URL(`site/${tenor === '1m' ? 'hibor.json' : `hibor-${tenor}.json`}`, root);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function page(offset) {
-  if (cache[offset]) return cache[offset];
-  for (let attempt = 1; attempt <= 6; attempt++) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const res = await fetch(`${BASE}&pagesize=${PAGE}&offset=${offset}`, {
         headers: { 'User-Agent': 'Mozilla/5.0 (interestcal rate updater)' },
-        signal: AbortSignal.timeout(20_000),
+        signal: AbortSignal.timeout(30_000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      cache[offset] = json;
-      await writeFile(cacheFile, JSON.stringify(cache));
-      return json;
+      return await res.json();
     } catch (err) {
       console.log(`  offset ${offset}: attempt ${attempt} failed (${err.message})`);
-      await new Promise((r) => setTimeout(r, 2000 * attempt));
+      await sleep(PAUSE * attempt);
     }
   }
   throw new Error(`Gave up on offset ${offset}; rerun to resume`);
 }
 
-// Download pages until the end of the history; if the API gives up part-way, save what we have (the daily update
-// keeps filling in older years a few pages at a time)
-const pages = [];
-try {
-  for (let offset = 0; ; offset += PAGE) {
-    const json = await page(offset);
-    pages.push(json);
-    const n = json.result.records.length;
-    console.log(`offset ${offset}: ${n} records (${json.result.records.at(-1)?.end_of_day ?? '-'})`);
-    if (n < PAGE) break;
+const files = {};
+for (const tenor of HIBOR_TENORS) files[tenor] = JSON.parse(await readFile(fileFor(tenor), 'utf8'));
+const oldest = () => HIBOR_TENORS.map((t) => files[t].rates.at(-1).effective).sort()[0];
+
+async function save() {
+  const today = new Date().toISOString().slice(0, 10);
+  for (const tenor of HIBOR_TENORS) {
+    const data = { ...files[tenor], updatedAt: today, checkedAt: today };
+    await writeFile(fileFor(tenor), JSON.stringify(data) + '\n');
   }
-} catch (err) {
-  console.log(`${err.message}. Saving the ${pages.length} pages downloaded so far.`);
 }
 
-const today = new Date().toISOString().slice(0, 10);
-for (const tenor of HIBOR_TENORS) {
-  const file = new URL(`site/${tenor === '1m' ? 'hibor.json' : `hibor-${tenor}.json`}`, root);
-  const previous = JSON.parse(await readFile(file, 'utf8').catch(() => '{}'));
-  let rates = previous.rates ?? [];
-  for (const json of pages) rates = mergeHibor(rates, parseHiborJson(json, { tenor, allowEmpty: true }));
-  const source = previous.source ?? `${BASE}&pagesize=60`;
-  await writeFile(file, JSON.stringify({ source, updatedAt: today, checkedAt: today, rates }) + '\n');
-  console.log(`${tenor}: wrote ${rates.length} fixings, ${rates.at(-1).effective} to ${rates[0].effective}`);
+for (let batch = 1; batch <= MAX_BATCHES && oldest() > HIBOR_HISTORY_START; batch++) {
+  let reachedEnd = false;
+  try {
+    for (let i = 0; i < BATCH; i++) {
+      // The API is newest first, so the next older page starts about where our saved history ends (overlap a little:
+      // some days have no fixing for a tenor)
+      const offset = Math.max(0, Math.min(...HIBOR_TENORS.map((t) => files[t].rates.length)) - 10);
+      const json = await page(offset);
+      const records = json.result?.records ?? [];
+      let added = 0;
+      for (const tenor of HIBOR_TENORS) {
+        const before = files[tenor].rates.length;
+        files[tenor].rates = mergeHibor(files[tenor].rates, parseHiborJson(json, { tenor, allowEmpty: true }));
+        added += files[tenor].rates.length - before;
+      }
+      console.log(`offset ${offset}: ${records.length} records, back to ${records.at(-1)?.end_of_day ?? '-'}`);
+      if (records.length < PAGE || !added) {
+        reachedEnd = true;
+        break;
+      }
+      await sleep(PAUSE);
+    }
+  } catch (err) {
+    console.log(err.message);
+    reachedEnd = true;
+  }
+  await save();
+  console.log(`batch ${batch} saved: history now from ${oldest()} (${files['1m'].rates.length} 1-month fixings)`);
+  if (reachedEnd) break;
 }
