@@ -1,6 +1,7 @@
 // Mortgage tab: inputs, results, schedule, exports and shareable links.
 import { mortgageSummary, mortgageRates, comparePlans, yearlySummary, effectiveRate } from './mortgage.js?v=__BUILD__';
 import { buildMortgagePdf, buildMortgageWorkbook } from './mortgage-export.js?v=__BUILD__';
+import { renderHiborChart } from './hibor-chart.js?v=__BUILD__';
 import {
   $, money, fmtDate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
   wireSteppers,
@@ -484,6 +485,35 @@ function setView(view) {
 }
 $('mViewMonthly').addEventListener('click', () => setView('monthly'));
 $('mViewYearly').addEventListener('click', () => setView('yearly'));
+
+// ---- HIBOR history card: drawn when first opened ----
+
+let hiborRange = '10y';
+async function drawHiborHistory() {
+  const [h1, h3] = await Promise.all([loadHibor('1m'), loadHibor('3m')]);
+  if (!h1?.rates?.length || !h3?.rates?.length) {
+    $('hiborChart').textContent = 'HIBOR history could not be loaded.';
+    return;
+  }
+  $('hiborMeta').textContent = `${fmtDate(h1.rates.at(-1).effective)} – ${fmtDate(h1.rates[0].effective)}`;
+  renderHiborChart($('hiborChart'), [
+    { name: '1-month HIBOR', short: '1M', color: 'var(--series-1)', rates: h1.rates },
+    { name: '3-month HIBOR', short: '3M', color: 'var(--series-2)', rates: h3.rates },
+  ], hiborRange);
+}
+$('hiborCard').addEventListener('toggle', () => $('hiborCard').open && drawHiborHistory());
+let hiborResize;
+window.addEventListener('resize', () => {
+  clearTimeout(hiborResize);
+  hiborResize = setTimeout(() => $('hiborCard').open && drawHiborHistory(), 150);
+});
+document.querySelectorAll('#hiborCard [data-range]').forEach((btn) =>
+  btn.addEventListener('click', () => {
+    hiborRange = btn.dataset.range;
+    document.querySelectorAll('#hiborCard [data-range]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+    drawHiborHistory();
+  }),
+);
 
 // ---- Shareable links: ?tab=mortgage&mt=prime&price=...&ltv=...&yrs=...&from=...&disc=... ----
 

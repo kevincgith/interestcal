@@ -217,3 +217,19 @@ test('both tabs lay out their form the same way', async ({ page }) => {
   await page.getByRole('tab', { name: 'Mortgage' }).click();
   expect(await look('#mform')).toEqual(interest);
 });
+
+test('HIBOR history card draws both tenors and shows a fixing on hover', async ({ page }) => {
+  await page.goto('?tab=mortgage');
+  await page.locator('#hiborCard summary').click();
+  await expect(page.locator('#hiborChart svg path')).toHaveCount(2);
+  await expect(page.locator('#hiborMeta')).toContainText('01-Jul-1996');
+  await page.locator('#hiborCard [data-range="all"]').click();
+  await expect(page.locator('#hiborCard [data-range="all"]')).toHaveAttribute('aria-pressed', 'true');
+  const box = await page.locator('#hiborChart svg').boundingBox();
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await expect(page.locator('#hiborChart .tip')).toBeVisible();
+  await expect(page.locator('#hiborChart .tip')).toContainText('1-month HIBOR');
+  await expect(page.locator('#hiborChart .tip')).toContainText('3-month HIBOR');
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});

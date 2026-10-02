@@ -270,7 +270,8 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 .view-toggle { display: flex; gap: 0; margin: 12px 0 8px; }
 .view-toggle button { border-radius: 0; padding: 6px 16px; }
 .view-toggle button:first-child { border-radius: 6px 0 0 6px; }
-.view-toggle button:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
+.view-toggle button:last-child { border-radius: 0 6px 6px 0; }
+.view-toggle button + button { border-left: 0; }
 .view-toggle button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
 .chart { position: relative; margin: 8px 0; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -280,6 +281,9 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
   position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
   border-radius: 6px; padding: 6px 10px; font-size: 0.82rem; box-shadow: 0 4px 14px rgba(0,0,0,.12); white-space: nowrap;
 }
+.chart .tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+#hiborChart svg { touch-action: pan-y; }
+#hiborCard .view-toggle button { padding: 4px 12px; }
 .chart { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --grid: #e4e4df; }
 @media (prefers-color-scheme: dark) {
   .chart { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --grid: #34342f; }

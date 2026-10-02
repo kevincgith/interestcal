@@ -399,6 +399,19 @@
           <span id="mShareStatus" class="muted" role="status"></span>
         </div>
       </section>
+
+      <details id="hiborCard" class="card">
+        <summary>HIBOR history <span id="hiborMeta" class="muted">1-month and 3-month fixings since 1996</span></summary>
+        <div class="view-toggle" role="group" aria-label="HIBOR chart range">
+          <button type="button" class="secondary" data-range="1y" aria-pressed="false">1Y</button>
+          <button type="button" class="secondary" data-range="5y" aria-pressed="false">5Y</button>
+          <button type="button" class="secondary" data-range="10y" aria-pressed="true">10Y</button>
+          <button type="button" class="secondary" data-range="all" aria-pressed="false">All</button>
+        </div>
+        <div id="hiborChart" class="chart" role="img" aria-label="HIBOR fixings"></div>
+        <p class="muted m-note">Daily HKD interbank fixings from the
+          <a href="https://apidocs.hkma.gov.hk/" target="_blank" rel="noopener">HKMA</a>, which publishes them about a month after the date.</p>
+      </details>
     </section>
 
     <footer class="about">
@@ -412,7 +425,7 @@
         The start date earns interest and the end date does not.
         Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.
         The Mortgage tab works out equal monthly instalments (interest = balance × rate × days ÷ 365) at a prime-based,
-        HIBOR-based (1-month HIBOR from the
+        HIBOR-based (1-month or 3-month HIBOR from the
         <a href="https://apidocs.hkma.gov.hk/" target="_blank" rel="noopener">HKMA</a>) or fixed rate.</p>
       <p class="license">
         © 2026 kevincgith · Free to use, copy and modify under the
