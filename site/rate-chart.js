@@ -25,7 +25,8 @@ const stepValueAt = (rates, iso) => rates.find((r) => r.effective <= iso)?.rate;
 
 /**
  * @param box element to draw into
- * @param series [{ name, short, color, rates, spread, step?, end? }]: rates newest first ({ effective, rate } in % p.a.).
+ * @param series [{ name, short, color, rates, spread, step?, end?, width? }]: rates newest first ({ effective, rate, note? }
+ *   in % p.a.; a note says where the rate came from, shown in the tooltip).
  *   Daily fixings are drawn point to point; a step series (rate changes, e.g. prime) holds each rate until the next
  *   change, up to `end`.
  * @param range a key of RATE_RANGES
@@ -54,7 +55,7 @@ export function renderRateChart(box, series, range = '10y') {
       } else {
         pts = s.rates.filter((r) => r.effective >= from).reverse();
       }
-      pts = pts.map((p) => ({ effective: p.effective, base: p.rate, rate: p.rate + s.spread }));
+      pts = pts.map((p) => ({ effective: p.effective, base: p.rate, rate: p.rate + s.spread, note: p.note }));
       return { ...s, pts, byDate: new Map(pts.map((p) => [p.effective, p])) };
     })
     .filter((l) => l.pts.length);
@@ -106,7 +107,7 @@ export function renderRateChart(box, series, range = '10y') {
         return i === 0 ? `M${px},${py}` : l.step ? `H${px}V${py}` : `L${px},${py}`;
       })
       .join('');
-    svg.append(el('path', { d, fill: 'none', stroke: l.color, 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+    svg.append(el('path', { d, fill: 'none', stroke: l.color, 'stroke-width': l.width ?? 2, 'stroke-linejoin': 'round' }));
   }
   // Direct labels at the line ends, nudged apart so they never overlap
   const ends = lines.map((l) => ({ l, ly: y(l.pts.at(-1).rate) })).sort((a, b) => a.ly - b.ly);
@@ -162,7 +163,9 @@ export function renderRateChart(box, series, range = '10y') {
       }
       const value = !p
         ? '–'
-        : l.spread
+        : p.note
+          ? `${p.rate.toFixed(3)}% (${p.note})`
+          : l.spread
           ? `${p.rate.toFixed(3)}% (${p.base.toFixed(3)}%${fmtSpread(l.spread)})`
           : `${p.rate.toFixed(3)}%`;
       const rowEl = document.createElement('div');

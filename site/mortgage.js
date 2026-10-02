@@ -275,3 +275,18 @@ export function comparePlans(base, plans) {
     };
   });
 }
+
+/** Each HIBOR fixing date: the lower of HIBOR + its spread and prime + its spread (prime rates newest first) */
+export function mortgageLine(hiborRates, primeRates, hiborSpread, primeSpread, tenorName) {
+  const out = [];
+  for (const h of hiborRates) {
+    const p = primeRates.find((r) => r.effective <= h.effective)?.rate;
+    if (p === undefined) continue;
+    const hLeg = h.rate + hiborSpread;
+    const pLeg = p + primeSpread;
+    out.push(hLeg <= pLeg
+      ? { effective: h.effective, rate: hLeg, note: `${tenorName} HIBOR${hiborSpread ? ` ${hiborSpread > 0 ? '+' : '−'} ${Math.abs(hiborSpread).toFixed(2)}%` : ''}` }
+      : { effective: h.effective, rate: pLeg, note: `prime${primeSpread ? ` ${primeSpread > 0 ? '+' : '−'} ${Math.abs(primeSpread).toFixed(2)}%` : ''}, the cap` });
+  }
+  return out;
+}

@@ -434,7 +434,15 @@
               <button type="button" class="step" data-step="0.25" aria-label="Increase HSBC prime rate spread by 0.25%">+</button>
             </div>
           </div>
+          <div class="series-ctl">
+            <label class="radio"><input type="checkbox" data-series="mortgage"> <i class="swatch" style="background:var(--text)"></i> Mortgage rate</label>
+            <select id="mortgageTenor" aria-label="HIBOR used for the mortgage rate">
+              <option value="1m" selected>Lower of 1M H and P</option>
+              <option value="3m">Lower of 3M H and P</option>
+            </select>
+          </div>
         </div>
+        <p class="muted m-note">Mortgage rate = the lower of HIBOR + its spread and prime + its spread (the cap), using the spreads above.</p>
         <div id="hiborChart" class="chart" role="img" aria-label="Rate history"></div>
         <p class="muted m-note">HIBOR: daily HKD interbank fixings from the
           <a href="https://apidocs.hkma.gov.hk/" target="_blank" rel="noopener">HKMA</a>; latest data is <span id="hiborLatest">–</span>.

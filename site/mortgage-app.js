@@ -1,5 +1,5 @@
 // Mortgage tab: inputs, results, schedule, exports and shareable links.
-import { mortgageSummary, mortgageRates, comparePlans, yearlySummary, effectiveRate } from './mortgage.js?v=__BUILD__';
+import { mortgageSummary, mortgageRates, comparePlans, yearlySummary, effectiveRate, mortgageLine } from './mortgage.js?v=__BUILD__';
 import { buildMortgagePdf, buildMortgageWorkbook } from './mortgage-export.js?v=__BUILD__';
 import { renderRateChart } from './rate-chart.js?v=__BUILD__';
 import {
@@ -489,22 +489,42 @@ $('mViewYearly').addEventListener('click', () => setView('yearly'));
 // ---- Rate history card (HIBOR and prime, each with an optional spread): drawn when first opened ----
 
 let hiborRange = '10y';
-const SERIES = [
+const SERIES = [ // the mortgage line (lower of H + spread and P + spread) is added separately
   { key: '1m', name: '1-month HIBOR', short: '1M', color: 'var(--series-1)' },
   { key: '3m', name: '3-month HIBOR', short: '3M', color: 'var(--series-2)' },
   { key: 'prime', name: 'HSBC prime rate', short: 'P', color: 'var(--series-3)', step: true },
 ];
+const spreadOf = (key) => {
+  const v = parseNumber(document.querySelector(`#seriesCtl [data-spread="${key}"]`).value || '0');
+  return Number.isFinite(v) ? v : 0;
+};
+const isShown = (key) => document.querySelector(`#seriesCtl [data-series="${key}"]`).checked;
+
 async function drawHiborHistory() {
   const [h1, h3] = await Promise.all([loadHibor('1m'), loadHibor('3m')]);
   if (h1?.rates?.length) $('hiborLatest').textContent = fmtDate(h1.rates[0].effective);
   const data = { '1m': h1?.rates, '3m': h3?.rates, prime: prime?.rates };
-  const shown = SERIES.filter((s) => document.querySelector(`#seriesCtl [data-series="${s.key}"]`).checked && data[s.key]?.length)
-    .map((s) => {
-      const spread = parseNumber(document.querySelector(`#seriesCtl [data-spread="${s.key}"]`).value || '0');
-      return { ...s, rates: data[s.key], spread: Number.isFinite(spread) ? spread : 0, end: s.step ? (prime.checkedAt ?? todayIso()) : undefined };
+  const shown = SERIES.filter((s) => isShown(s.key) && data[s.key]?.length).map((s) => ({
+    ...s, rates: data[s.key], spread: spreadOf(s.key), end: s.step ? (prime.checkedAt ?? todayIso()) : undefined,
+  }));
+  const tenor = $('mortgageTenor').value;
+  if (isShown('mortgage') && data[tenor]?.length && data.prime?.length) {
+    shown.push({
+      name: 'Mortgage rate', short: 'Mtg', color: 'var(--text)', width: 3, spread: 0,
+      rates: mortgageLine(data[tenor], data.prime, spreadOf(tenor), spreadOf('prime'), TENOR_NAME[tenor]),
     });
+  }
   renderRateChart($('hiborChart'), shown, hiborRange);
 }
+// Turning on the mortgage line with no spreads set: start from this loan's HIBOR plan (H + margin, capped at P - x%)
+document.querySelector('#seriesCtl [data-series="mortgage"]').addEventListener('change', (e) => {
+  const tenor = $('mortgageTenor').value;
+  if (!e.target.checked || spreadOf(tenor) || spreadOf('prime')) return;
+  const margin = parseNumber($('mMargin').value);
+  const cap = parseNumber($('mCap').value);
+  if (Number.isFinite(margin)) document.querySelector(`#seriesCtl [data-spread="${tenor}"]`).value = String(margin);
+  if (Number.isFinite(cap)) document.querySelector('#seriesCtl [data-spread="prime"]').value = String(-cap);
+});
 wireSteppers($('seriesCtl'), drawHiborHistory);
 $('seriesCtl').addEventListener('input', drawHiborHistory);
 $('seriesCtl').addEventListener('change', drawHiborHistory);

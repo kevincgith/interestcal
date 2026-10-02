@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { instalment, mortgageSchedule, mortgageSummary, mortgageRates, yearlySummary, effectiveRate, comparePlans } from '../site/mortgage.js';
+import { instalment, mortgageSchedule, mortgageSummary, mortgageRates, yearlySummary, effectiveRate, comparePlans, mortgageLine } from '../site/mortgage.js';
 
 const fixed = (rate) => [{ effective: '1900-01-01', rate }];
 const sum = (xs) => xs.reduce((a, b) => a + b, 0);
@@ -202,4 +202,17 @@ test('compare plans: same loan, each plan its own rates and rebate', () => {
   close(b.netCost, b.totalInterest - 20_000, 0.001);
   assert.ok(b.totalInterest > a.totalInterest);
   assert.ok(b.effectiveRate < 0.032);
+});
+
+test('mortgage line: lower of HIBOR + spread and prime + spread on each fixing date', () => {
+  const prime = [{ effective: '2025-06-01', rate: 5 }, { effective: '2020-01-01', rate: 5.25 }];
+  const hibor = [
+    { effective: '2025-06-02', rate: 4 }, // 4 + 1.3 = 5.3 vs 5 - 1.75 = 3.25: the cap
+    { effective: '2025-05-30', rate: 1 }, // 1 + 1.3 = 2.3 vs 5.25 - 1.75 = 3.5: HIBOR
+    { effective: '2019-12-31', rate: 2 }, // before the first prime rate: skipped
+  ];
+  const line = mortgageLine(hibor, prime, 1.3, -1.75, '1-month');
+  assert.deepEqual(line.map((r) => [r.effective, Number(r.rate.toFixed(4))]), [['2025-06-02', 3.25], ['2025-05-30', 2.3]]);
+  assert.equal(line[0].note, 'prime − 1.75%, the cap');
+  assert.equal(line[1].note, '1-month HIBOR + 1.30%');
 });

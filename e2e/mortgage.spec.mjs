@@ -260,3 +260,19 @@ test('rate history: prime toggle and spreads change the lines, legend and toolti
   await page.locator('#seriesCtl [data-series="prime"]').uncheck();
   await expect(page.locator('#hiborChart')).toContainText('Pick a rate to show.');
 });
+
+test('rate history: mortgage line is the lower of HIBOR + margin and prime - cap, from the plan settings', async ({ page }) => {
+  await page.goto('?tab=mortgage&mt=hibor&mg=1.3&cap=1.75');
+  await page.locator('#hiborCard summary').click();
+  await page.locator('#seriesCtl [data-series="mortgage"]').check();
+  // Spreads start from the HIBOR plan: H + 1.3, P - 1.75
+  await expect(page.locator('#seriesCtl [data-spread="1m"]')).toHaveValue('1.3');
+  await expect(page.locator('#seriesCtl [data-spread="prime"]')).toHaveValue('-1.75');
+  await expect(page.locator('#hiborChart .legend')).toContainText('Mortgage rate');
+  await page.locator('#hiborChart svg').scrollIntoViewIfNeeded();
+  const box = await page.locator('#hiborChart svg').boundingBox();
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await expect(page.locator('#hiborChart .tip')).toContainText(/Mortgage rate: [\d.]+% \((1-month HIBOR \+ 1\.30%|prime − 1\.75%, the cap)\)/);
+  await page.locator('#mortgageTenor').selectOption('3m');
+  await expect(page.locator('#hiborChart svg path')).toHaveCount(3);
+});

@@ -286,6 +286,7 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 .series-ctls { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px 20px; margin: 4px 0 12px; }
 .series-ctl { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .series-ctl .stepper { flex: none; width: 132px; height: 36px; }
+.series-ctl select { flex: none; width: auto; height: 36px; padding: 0 8px; }
 .series-ctl .swatch, .chart-card .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
 .chart .legend { flex-wrap: wrap; row-gap: 4px; }
 #hiborCard .view-toggle button { padding: 4px 12px; }
