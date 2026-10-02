@@ -222,10 +222,10 @@ test('HIBOR history card draws both tenors and shows a fixing on hover', async (
   await page.goto('?tab=mortgage');
   await page.locator('#hiborCard summary').click();
   await expect(page.locator('#hiborChart svg path')).toHaveCount(2);
-  await expect(page.locator('#hiborMeta')).toContainText('01-Jul-1996');
   await expect(page.locator('#hiborLatest')).toHaveText(/^\d{2}-[A-Z][a-z]{2}-\d{4}$/);
   await page.locator('#hiborCard [data-range="all"]').click();
   await expect(page.locator('#hiborCard [data-range="all"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#hiborChart svg').scrollIntoViewIfNeeded();
   const box = await page.locator('#hiborChart svg').boundingBox();
   await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
   await expect(page.locator('#hiborChart .tip')).toBeVisible();
@@ -233,4 +233,30 @@ test('HIBOR history card draws both tenors and shows a fixing on hover', async (
   await expect(page.locator('#hiborChart .tip')).toContainText('3-month HIBOR');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test('rate history: prime toggle and spreads change the lines, legend and tooltip', async ({ page }) => {
+  await page.goto('?tab=mortgage');
+  await page.locator('#hiborCard summary').click();
+  await expect(page.locator('#hiborChart svg path')).toHaveCount(2);
+  await page.locator('#seriesCtl [data-series="prime"]').check();
+  await expect(page.locator('#hiborChart svg path')).toHaveCount(3);
+  await expect(page.locator('#hiborChart .legend')).toContainText('HSBC prime rate');
+  // Prime - 1.75: seven clicks of -0.25
+  for (let i = 0; i < 7; i++) await page.locator('#seriesCtl .series-ctl').nth(2).getByRole('button', { name: /Decrease/ }).click();
+  await expect(page.locator('#seriesCtl [data-spread="prime"]')).toHaveValue('-1.75');
+  await expect(page.locator('#hiborChart .legend')).toContainText('HSBC prime rate − 1.75%');
+  await page.locator('#seriesCtl [data-spread="1m"]').fill('1.3');
+  await expect(page.locator('#hiborChart .legend')).toContainText('1-month HIBOR + 1.30%');
+  await page.locator('#hiborChart svg').scrollIntoViewIfNeeded();
+  const box = await page.locator('#hiborChart svg').boundingBox();
+  await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.5);
+  await expect(page.locator('#hiborChart .tip')).toContainText(/1-month HIBOR: [\d.]+% \([\d.]+% \+ 1\.30%\)/);
+  await expect(page.locator('#hiborChart .tip')).toContainText(/HSBC prime rate: [\d.]+% \([\d.]+% − 1\.75%\)/);
+  // Only prime
+  await page.locator('#seriesCtl [data-series="1m"]').uncheck();
+  await page.locator('#seriesCtl [data-series="3m"]').uncheck();
+  await expect(page.locator('#hiborChart svg path')).toHaveCount(1);
+  await page.locator('#seriesCtl [data-series="prime"]').uncheck();
+  await expect(page.locator('#hiborChart')).toContainText('Pick a rate to show.');
 });

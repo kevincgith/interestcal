@@ -1,7 +1,7 @@
 // Mortgage tab: inputs, results, schedule, exports and shareable links.
 import { mortgageSummary, mortgageRates, comparePlans, yearlySummary, effectiveRate } from './mortgage.js?v=__BUILD__';
 import { buildMortgagePdf, buildMortgageWorkbook } from './mortgage-export.js?v=__BUILD__';
-import { renderHiborChart } from './hibor-chart.js?v=__BUILD__';
+import { renderRateChart } from './rate-chart.js?v=__BUILD__';
 import {
   $, money, fmtDate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
   wireSteppers,
@@ -486,22 +486,28 @@ function setView(view) {
 $('mViewMonthly').addEventListener('click', () => setView('monthly'));
 $('mViewYearly').addEventListener('click', () => setView('yearly'));
 
-// ---- HIBOR history card: drawn when first opened ----
+// ---- Rate history card (HIBOR and prime, each with an optional spread): drawn when first opened ----
 
 let hiborRange = '10y';
+const SERIES = [
+  { key: '1m', name: '1-month HIBOR', short: '1M', color: 'var(--series-1)' },
+  { key: '3m', name: '3-month HIBOR', short: '3M', color: 'var(--series-2)' },
+  { key: 'prime', name: 'HSBC prime rate', short: 'P', color: 'var(--series-3)', step: true },
+];
 async function drawHiborHistory() {
   const [h1, h3] = await Promise.all([loadHibor('1m'), loadHibor('3m')]);
-  if (!h1?.rates?.length || !h3?.rates?.length) {
-    $('hiborChart').textContent = 'HIBOR history could not be loaded.';
-    return;
-  }
-  $('hiborMeta').textContent = `${fmtDate(h1.rates.at(-1).effective)} – ${fmtDate(h1.rates[0].effective)}`;
-  $('hiborLatest').textContent = fmtDate(h1.rates[0].effective);
-  renderHiborChart($('hiborChart'), [
-    { name: '1-month HIBOR', short: '1M', color: 'var(--series-1)', rates: h1.rates },
-    { name: '3-month HIBOR', short: '3M', color: 'var(--series-2)', rates: h3.rates },
-  ], hiborRange);
+  if (h1?.rates?.length) $('hiborLatest').textContent = fmtDate(h1.rates[0].effective);
+  const data = { '1m': h1?.rates, '3m': h3?.rates, prime: prime?.rates };
+  const shown = SERIES.filter((s) => document.querySelector(`#seriesCtl [data-series="${s.key}"]`).checked && data[s.key]?.length)
+    .map((s) => {
+      const spread = parseNumber(document.querySelector(`#seriesCtl [data-spread="${s.key}"]`).value || '0');
+      return { ...s, rates: data[s.key], spread: Number.isFinite(spread) ? spread : 0, end: s.step ? (prime.checkedAt ?? todayIso()) : undefined };
+    });
+  renderRateChart($('hiborChart'), shown, hiborRange);
 }
+wireSteppers($('seriesCtl'), drawHiborHistory);
+$('seriesCtl').addEventListener('input', drawHiborHistory);
+$('seriesCtl').addEventListener('change', drawHiborHistory);
 $('hiborCard').addEventListener('toggle', () => $('hiborCard').open && drawHiborHistory());
 let hiborResize;
 window.addEventListener('resize', () => {

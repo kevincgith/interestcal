@@ -400,17 +400,45 @@
         </div>
       </section>
 
-      <details id="hiborCard" class="card">
-        <summary>HIBOR history <span id="hiborMeta" class="muted">1-month and 3-month fixings since 1996</span></summary>
-        <div class="view-toggle" role="group" aria-label="HIBOR chart range">
+      <details id="hiborCard" class="card chart-card">
+        <summary>Rate history <span id="hiborMeta" class="muted">HIBOR and HSBC prime rate</span></summary>
+        <div class="view-toggle" role="group" aria-label="Chart range">
           <button type="button" class="secondary" data-range="1y" aria-pressed="false">1Y</button>
           <button type="button" class="secondary" data-range="5y" aria-pressed="false">5Y</button>
           <button type="button" class="secondary" data-range="10y" aria-pressed="true">10Y</button>
           <button type="button" class="secondary" data-range="all" aria-pressed="false">All</button>
         </div>
-        <div id="hiborChart" class="chart" role="img" aria-label="HIBOR fixings"></div>
-        <p class="muted m-note">Daily HKD interbank fixings from the
-          <a href="https://apidocs.hkma.gov.hk/" target="_blank" rel="noopener">HKMA</a>. Latest data is <span id="hiborLatest">–</span>.</p>
+        <p class="muted m-note">Show each rate, with an optional spread (% p.a.), e.g. HIBOR + 1.3 or prime − 1.75.</p>
+        <div id="seriesCtl" class="series-ctls">
+          <div class="series-ctl">
+            <label class="radio"><input type="checkbox" data-series="1m" checked> <i class="swatch" style="background:var(--series-1)"></i> 1-month HIBOR</label>
+            <div class="stepper" title="Spread added to 1-month HIBOR">
+              <button type="button" class="step" data-step="-0.1" aria-label="Decrease 1-month HIBOR spread by 0.1%">−</button>
+              <input type="text" inputmode="decimal" autocomplete="off" value="0" data-spread="1m" aria-label="1-month HIBOR spread (% p.a.)">
+              <button type="button" class="step" data-step="0.1" aria-label="Increase 1-month HIBOR spread by 0.1%">+</button>
+            </div>
+          </div>
+          <div class="series-ctl">
+            <label class="radio"><input type="checkbox" data-series="3m" checked> <i class="swatch" style="background:var(--series-2)"></i> 3-month HIBOR</label>
+            <div class="stepper" title="Spread added to 3-month HIBOR">
+              <button type="button" class="step" data-step="-0.1" aria-label="Decrease 3-month HIBOR spread by 0.1%">−</button>
+              <input type="text" inputmode="decimal" autocomplete="off" value="0" data-spread="3m" aria-label="3-month HIBOR spread (% p.a.)">
+              <button type="button" class="step" data-step="0.1" aria-label="Increase 3-month HIBOR spread by 0.1%">+</button>
+            </div>
+          </div>
+          <div class="series-ctl">
+            <label class="radio"><input type="checkbox" data-series="prime"> <i class="swatch" style="background:var(--series-3)"></i> HSBC prime rate</label>
+            <div class="stepper" title="Spread added to HSBC prime rate">
+              <button type="button" class="step" data-step="-0.25" aria-label="Decrease HSBC prime rate spread by 0.25%">−</button>
+              <input type="text" inputmode="decimal" autocomplete="off" value="0" data-spread="prime" aria-label="HSBC prime rate spread (% p.a.)">
+              <button type="button" class="step" data-step="0.25" aria-label="Increase HSBC prime rate spread by 0.25%">+</button>
+            </div>
+          </div>
+        </div>
+        <div id="hiborChart" class="chart" role="img" aria-label="Rate history"></div>
+        <p class="muted m-note">HIBOR: daily HKD interbank fixings from the
+          <a href="https://apidocs.hkma.gov.hk/" target="_blank" rel="noopener">HKMA</a>; latest data is <span id="hiborLatest">–</span>.
+          Prime: HSBC best lending rate, as on the Interest tab.</p>
       </details>
     </section>
 

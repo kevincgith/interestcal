@@ -283,10 +283,15 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 }
 .chart .tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
 #hiborChart svg { touch-action: pan-y; }
+.series-ctls { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px 20px; margin: 4px 0 12px; }
+.series-ctl { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.series-ctl .stepper { flex: none; width: 132px; height: 36px; }
+.series-ctl .swatch, .chart-card .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.chart .legend { flex-wrap: wrap; row-gap: 4px; }
 #hiborCard .view-toggle button { padding: 4px 12px; }
-.chart { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --grid: #e4e4df; }
+.chart, .chart-card { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --grid: #e4e4df; }
 @media (prefers-color-scheme: dark) {
-  .chart { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --grid: #34342f; }
+  .chart, .chart-card { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --grid: #34342f; }
 }
 /* Wide mortgage tables (comparison; 10-column HIBOR schedule): compact so they fit on laptop screens with any font */
 .compare th, .compare td, .schedule-wrap th, .schedule-wrap td, #mYearlyWrap th, #mYearlyWrap td {
