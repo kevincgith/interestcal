@@ -223,6 +223,7 @@ test('HIBOR history card draws both tenors and shows a fixing on hover', async (
   await page.locator('#hiborCard summary').click();
   await expect(page.locator('#hiborChart svg path')).toHaveCount(2);
   await expect(page.locator('#hiborMeta')).toContainText('01-Jul-1996');
+  await expect(page.locator('#hiborLatest')).toHaveText(/^\d{2}-[A-Z][a-z]{2}-\d{4}$/);
   await page.locator('#hiborCard [data-range="all"]').click();
   await expect(page.locator('#hiborCard [data-range="all"]')).toHaveAttribute('aria-pressed', 'true');
   const box = await page.locator('#hiborChart svg').boundingBox();

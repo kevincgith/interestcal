@@ -496,6 +496,7 @@ async function drawHiborHistory() {
     return;
   }
   $('hiborMeta').textContent = `${fmtDate(h1.rates.at(-1).effective)} – ${fmtDate(h1.rates[0].effective)}`;
+  $('hiborLatest').textContent = fmtDate(h1.rates[0].effective);
   renderHiborChart($('hiborChart'), [
     { name: '1-month HIBOR', short: '1M', color: 'var(--series-1)', rates: h1.rates },
     { name: '3-month HIBOR', short: '3M', color: 'var(--series-2)', rates: h3.rates },
