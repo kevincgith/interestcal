@@ -21,7 +21,7 @@ You can choose one of three rates:
   - **Loan:** property price × loan-to-value (100% by default) gives the loan and down payment. Choose a tenor and a drawdown date; instalments fall due on the drawdown day each month.
   - **Rate:**
     - **Prime-based (P − x%):** uses the HSBC prime history; future months use the latest prime.
-    - **HIBOR-based (H + x%, capped at P − y%):** choose 1-month or 3-month HIBOR. Either way the rate resets at every monthly due date; the tenor only decides which fixing is used. Past resets use the actual fixing on or before each reset date, from HKMA history back to 1996, with the days since HKMA's latest from HKAB. Resets after the latest fixing use the "Future HIBOR" rate, which defaults to the latest fixing. The prime cap follows the real prime history.
+    - **HIBOR-based (H + x%, capped at P − y%):** choose 1-month or 3-month HIBOR. Either way the rate resets at every monthly due date; the tenor only decides which fixing is used. Past resets use the actual fixing on or before each reset date, from HKMA history back to 1996, with the days since HKMA's latest from HKAB. Resets after the latest fixing use the "Current HIBOR" rate, which defaults to the latest fixing (updated by the daily run); a shared link keeps a HIBOR only if it was typed in. The prime cap follows the real prime history.
     - **Fixed.**
   - **Interest:** each month's interest = balance × rate × actual days ÷ 365. The instalment is recalculated when the rate changes.
   - **Extra repayments:** these keep the instalment the same, so the loan ends sooner. The results show interest and months saved.

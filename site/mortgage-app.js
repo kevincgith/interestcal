@@ -15,7 +15,7 @@ const pct = (n) => `${Number(n.toFixed(4)).toLocaleString('en', { minimumFractio
 
 let prime = null; // HSBC prime rate history (prime-rates.json)
 const hibor = {}; // HIBOR history by tenor ('1m' -> hibor.json, '3m' -> hibor-3m.json), loaded when first needed
-let hiborEdited = false; // once the user types their own future HIBOR, switching tenor no longer overwrites it
+let hiborEdited = false; // once the user types their own current HIBOR, switching tenor no longer overwrites it
 const TENOR_NAME = { '1m': '1-month', '3m': '3-month' };
 const currentTenor = () => $('mTenor').value;
 
@@ -25,12 +25,12 @@ async function loadHibor(tenor) {
     const res = await fetch(tenor === '1m' ? 'hibor.json' : `hibor-${tenor}.json`, { cache: 'no-cache' });
     hibor[tenor] = res.ok ? await res.json() : null;
   } catch {
-    hibor[tenor] = null; // optional: the future-HIBOR box can be filled in by hand
+    hibor[tenor] = null; // optional: the current-HIBOR box can be filled in by hand
   }
   return hibor[tenor];
 }
 
-// Fill the future-HIBOR box with the latest fixing for the tenor (unless the user has typed their own)
+// Fill the current-HIBOR box with the latest fixing for the tenor (unless the user has typed their own)
 async function prefillHibor() {
   const data = await loadHibor(currentTenor());
   const latest = data?.rates?.[0];
@@ -180,7 +180,7 @@ function planParams(type) {
   if (type === 'fixed') params.fixedRate = num('mFixed');
   for (const [k, v] of Object.entries(params)) {
     if (k !== 'type' && k !== 'tenor' && !Number.isFinite(v)) {
-      throw new Error(k === 'hibor' ? 'Please enter the future HIBOR.' : `Please enter a valid rate for the ${TYPES[type].toLowerCase()} plan.`);
+      throw new Error(k === 'hibor' ? 'Please enter the current HIBOR.' : `Please enter a valid rate for the ${TYPES[type].toLowerCase()} plan.`);
     }
   }
   params.rebatePct = parseNumber($(REBATE_FIELD[type]).value || '0');
@@ -263,11 +263,11 @@ $('mform').addEventListener('submit', async (e) => {
   setStale(false);
 });
 
-// "1-month HIBOR + 1.30%, capped at prime − 1.75%; future HIBOR 2.85%"
+// "1-month HIBOR + 1.30%, capped at prime − 1.75%; current HIBOR 2.85%"
 const planLabel = (p) => {
   if (p.type === 'prime') return `HSBC prime − ${pct(p.discount)}`;
   if (p.type === 'hibor') {
-    return `${TENOR_NAME[p.tenor]} HIBOR + ${pct(p.margin)}, capped at prime − ${pct(p.capDiscount)}; future HIBOR ${pct(p.hibor)}`;
+    return `${TENOR_NAME[p.tenor]} HIBOR + ${pct(p.margin)}, capped at prime − ${pct(p.capDiscount)}; current HIBOR ${pct(p.hibor)}`;
   }
   return `Fixed ${pct(p.fixedRate)}`;
 };
@@ -551,7 +551,7 @@ function writeQuery(m) {
   for (const p of i.plans) {
     if (p.type === 'prime') q.set('disc', String(p.discount));
     if (p.type === 'hibor') {
-      q.set('h', String(p.hibor));
+      if (hiborEdited) q.set('h', String(p.hibor)); // otherwise the link keeps following the latest fixing
       q.set('mg', String(p.margin));
       q.set('cap', String(p.capDiscount));
       if (p.tenor !== '1m') q.set('ht', p.tenor);

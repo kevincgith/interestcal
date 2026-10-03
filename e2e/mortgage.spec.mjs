@@ -42,7 +42,7 @@ test('extra repayment: saves interest, ends sooner, goes into the link', async (
 });
 
 test('HIBOR-based: the lower of H + margin and P - cap; future resets use the entered HIBOR', async ({ page }) => {
-  // A drawdown after the HIBOR history ends, so every reset uses the entered future HIBOR
+  // A drawdown after the HIBOR history ends, so every reset uses the entered current HIBOR
   await page.goto('?tab=mortgage&mt=hibor&h=2.85&mg=1.3&cap=1.75&price=8000000&ltv=70&yrs=30&from=2035-01-15');
   await expect(page.locator('#mRateLine')).toContainText('Rate at drawdown: 3.250% p.a.');
   await expect(page.locator('#mHibor')).toHaveValue('2.85');
@@ -275,4 +275,16 @@ test('rate history: mortgage line is the lower of HIBOR + margin and prime - cap
   await expect(page.locator('#hiborChart .tip')).toContainText(/Mortgage rate: [\d.]+% \((1-month HIBOR \+ 1\.30%|prime − 1\.75%, the cap)\)/);
   await page.locator('#mortgageTenor').selectOption('3m');
   await expect(page.locator('#hiborChart svg path')).toHaveCount(3);
+});
+
+test('current HIBOR follows the latest fixing unless typed in, and only a typed one goes in the link', async ({ page }) => {
+  await page.goto('?tab=mortgage');
+  await expect(page.locator('#mHiborField')).toContainText('Current HIBOR (%)');
+  await expect(page.locator('#mPayment')).not.toHaveText('');
+  const latest = await page.evaluate(async () => (await (await fetch('hibor.json')).json()).rates[0].rate);
+  await expect(page.locator('#mHibor')).toHaveValue(String(latest));
+  expect(page.url()).not.toMatch(/[?&]h=/);
+  await page.locator('#mHibor').fill('3.1');
+  await page.locator('#mform button[type="submit"]').click();
+  await expect(page).toHaveURL(/[?&]h=3\.1(&|$)/);
 });
