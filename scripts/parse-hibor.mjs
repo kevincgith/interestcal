@@ -34,3 +34,21 @@ export function mergeHibor(older, newer) {
   for (const r of newer) byDate.set(r.effective, r.rate);
   return [...byDate].map(([effective, rate]) => ({ effective, rate })).sort((a, b) => b.effective.localeCompare(a.effective));
 }
+
+// HKAB (the Hong Kong Association of Banks) sets the fixings each business day at 11:15 HKT and shows them at
+// https://www.hkab.org.hk/en/rates/hibor, which loads one day at a time from its own API:
+// /api/hibor?year=2026&month=10&day=2 -> { "1 Month": 2.96839, "3 Months": 3.24482, year: 2026, month: 10, day: 2, ... }
+// Holidays and Saturdays come back with every rate and the date null. HKMA republishes the same fixings later, so
+// HKAB only fills in the recent days HKMA doesn't have yet.
+export const HKAB_PAGE = 'https://www.hkab.org.hk/en/rates/hibor';
+export const hkabUrl = (iso) =>
+  `https://www.hkab.org.hk/api/hibor?year=${+iso.slice(0, 4)}&month=${+iso.slice(5, 7)}&day=${+iso.slice(8, 10)}`;
+const HKAB_KEYS = { '1m': '1 Month', '3m': '3 Months' };
+
+/** One day's fixing for a tenor from HKAB, or null when there is none (holiday, weekend, or a different date) */
+export function parseHkabJson(json, iso, tenor = '1m') {
+  const [y, m, d] = iso.split('-').map(Number);
+  if (json?.year !== y || json?.month !== m || json?.day !== d) return null;
+  const rate = json[HKAB_KEYS[tenor]];
+  return typeof rate === 'number' && Number.isFinite(rate) ? { effective: iso, rate } : null;
+}

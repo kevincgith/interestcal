@@ -444,7 +444,8 @@
         </div>
         <p class="muted m-note">Mortgage rate = the lower of HIBOR + its spread and prime + its spread (the cap), using the spreads above.</p>
         <div id="hiborChart" class="chart" role="img" aria-label="Rate history"></div>
-        <p class="muted m-note">HIBOR: daily HKD interbank fixings from the
+        <p class="muted m-note">HIBOR: HKD Interest Settlement Rates set daily by
+          <a href="https://www.hkab.org.hk/en/rates/hibor" target="_blank" rel="noopener">HKAB</a>, with the history from the
           <a href="https://apidocs.hkma.gov.hk/" target="_blank" rel="noopener">HKMA</a>; latest data is <span id="hiborLatest">–</span>.
           Prime: HSBC best lending rate, as on the Interest tab.</p>
       </details>
@@ -461,7 +462,8 @@
         The start date earns interest and the end date does not.
         Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.
         The Mortgage tab works out equal monthly instalments (interest = balance × rate × days ÷ 365) at a prime-based,
-        HIBOR-based (1-month or 3-month HIBOR from the
+        HIBOR-based (1-month or 3-month HIBOR, set by
+        <a href="https://www.hkab.org.hk/en/rates/hibor" target="_blank" rel="noopener">HKAB</a>, history from the
         <a href="https://apidocs.hkma.gov.hk/" target="_blank" rel="noopener">HKMA</a>) or fixed rate.</p>
       <p class="license">
         © 2026 kevincgith · Free to use, copy and modify under the

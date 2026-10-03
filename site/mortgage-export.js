@@ -130,7 +130,8 @@ const cell = (v) => (v && typeof v === 'object' ? v : { t: typeof v === 'number'
 
 /**
  * Excel: one "Mortgage" sheet with the inputs, summary (totals as live SUM formulas) and the full schedule.
- * @param {object} ctx { inputs: [label, value][], lines: string[], primeSource?: string, hiborSource?: string }
+ * @param {object} ctx { inputs: [label, value][], lines: string[], primeSource?: string, hiborSource?: string,
+ *   hiborRecentSource?: string }
  */
 export function buildMortgageWorkbook(XLSX, m, ctx) {
   const rows = [[{ t: 's', v: 'HK Interest Calculator: Mortgage' }], []];
@@ -138,6 +139,7 @@ export function buildMortgageWorkbook(XLSX, m, ctx) {
   const src = [
     ctx.primeSource && ['HSBC prime rate source', { t: 's', v: ctx.primeSource, l: { Target: ctx.primeSource } }],
     ctx.hiborSource && ['HIBOR source', { t: 's', v: ctx.hiborSource, l: { Target: ctx.hiborSource } }],
+    ctx.hiborRecentSource && ['HIBOR source (recent days)', { t: 's', v: ctx.hiborRecentSource, l: { Target: ctx.hiborRecentSource } }],
   ].filter(Boolean);
   rows.push(...src, []);
 

@@ -662,6 +662,7 @@ $('mXlsx').addEventListener('click', () => {
       planNames: TYPES,
       primeSource: m.inputs.type === 'fixed' ? null : prime?.source,
       hiborSource: m.inputs.type === 'hibor' ? hibor[m.inputs.rateParams.tenor]?.source : null,
+      hiborRecentSource: m.inputs.type === 'hibor' ? hibor[m.inputs.rateParams.tenor]?.recentSource : null,
     });
     const bytes = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), exportName(m, 'xlsx'));

@@ -5,7 +5,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { parseRatesHtml, validateRates } from './parse-judiciary.mjs';
 import { parsePrimeXls } from './parse-prime.mjs';
 import { HSBC_URL, parseHsbcHtml, crossCheckPrime } from './parse-hsbc.mjs';
-import { HIBOR_URL, HIBOR_TENORS, HIBOR_HISTORY_START, parseHiborJson, mergeHibor } from './parse-hibor.mjs';
+import {
+  HIBOR_URL, HIBOR_TENORS, HIBOR_HISTORY_START, HKAB_PAGE, hkabUrl, parseHiborJson, parseHkabJson, mergeHibor,
+} from './parse-hibor.mjs';
 
 // Older HIBOR pages (newest first, 100 per page), shared by both tenors within a run
 const hiborPages = new Map();
@@ -39,6 +41,48 @@ async function fillOlderHibor(rates, tenor, pagesPerRun = 5) {
 }
 
 const HEADERS = { 'User-Agent': 'Mozilla/5.0 (interestcal rate updater)' };
+
+// HKAB's fixings by day, shared by both tenors within a run (one request per day, a short pause between them)
+const hkabDays = new Map();
+function hkabDay(iso) {
+  if (!hkabDays.has(iso)) {
+    hkabDays.set(iso, (async () => {
+      await new Promise((r) => setTimeout(r, 300));
+      const res = await fetch(hkabUrl(iso), { headers: HEADERS, signal: AbortSignal.timeout(20_000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })());
+  }
+  return hkabDays.get(iso);
+}
+const addDays = (iso, n) => new Date(Date.parse(iso) + n * 864e5).toISOString().slice(0, 10);
+
+/**
+ * Add the recent days HKMA doesn't have yet from HKAB: every day from a few days before the newest saved fixing
+ * (an overlap that cross-checks the two sources) up to today in Hong Kong, at most 45 days back. A fixing already
+ * saved is kept; if HKAB disagrees with it, that's a warning.
+ */
+async function addRecentHkab(rates, tenor, warnings) {
+  const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10); // Hong Kong date
+  let day = [addDays(rates[0]?.effective ?? today, -5), addDays(today, -45)].sort().at(-1);
+  const saved = new Map(rates.map((r) => [r.effective, r.rate]));
+  const found = [];
+  for (; day <= today; day = addDays(day, 1)) {
+    let fixing;
+    try {
+      fixing = parseHkabJson(await hkabDay(day), day, tenor);
+    } catch (err) {
+      warnings.push(`HKAB ${day}: not fetched (${err.message}); will retry next run`);
+      break;
+    }
+    if (!fixing) continue;
+    if (!saved.has(day)) found.push(fixing);
+    else if (Math.abs(saved.get(day) - fixing.rate) > 1e-9) {
+      warnings.push(`HKAB ${day}: ${fixing.rate}% but the saved fixing is ${saved.get(day)}%; kept the saved one`);
+    }
+  }
+  return mergeHibor(rates, found);
+}
 
 async function get(url) {
   // A stalled server must not hold the daily job: give up after a minute (the next run retries)
@@ -79,15 +123,28 @@ const SOURCES = [
       }
     },
   },
-  // HIBOR: recent fixings only (a small, reliable request), merged into the history (scripts/backfill-hibor.mjs).
-  // Only pre-fills the mortgage tab (the HIBOR box stays editable), so an outage is a warning, not a failure.
+  // HIBOR: HKMA's recent fixings (a small, reliable request) merged into the history (scripts/backfill-hibor.mjs),
+  // then the days since from HKAB, which sets the fixings (HKMA republishes them weeks later). Only pre-fills the
+  // mortgage tab (the HIBOR box stays editable), so an outage is a warning, not a failure; each source can fail alone.
   ...HIBOR_TENORS.map((tenor) => ({
     name: `${tenor.replace('m', '-month')} HIBOR`,
     url: HIBOR_URL,
     out: tenor === '1m' ? 'hibor.json' : `hibor-${tenor}.json`,
-    parse: async (res, previous) => ({
-      rates: await fillOlderHibor(mergeHibor(previous?.rates ?? [], parseHiborJson(await res.json(), { tenor })), tenor),
-    }),
+    selfFetch: true,
+    parse: async (_, previous) => {
+      const warnings = [];
+      let rates = previous?.rates ?? [];
+      let hkmaLatest = previous?.hkmaLatest ?? rates[0]?.effective;
+      try {
+        const hkma = parseHiborJson(await (await get(HIBOR_URL)).json(), { tenor });
+        rates = await fillOlderHibor(mergeHibor(rates, hkma), tenor);
+        if (!hkmaLatest || hkma[0].effective > hkmaLatest) hkmaLatest = hkma[0].effective;
+      } catch (err) {
+        warnings.push(`HKMA: ${err.message}`);
+      }
+      rates = await addRecentHkab(rates, tenor, warnings);
+      return { rates, meta: { hkmaLatest, recentSource: HKAB_PAGE }, warnings };
+    },
     validate: { minRows: 1, maxRate: 100 }, // HIBOR spiked above 30% in 1997
     compact: true, // thousands of daily fixings: keep the file small
     optional: true,
@@ -102,7 +159,7 @@ async function update(source) {
     previous = JSON.parse(await readFile(file, 'utf8'));
   } catch {}
 
-  const { rates, meta = {}, warnings = [] } = await source.parse(await get(url), previous);
+  const { rates, meta = {}, warnings = [] } = await source.parse(source.selfFetch ? null : await get(url), previous);
   validateRates(rates, source.validate);
 
   const latest = `${rates.length} rates, latest ${rates[0].effective} @ ${rates[0].rate}%`;
@@ -123,7 +180,7 @@ async function update(source) {
   await writeFile(file, (source.compact ? JSON.stringify(data) : JSON.stringify(data, null, 2)) + '\n');
   console.log(`${name}: ${changed ? 'updated' : 'no change'} (${latest}), checked ${data.checkedAt}.`);
   if (meta.crossCheck) console.log(`${name}: HSBC cross-check ${meta.crossCheck.status}.`);
-  if (warnings.length) throw new Error(warnings.join('\n  '));
+  if (warnings.length) throw Object.assign(new Error(warnings.join('\n  ')), { saved: true });
 }
 
 for (const source of SOURCES) {
@@ -131,7 +188,7 @@ for (const source of SOURCES) {
     await update(source);
   } catch (err) {
     if (source.optional) {
-      console.log(`::warning::${source.name}: not updated - ${err.message}`);
+      console.log(`::warning::${source.name}: ${err.saved ? 'saved, with warnings' : 'not updated'} - ${err.message}`);
     } else {
       console.error(`${source.name}: FAILED - ${err.message}`);
       process.exitCode = 1;

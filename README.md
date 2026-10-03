@@ -21,7 +21,7 @@ You can choose one of three rates:
   - **Loan:** property price × loan-to-value (100% by default) gives the loan and down payment. Choose a tenor and a drawdown date; instalments fall due on the drawdown day each month.
   - **Rate:**
     - **Prime-based (P − x%):** uses the HSBC prime history; future months use the latest prime.
-    - **HIBOR-based (H + x%, capped at P − y%):** choose 1-month or 3-month HIBOR. Either way the rate resets at every monthly due date; the tenor only decides which fixing is used. Past resets use the actual fixing on or before each reset date, from HKMA history back to 1996. Resets after the latest fixing use the "Future HIBOR" rate, which defaults to the latest fixing. HKMA's data lags about a month. The prime cap follows the real prime history.
+    - **HIBOR-based (H + x%, capped at P − y%):** choose 1-month or 3-month HIBOR. Either way the rate resets at every monthly due date; the tenor only decides which fixing is used. Past resets use the actual fixing on or before each reset date, from HKMA history back to 1996, with the days since HKMA's latest from HKAB. Resets after the latest fixing use the "Future HIBOR" rate, which defaults to the latest fixing. The prime cap follows the real prime history.
     - **Fixed.**
   - **Interest:** each month's interest = balance × rate × actual days ÷ 365. The instalment is recalculated when the rate changes.
   - **Extra repayments:** these keep the instalment the same, so the loan ends sooner. The results show interest and months saved.
@@ -88,7 +88,7 @@ You can choose one of three rates:
 | `site/vendor/xlsx.mini.min.js` | SheetJS 0.20.3 mini build (Apache-2.0), loaded only when you click Download Excel. It's copied from `node_modules/xlsx/dist/`. |
 | `site/export-pdf.js`, `site/vendor/jspdf*.js` | PDF report, using jsPDF 4 and jsPDF-AutoTable 5 (both MIT). They load only when you click Download PDF and are copied from `node_modules`. |
 | `site/rates.json` | Judgment debt rates scraped from the Judiciary site |
-| `site/hibor.json`, `hibor-3m.json` | 1-month and 3-month HIBOR fixings from the HKMA API since 1996. `scripts/backfill-hibor.mjs` fills in older history in small batches, saving after each one (rerun it to carry on). The daily update merges in recent fixings and fetches a few older pages per run until the history reaches 1996. Every download has a time limit, and the job is capped at 20 minutes. These are optional sources: an outage only logs a warning. |
+| `site/hibor.json`, `hibor-3m.json` | 1-month and 3-month HIBOR fixings since 1996: history from the HKMA API, and the recent days HKMA hasn't republished yet from [HKAB](https://www.hkab.org.hk/en/rates/hibor), which sets them each business day at 11:15 HKT (a few days overlap, as a cross-check). `scripts/backfill-hibor.mjs` fills in older history in small batches, saving after each one (rerun it to carry on). The daily update merges in recent fixings and fetches a few older pages per run until the history reaches 1996. Every download has a time limit, and the job is capped at 20 minutes. These are optional sources: an outage only logs a warning. |
 | `site/mortgage.js`, `mortgage-app.js`, `mortgage-export.js` | Mortgage calculation, tab and exports |
 | `site/shared.js`, `tabs.js` | Helpers shared by both tabs; tab switching |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |
@@ -120,7 +120,7 @@ Dependabot opens a weekly pull request when jsPDF, jsPDF-AutoTable, Playwright o
 
 1. Push to GitHub on the `main` branch.
 2. Go to **Settings → Pages** and set the **Source** to **GitHub Actions**.
-3. Every push to `main` deploys the site. A daily schedule (09:17 HKT) re-fetches both rate sources, commits any change and redeploys only when something changed. You can also start it manually from the Actions tab, and a manual run always redeploys.
+3. Every push to `main` deploys the site. A daily schedule (12:17 HKT, after HKAB's 11:15 HIBOR fixing) re-fetches both rate sources, commits any change and redeploys only when something changed. You can also start it manually from the Actions tab, and a manual run always redeploys.
 
 If either source changes its layout, validation stops that source from overwriting good data. The other source still updates, and the workflow is marked as failed so GitHub emails you.
 
