@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '17 4 * * *' # daily 04:17 UTC (12:17 HKT): after HKAB's 11:15 HIBOR fixing; off the hour, when GitHub drops fewer scheduled runs
+    - cron: '15 3 * * *' # daily 03:15 UTC (11:15 HKT), when HKAB publishes the HIBOR fixing; GitHub usually starts it later
   workflow_dispatch:
 
 permissions:
