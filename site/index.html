@@ -402,11 +402,15 @@
 
       <details id="hiborCard" class="card chart-card">
         <summary>Rate history <span id="hiborMeta" class="muted">HIBOR and HSBC prime rate</span></summary>
-        <div class="view-toggle" role="group" aria-label="Chart range">
-          <button type="button" class="secondary" data-range="1y" aria-pressed="false">1Y</button>
-          <button type="button" class="secondary" data-range="5y" aria-pressed="false">5Y</button>
-          <button type="button" class="secondary" data-range="10y" aria-pressed="true">10Y</button>
-          <button type="button" class="secondary" data-range="all" aria-pressed="false">All</button>
+        <div class="range-row">
+          <div class="view-toggle" role="group" aria-label="Chart range">
+            <button type="button" class="secondary" data-range="1y" aria-pressed="false">1Y</button>
+            <button type="button" class="secondary" data-range="5y" aria-pressed="false">5Y</button>
+            <button type="button" class="secondary" data-range="10y" aria-pressed="true">10Y</button>
+            <button type="button" class="secondary" data-range="all" aria-pressed="false">All</button>
+          </div>
+          <label class="inline">From <input type="date" id="rhFrom" min="1971-01-01"></label>
+          <label class="inline">To <input type="date" id="rhTo" min="1971-01-01"></label>
         </div>
         <p class="muted m-note">Show each rate, with an optional spread (% p.a.), e.g. HIBOR + 1.3 or prime − 1.75.</p>
         <div id="seriesCtl" class="series-ctls">

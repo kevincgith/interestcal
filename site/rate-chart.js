@@ -29,19 +29,25 @@ const stepValueAt = (rates, iso) => rates.find((r) => r.effective <= iso)?.rate;
  *   in % p.a.; a note says where the rate came from, shown in the tooltip).
  *   Daily fixings are drawn point to point; a step series (rate changes, e.g. prime) holds each rate until the next
  *   change, up to `end`.
- * @param range a key of RATE_RANGES
+ * @param opts { range } for a preset (a key of RATE_RANGES, ending at the latest data), or { from, to } (ISO dates;
+ *   either can be left out to run from the earliest or to the latest data)
+ * @returns {{ from: string, to: string } | null} the dates drawn
  */
-export function renderRateChart(box, series, range = '10y') {
-  if (!series.length) {
-    box.replaceChildren(Object.assign(document.createElement('p'), { className: 'muted', textContent: 'Pick a rate to show.' }));
-    return;
-  }
+export function renderRateChart(box, series, { range, from: fromOpt, to: toOpt } = { range: '10y' }) {
+  const message = (text) => {
+    box.replaceChildren(Object.assign(document.createElement('p'), { className: 'muted', textContent: text }));
+    return null;
+  };
+  if (!series.length) return message('Pick a rate to show.');
   const lastDate = (s) => (s.step ? s.end : s.rates[0].effective);
-  const latest = series.map(lastDate).sort().at(-1);
+  const dataEnd = series.map(lastDate).sort().at(-1);
+  const dataStart = series.map((s) => s.rates.at(-1).effective).sort()[0];
+  const latest = toOpt && toOpt < dataEnd ? toOpt : dataEnd;
   const years = RATE_RANGES[range];
-  const from = Number.isFinite(years)
-    ? `${+latest.slice(0, 4) - years}${latest.slice(4)}`
-    : series.map((s) => s.rates.at(-1).effective).sort()[0];
+  const from = range
+    ? (Number.isFinite(years) ? `${+latest.slice(0, 4) - years}${latest.slice(4)}` : dataStart)
+    : fromOpt && fromOpt > dataStart ? fromOpt : dataStart;
+  if (from >= latest) return message('Pick a start date before the end date.');
 
   // Oldest-first points within the range, with the spread added
   const lines = series
@@ -53,12 +59,13 @@ export function renderRateChart(box, series, range = '10y') {
         if (startRate !== undefined) pts.unshift({ effective: from, rate: startRate });
         if (pts.length) pts.push({ effective: latest, rate: pts.at(-1).rate });
       } else {
-        pts = s.rates.filter((r) => r.effective >= from).reverse();
+        pts = s.rates.filter((r) => r.effective >= from && r.effective <= latest).reverse();
       }
       pts = pts.map((p) => ({ effective: p.effective, base: p.rate, rate: p.rate + s.spread, note: p.note }));
       return { ...s, pts, byDate: new Map(pts.map((p) => [p.effective, p])) };
     })
     .filter((l) => l.pts.length);
+  if (!lines.length) return message('No rates in this date range.');
   const daily = lines.find((l) => !l.step); // hovering snaps to its fixing dates
 
   const W = Math.round(Math.max(300, box.clientWidth || 720)); // real width, so text stays 11px on phones
@@ -203,4 +210,5 @@ export function renderRateChart(box, series, range = '10y') {
       .join(', ')}`,
   );
   box.replaceChildren(legend, svg, tip);
+  return { from, to: latest };
 }

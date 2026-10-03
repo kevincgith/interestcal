@@ -290,6 +290,10 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 .series-ctl .swatch, .chart-card .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
 .chart .legend { flex-wrap: wrap; row-gap: 4px; }
 #hiborCard .view-toggle button { padding: 4px 12px; }
+.range-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 12px 0 8px; }
+.range-row .view-toggle { margin: 0; }
+.range-row label.inline { font-weight: normal; }
+.range-row input[type="date"] { width: auto; height: 36px; }
 .chart, .chart-card { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --grid: #e4e4df; }
 @media (prefers-color-scheme: dark) {
   .chart, .chart-card { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --grid: #34342f; }

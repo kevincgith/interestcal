@@ -288,3 +288,21 @@ test('current HIBOR follows the latest fixing unless typed in, and only a typed 
   await page.locator('#mform button[type="submit"]').click();
   await expect(page).toHaveURL(/[?&]h=3\.1(&|$)/);
 });
+
+test('rate history: own date range, and presets fill in the dates', async ({ page }) => {
+  await page.goto('?tab=mortgage');
+  await page.locator('#hiborCard summary').click();
+  await expect(page.locator('#rhTo')).not.toHaveValue('');
+  const to = await page.locator('#rhTo').inputValue();
+  await expect(page.locator('#rhFrom')).toHaveValue(`${+to.slice(0, 4) - 10}${to.slice(4)}`); // 10Y preset
+  await page.locator('#rhFrom').fill('2008-01-01');
+  await page.locator('#rhTo').fill('2009-12-31');
+  await page.locator('#rhTo').dispatchEvent('change');
+  await expect(page.locator('#hiborCard [data-range="10y"]')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#hiborChart')).toHaveAttribute('aria-label', /from 02-Jan-2008 to 31-Dec-2009/);
+  await page.locator('#rhFrom').fill('2010-01-01');
+  await page.locator('#rhFrom').dispatchEvent('change');
+  await expect(page.locator('#hiborChart')).toContainText('Pick a start date before the end date.');
+  await page.locator('#hiborCard [data-range="all"]').click();
+  await expect(page.locator('#rhFrom')).toHaveValue('1996-07-01');
+});

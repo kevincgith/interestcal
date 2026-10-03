@@ -488,7 +488,7 @@ $('mViewYearly').addEventListener('click', () => setView('yearly'));
 
 // ---- Rate history card (HIBOR and prime, each with an optional spread): drawn when first opened ----
 
-let hiborRange = '10y';
+let hiborRange = '10y'; // a preset (1y, 5y, 10y, all), or null when the user picked their own dates
 const SERIES = [ // the mortgage line (lower of H + spread and P + spread) is added separately
   { key: '1m', name: '1-month HIBOR', short: '1M', color: 'var(--series-1)' },
   { key: '3m', name: '3-month HIBOR', short: '3M', color: 'var(--series-2)' },
@@ -514,7 +514,13 @@ async function drawHiborHistory() {
       rates: mortgageLine(data[tenor], data.prime, spreadOf(tenor), spreadOf('prime'), TENOR_NAME[tenor]),
     });
   }
-  renderRateChart($('hiborChart'), shown, hiborRange);
+  const drawn = renderRateChart($('hiborChart'), shown,
+    hiborRange ? { range: hiborRange } : { from: $('rhFrom').value || undefined, to: $('rhTo').value || undefined });
+  // A preset shows the dates it picked, as a starting point for choosing your own
+  if (drawn && hiborRange) {
+    $('rhFrom').value = drawn.from;
+    $('rhTo').value = drawn.to;
+  }
 }
 // Turning on the mortgage line with no spreads set: start from this loan's HIBOR plan (H + margin, capped at P - x%)
 document.querySelector('#seriesCtl [data-series="mortgage"]').addEventListener('change', (e) => {
@@ -541,6 +547,13 @@ document.querySelectorAll('#hiborCard [data-range]').forEach((btn) =>
     drawHiborHistory();
   }),
 );
+for (const id of ['rhFrom', 'rhTo']) {
+  $(id).addEventListener('change', () => {
+    hiborRange = null;
+    document.querySelectorAll('#hiborCard [data-range]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+    drawHiborHistory();
+  });
+}
 
 // ---- Shareable links: ?tab=mortgage&mt=prime&price=...&ltv=...&yrs=...&from=...&disc=... ----
 
