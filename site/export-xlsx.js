@@ -74,7 +74,7 @@ export function buildWorkbook(XLSX, r, ctx) {
 
   const principalRow = rows.length; // 0-based
   const P = `$B$${principalRow + 1}`;
-  rows.push(['Principal (HK$)', num(r.principal, MONEY)]);
+  rows.push([`Principal (${ctx.currency ?? 'HK$'})`, num(r.principal, MONEY)]);
   rows.push(['Start date', date(r.start)]);
   rows.push(['End date (does not earn interest)', date(r.end)]);
 

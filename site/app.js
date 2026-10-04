@@ -15,7 +15,7 @@ const fmtRateWithSpread = (p) => {
   return `${fmtRate(p.baseRate)} ${sign} ${fmtRate(Math.abs(spread) / 100)} = ${fmtRate(p.rate)}`;
 };
 // What a combined row covers, e.g. "3 rows combined: new year, principal changed"
-function mergedNote(p) {
+function mergedNote(r, p) {
   const why = new Set();
   p.parts.forEach((x, k) => {
     const prev = p.parts[k - 1];
@@ -24,15 +24,15 @@ function mergedNote(p) {
     else if (x.principal !== prev.principal) why.add('principal changed');
     else if (x.yearDays !== prev.yearDays) why.add('new year');
   });
-  const start = p.capitalised > 0 ? `+HK$${money.format(p.capitalised)} interest compounded; ` : '';
+  const start = p.capitalised > 0 ? `+${r.currency}${money.format(p.capitalised)} interest compounded; ` : '';
   return `${start}${p.parts.length} rows combined${why.size ? `: ${[...why].join(', ')}` : ''}`;
 }
 // Each period's own principal: it changes after a payment
 // Why a row starts where it does, for rows that could otherwise look odd:
 // "+HK$21,366.45 interest compounded" on a compounding date, or "New year: ÷ 365 days" for an Actual/Actual year split
 function periodNote(r, p, i) {
-  if (p.parts) return mergedNote(p);
-  if (p.capitalised > 0) return `+HK$${money.format(p.capitalised)} interest compounded`;
+  if (p.parts) return mergedNote(r, p);
+  if (p.capitalised > 0) return `+${r.currency}${money.format(p.capitalised)} interest compounded`;
   const prev = r.periods[i - 1];
   if (prev && r.basis === 'act/act' && p.start.endsWith('-01-01') && p.yearDays !== prev.yearDays) {
     return `New year: ÷ ${p.yearDays} days`;
@@ -120,6 +120,8 @@ const SOURCES = {
   },
 };
 const hasSpread = (key) => !!SOURCES[key]?.spread;
+// Amounts are in HK$, or US$ when the US prime rate is chosen (the currency follows the first rate, not a later switch)
+const currencyOf = (source) => (source === 'usprime' ? 'US$' : 'HK$');
 
 const CROSS_CHECK = {
   match: 'Cross-checked daily against HSBC’s official prime rate page: matches.',
@@ -331,7 +333,7 @@ const perDiemText = (r) =>
 // Inputs block, shown only when printing / saving as PDF (the form itself is hidden there)
 const printInputItems = (r) => [
   ['Interest rate', rateBasisLabel(r)],
-  ['Principal (HK$)', money.format(r.principal)],
+  [`Principal (${r.currency})`, money.format(r.principal)],
   ['Start date', fmtDate(r.start)],
   ['End date (does not earn interest)', fmtDate(r.end)],
   ['Day count basis', BASES[r.basis]],
@@ -385,7 +387,7 @@ function render(r) {
     ));
   }
   if (r.excessPaid > 0.005) {
-    warnings.push(warning(`Payments exceed the amount owed by HK$${money.format(r.excessPaid)}.`));
+    warnings.push(warning(`Payments exceed the amount owed by ${r.currency}${money.format(r.excessPaid)}.`));
   }
   if (rateData[r.source]?.crossCheck?.status === 'mismatch') {
     warnings.push(warning(`${CROSS_CHECK.mismatch} See the rate table below for details.`));
@@ -397,9 +399,9 @@ function render(r) {
   if (r.compounding !== 'none') {
     const extra = r.totalInterest - r.simpleInterest;
     $('compareLine').textContent =
-      `Compounded ${compoundingLabel(r).toLowerCase()}: HK$${money.format(r.totalInterest)} interest, ` +
-      `vs HK$${money.format(r.simpleInterest)} as simple interest (${extra >= 0 ? '+' : '−'}HK$${money.format(Math.abs(extra))}). ` +
-      `Interest added to principal: HK$${money.format(r.totalCapitalised)}.`;
+      `Compounded ${compoundingLabel(r).toLowerCase()}: ${r.currency}${money.format(r.totalInterest)} interest, ` +
+      `vs ${r.currency}${money.format(r.simpleInterest)} as simple interest (${extra >= 0 ? '+' : '−'}${r.currency}${money.format(Math.abs(extra))}). ` +
+      `Interest added to principal: ${r.currency}${money.format(r.totalCapitalised)}.`;
   }
   $('formulaHead').textContent = ['daily', 'continuous'].includes(r.compounding)
     ? 'Formula'
@@ -549,6 +551,9 @@ function showSourceFields() {
   $('spread2Field').hidden = !hasSpread(currentSource2());
   $('fixed2Field').hidden = currentSource2() !== 'fixed';
   $('compoundDatesField').hidden = !PERIOD_NAME[$('compounding').value];
+  const cur = currencyOf(currentSource());
+  document.querySelectorAll('#form .cur').forEach((el) => (el.textContent = cur));
+  document.querySelectorAll('#form .pay-amount').forEach((el) => (el.placeholder = `Amount (${cur})`));
 }
 
 $('share').addEventListener('click', () => copyLink(location.href, $('shareStatus')));
@@ -599,7 +604,7 @@ function addEventRow(kind, date = '', amount = '', label = '') {
   const a = input('text', 'pay-amount', `${cfg.aria} amount`, amount === '' ? '' : money.format(amount));
   a.inputMode = 'decimal';
   a.autocomplete = 'off';
-  a.placeholder = 'Amount (HK$)';
+  a.placeholder = `Amount (${currencyOf(currentSource())})`;
   a.addEventListener('blur', () => {
     const n = parseNumber(a.value);
     if (a.value.trim() && Number.isFinite(n)) a.value = money.format(n);
@@ -769,6 +774,7 @@ $('form').addEventListener('submit', (e) => {
       // For the comparison line: the same calculation as simple interest
       simpleInterest: compounding === 'none' ? null : calculateInterest({ ...calcInput, compounding: 'none' }).totalInterest,
       source,
+      currency: currencyOf(source),
       fixedRate,
       spreadA: spread,
       switch: switchTo,
@@ -815,6 +821,7 @@ $('xlsx').addEventListener('click', () => {
   busy($('xlsx'), async () => {
     const XLSX = await loadXlsx();
     const wb = buildWorkbook(XLSX, r, {
+      currency: r.currency,
       rateBasis: rateBasisLabel(r),
       dayCount: BASES[r.basis],
       rounding: ROUNDINGS[r.rounding],
@@ -847,7 +854,7 @@ $('xlsx').addEventListener('click', () => {
 $('docx').addEventListener('click', () => {
   if (!lastResult) return;
   const r = lastResult;
-  const bytes = buildDocx(r, { money: (n) => money.format(n), rate: fmtRate, formula });
+  const bytes = buildDocx(r, { money: (n) => money.format(n), rate: fmtRate, formula, currency: r.currency });
   download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), exportName(r, 'docx'));
 });
 
@@ -865,6 +872,7 @@ $('pdf').addEventListener('click', () => {
       crossCheck: cc && cc.status !== 'mismatch' ? { text: CROSS_CHECK[cc.status], linkText: HSBC_PAGE, url: cc.source, tick: true } : null,
       summaryLine: latestRateLine(r),
       perDiem: perDiemText(r),
+      currency: r.currency,
       allocation: `Payments applied ${ALLOCATIONS[r.allocation].toLowerCase()}.`,
       compareLine: r.compounding === 'none' ? null : $('compareLine').textContent,
       // No "rates used" section for a fixed rate

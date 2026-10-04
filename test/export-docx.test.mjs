@@ -63,3 +63,11 @@ test('Word: text is XML-escaped and a single day is "1 day"', () => {
   assert.match(doc, /\(1 day\)/);
   assert.match(doc, /a &lt; b &amp; c/);
 });
+
+test('Word: amounts in US$ when asked', () => {
+  const r = calculateInterest({ principal: 1000, start: '2026-01-01', end: '2026-02-01', rates: [{ effective: '2000-01-01', rate: 7 }] });
+  const doc = unzip(buildDocx(r, { money, rate, formula, currency: 'US$' }))['word/document.xml'];
+  assert.match(doc, /Interest on the Debt of US\$1,000\.00/);
+  assert.match(doc, /Interest on the sum of US\$1,000\.00/);
+  assert.doesNotMatch(doc, /HK\$/);
+});

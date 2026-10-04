@@ -13,7 +13,7 @@ You can choose one of three rates:
   - **HSBC has a newer change:** the HKMA table is updated monthly, so HSBC can be ahead. The newer change is added and marked "HSBC".
   - **Disagreement:** the HKMA data is kept, the page shows a warning, and the daily workflow fails so you get an email.
 
-- **US prime rate** (Interest tab), the "Bank prime loan" rate in the Federal Reserve's [H.15 release](https://www.federalreserve.gov/releases/h15/): the rate posted by most of the top 25 US banks. You can add a spread. The history since 2000 comes from the Fed's full H.15 data file (series RIFSPBLP_N.B); the daily update reads the release page, which shows the last five business days, and adds any change.
+- **US prime rate** (Interest tab), the "Bank prime loan" rate in the Federal Reserve's [H.15 release](https://www.federalreserve.gov/releases/h15/): the rate posted by most of the top 25 US banks. You can add a spread. Choosing it switches the amounts to US$, on the page and in the downloads. The history since 2000 comes from the Fed's full H.15 data file (series RIFSPBLP_N.B); the daily update reads the release page, which shows the last five business days, and adds any change.
 
 - **Fixed rate**, e.g. 8% p.a., for contract rates not tied to a published rate.
 

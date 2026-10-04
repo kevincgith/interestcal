@@ -23,9 +23,9 @@ export function roman(n) {
 }
 
 // "the sum of HK$100,000.00", or on a combined row whose principal changed, "the sums of HK$100,000.00 then HK$90,000.00"
-const sumText = (p, money) => {
+const sumText = (p, money, cur) => {
   const sums = [...new Set((p.parts ?? [p]).map((x) => x.principal))];
-  return sums.length === 1 ? `the sum of HK$${money(sums[0])}` : `the sums of ${sums.map((x) => `HK$${money(x)}`).join(' then ')}`;
+  return sums.length === 1 ? `the sum of ${cur}${money(sums[0])}` : `the sums of ${sums.map((x) => `${cur}${money(x)}`).join(' then ')}`;
 };
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -45,21 +45,22 @@ const tableRow = (left, right) => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${cell(L
 
 /**
  * @param {object} r    result of calculateInterest
- * @param {object} ctx  { money: (n) => string, rate: (fraction) => string, formula: (period) => string }
+ * @param {object} ctx  { money: (n) => string, rate: (fraction) => string, formula: (period) => string,
+ *   currency?: 'HK$' (default) or 'US$' }
  * @returns {string} word/document.xml
  */
-export function documentXml(r, { money, rate, formula }) {
+export function documentXml(r, { money, rate, formula, currency: cur = 'HK$' }) {
   const rows = [
     tableRow(
-      para(run(`Interest on the Debt of HK$${money(r.principal)}`, { bold: true })),
-      para(run('HK$', { bold: true, underline: true }), { align: 'right' }),
+      para(run(`Interest on the Debt of ${cur}${money(r.principal)}`, { bold: true })),
+      para(run(cur, { bold: true, underline: true }), { align: 'right' }),
     ),
   ];
   r.periods.forEach((p, i) => {
     const days = `${p.days} ${p.days === 1 ? 'day' : 'days'}`;
     const amount = money(p.interest);
     rows.push(tableRow(
-      para(run(`(${roman(i + 1)})\tInterest on ${sumText(p, money)} at the rate of ${rate(p.rate)} per annum ` +
+      para(run(`(${roman(i + 1)})\tInterest on ${sumText(p, money, cur)} at the rate of ${rate(p.rate)} per annum ` +
         `from ${longDate(p.start)} to ${longDate(p.end)} (${days})`), { hanging: 680 }) +
         para(run(`(i.e. ${formula(p)} = ${amount})`)) +
         para(''),
