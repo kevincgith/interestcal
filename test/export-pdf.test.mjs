@@ -59,7 +59,7 @@ test('PDF report: fixed rate has no rates section; daily interest is shown', () 
     generatedOn: '30-Sep-2026',
   });
   const pdf = doc.output();
-  assert.ok(pdf.includes('Interest per day after end date: HK$80.00'));
+  assert.ok(pdf.includes('Daily interest after end date: HK$80.00'));
   assert.ok(pdf.includes('Fixed rate of 8.000% p.a.'));
   assert.ok(!pdf.includes('Source:'));
   assert.ok(!pdf.includes('Effective date'));

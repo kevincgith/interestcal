@@ -874,7 +874,7 @@ $('csv').addEventListener('click', () => {
       : []),
     ['Total Amount Due', money.format(r.totalDue)],
     ['Total No. of Days', r.totalDays],
-    ['Interest Per Day After End Date', perDiemText(r)],
+    ['Daily Interest After End Date', perDiemText(r)],
     ...(isFixed(r) ? [] : [['Rates As At', asAt(r.source)]]),
     ...(rateData[r.source]?.crossCheck
       ? [['Cross-check', `${crossCheckTick(rateData[r.source].crossCheck)}${CROSS_CHECK[rateData[r.source].crossCheck.status]} ${rateData[r.source].crossCheck.source}`]]
