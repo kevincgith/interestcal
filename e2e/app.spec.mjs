@@ -313,3 +313,21 @@ test('US prime rate: spread applies, latest rate line and rate table use the Fed
   await expect(page.locator('#rateSource')).toContainText('Federal Reserve H.15');
   await expect(page).toHaveURL(/src=usprime.*spread=2/);
 });
+
+test('Calculation rows: one row per rate period combines year-end rows, keeps the total, and goes in the link', async ({ page }) => {
+  await page.goto('?src=fixed&rate=8&p=100000&from=2023-07-01&to=2024-07-01');
+  const totalBefore = await total(page).textContent();
+  await expect(page.locator('#periods tr')).toHaveCount(2); // split at 1 January (365 -> 366)
+  await page.locator('#advanced summary').click();
+  await page.locator('#rows').selectOption('rate');
+  await page.locator('#form button[type="submit"]').click();
+  await expect(page.locator('#periods tr')).toHaveCount(1);
+  await expect(page.locator('#periods tr').first()).toContainText('100,000.00 × 8.000% × (184 ÷ 365 + 182 ÷ 366)');
+  await expect(page.locator('#periods tr').first()).toContainText('2 rows combined: new year');
+  await expect(total(page)).toHaveText(totalBefore);
+  await expect(page).toHaveURL(/rows=rate/);
+  // The link reopens with the setting
+  await page.reload();
+  await expect(page.locator('#rows')).toHaveValue('rate');
+  await expect(page.locator('#periods tr')).toHaveCount(1);
+});

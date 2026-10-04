@@ -330,3 +330,34 @@ export function calculateInterest({
     latestRateDate: fromDay(sorted[sorted.length - 1].day),
   };
 }
+
+/**
+ * One row per rate period: consecutive periods at the same rate (same kind and spread) are combined, so rows split
+ * only for other reasons (a new year under Actual/Actual, a payment, principal added, compounding) become one row.
+ * Totals don't change. A combined row keeps its pieces in `parts`; its principal is the one at its start, and its
+ * yearDays is a number when every piece uses the same, else e.g. "365/366".
+ */
+export function mergeRatePeriods(periods) {
+  const groups = [];
+  for (const p of periods) {
+    const g = groups.at(-1);
+    const prev = g?.at(-1);
+    if (prev && prev.end === p.start && prev.rate === p.rate && (prev.spread ?? 0) === (p.spread ?? 0) &&
+      prev.rateKind === p.rateKind) g.push(p);
+    else groups.push([p]);
+  }
+  return groups.map((parts) => {
+    if (parts.length === 1) return parts[0];
+    const years = [...new Set(parts.map((x) => x.yearDays))];
+    const kinds = [...new Set(parts.map((x) => x.compounding))];
+    return {
+      ...parts[0],
+      end: parts.at(-1).end,
+      days: parts.reduce((n, x) => n + x.days, 0),
+      interest: Number(parts.reduce((n, x) => n + x.interest, 0).toFixed(10)),
+      yearDays: years.length === 1 ? years[0] : years.join('/'),
+      compounding: kinds.length === 1 ? kinds[0] : 'mixed',
+      parts,
+    };
+  });
+}

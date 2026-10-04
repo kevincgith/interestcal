@@ -1,4 +1,4 @@
-import { calculateInterest } from './calc.js?v=__BUILD__';
+import { calculateInterest, mergeRatePeriods } from './calc.js?v=__BUILD__';
 import { buildWorkbook } from './export-xlsx.js?v=__BUILD__';
 import { buildPdf } from './export-pdf.js?v=__BUILD__';
 import { buildDocx } from './export-docx.js?v=__BUILD__';
@@ -14,10 +14,24 @@ const fmtRateWithSpread = (p) => {
   const sign = spread < 0 ? '−' : '+';
   return `${fmtRate(p.baseRate)} ${sign} ${fmtRate(Math.abs(spread) / 100)} = ${fmtRate(p.rate)}`;
 };
+// What a combined row covers, e.g. "3 rows combined: new year, principal changed"
+function mergedNote(p) {
+  const why = new Set();
+  p.parts.forEach((x, k) => {
+    const prev = p.parts[k - 1];
+    if (!prev) return;
+    if (x.capitalised > 0) why.add('interest compounded');
+    else if (x.principal !== prev.principal) why.add('principal changed');
+    else if (x.yearDays !== prev.yearDays) why.add('new year');
+  });
+  const start = p.capitalised > 0 ? `+HK$${money.format(p.capitalised)} interest compounded; ` : '';
+  return `${start}${p.parts.length} rows combined${why.size ? `: ${[...why].join(', ')}` : ''}`;
+}
 // Each period's own principal: it changes after a payment
 // Why a row starts where it does, for rows that could otherwise look odd:
 // "+HK$21,366.45 interest compounded" on a compounding date, or "New year: ÷ 365 days" for an Actual/Actual year split
 function periodNote(r, p, i) {
+  if (p.parts) return mergedNote(p);
   if (p.capitalised > 0) return `+HK$${money.format(p.capitalised)} interest compounded`;
   const prev = r.periods[i - 1];
   if (prev && r.basis === 'act/act' && p.start.endsWith('-01-01') && p.yearDays !== prev.yearDays) {
@@ -27,11 +41,23 @@ function periodNote(r, p, i) {
 }
 
 const formula = (p) => {
+  if (p.parts) return mergedFormula(p);
   const [b, r, d, y] = [money.format(p.principal), fmtRate(p.rate), p.days, p.yearDays];
   if (p.compounding === 'daily') return `${b} × ((1 + ${r} ÷ ${y})^${d} − 1)`;
   if (p.compounding === 'continuous') return `${b} × (e^(${r} × ${d} ÷ ${y}) − 1)`;
   return `${b} × ${r} × ${d} ÷ ${y}`;
 };
+
+// A combined row (one row per rate period) as one sum, e.g. "100,000.00 × 8.000% × (100 ÷ 365 + 50 ÷ 366)" or, when the
+// principal changed inside it, "8.000% × (100,000.00 × 59 ÷ 365 + 90,000.00 × 30 ÷ 365)"
+function mergedFormula(p) {
+  if (p.parts.some((x) => x.compounding !== 'simple')) return p.parts.map(formula).join(' + ');
+  const r = fmtRate(p.rate);
+  const samePrincipal = p.parts.every((x) => x.principal === p.principal);
+  if (samePrincipal && typeof p.yearDays === 'number') return `${money.format(p.principal)} × ${r} × ${p.days} ÷ ${p.yearDays}`;
+  if (samePrincipal) return `${money.format(p.principal)} × ${r} × (${p.parts.map((x) => `${x.days} ÷ ${x.yearDays}`).join(' + ')})`;
+  return `${r} × (${p.parts.map((x) => `${money.format(x.principal)} × ${x.days} ÷ ${x.yearDays}`).join(' + ')})`;
+}
 
 const BASES = {
   'act/act': 'Actual/Actual',
@@ -310,6 +336,7 @@ const printInputItems = (r) => [
   ['End date (does not earn interest)', fmtDate(r.end)],
   ['Day count basis', BASES[r.basis]],
   ['Rounding', ROUNDINGS[r.rounding]],
+  ...(r.rows === 'rate' ? [['Calculation rows', 'One row per rate period']] : []),
   ...(r.compounding !== 'none' ? [['Compounding', compoundingLabel(r)]] : []),
   ...(r.additions.length || r.ignoredAdditions.length
     ? [['Principal added later', String(r.additions.length + r.ignoredAdditions.length)]]
@@ -440,6 +467,7 @@ function writeQuery(r) {
   const q = new URLSearchParams({ src: r.source, p: String(r.principal), from: r.start, to: r.end, basis: r.basis, round: r.rounding });
   if (hasSpread(r.source)) q.set('spread', String(r.spreadA ?? r.spread));
   if (isFixed(r)) q.set('rate', String(r.fixedRate));
+  if (r.rows === 'rate') q.set('rows', 'rate');
   if (r.compounding !== 'none') q.set('comp', r.compounding);
   if (PERIOD_NAME[r.compounding] && r.compoundDates === 'calendar') q.set('cdates', 'calendar');
   if (r.switch) {
@@ -474,6 +502,7 @@ function readQuery() {
   if (isIsoDate(q.get('to'))) $('end').value = q.get('to');
   if (q.get('basis') in BASES) $('basis').value = q.get('basis');
   if (q.get('round') in ROUNDINGS) $('rounding').value = q.get('round');
+  if (q.get('rows') === 'rate') $('rows').value = 'rate';
   const spread = Number(q.get('spread'));
   if (q.has('spread') && Number.isFinite(spread)) $('spread').value = String(spread);
   for (const pair of (q.get('pay') ?? '').split(',').filter(Boolean)) {
@@ -503,7 +532,8 @@ function readQuery() {
     (q.get('comp') && q.get('comp') !== 'none') ||
     $('switchOn').checked ||
     (q.get('basis') && q.get('basis') !== 'act/act') ||
-    (q.get('round') && q.get('round') !== 'total');
+    (q.get('round') && q.get('round') !== 'total') ||
+    q.get('rows') === 'rate';
   if (nonDefault) $('advanced').open = true;
   const rate = Number(q.get('rate'));
   if (q.has('rate') && Number.isFinite(rate)) $('fixedRate').value = String(rate);
@@ -729,8 +759,13 @@ $('form').addEventListener('submit', (e) => {
   };
 
   try {
+    const result = calculateInterest({ ...calcInput, compounding, compoundDates });
+    const rows = $('rows').value;
     lastResult = {
-      ...calculateInterest({ ...calcInput, compounding, compoundDates }),
+      ...result,
+      // "One row per rate period": everything (table and downloads) shows the combined rows; totals are the same
+      periods: rows === 'rate' ? mergeRatePeriods(result.periods) : result.periods,
+      rows,
       // For the comparison line: the same calculation as simple interest
       simpleInterest: compounding === 'none' ? null : calculateInterest({ ...calcInput, compounding: 'none' }).totalInterest,
       source,
@@ -861,6 +896,7 @@ $('csv').addEventListener('click', () => {
     ['Rate Basis', rateBasisLabel(r)],
     ['Day Count Basis', BASES[r.basis]],
     ['Rounding', ROUNDINGS[r.rounding]],
+    ...(r.rows === 'rate' ? [['Calculation rows', 'One row per rate period']] : []),
     ...(r.compounding !== 'none'
       ? [
           ['Compounding', compoundingLabel(r)],

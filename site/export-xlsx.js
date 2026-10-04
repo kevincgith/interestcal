@@ -130,9 +130,17 @@ export function buildWorkbook(XLSX, r, ctx) {
           formula(`${col('Base Rate')}${n}+${col('Spread')}${n}`, tidy(p.rate), PCT),
         ]
       : [num(tidy(p.rate), PCT)];
-    // Simple within a period; daily / continuous compounding use their own formulas
-    const interest =
-      p.compounding === 'daily'
+    // Simple within a period; daily / continuous compounding use their own formulas. A combined row (one row per rate
+    // period) sums its pieces, each with its own principal, days and year days, at this row's rate.
+    const piece = (x) =>
+      x.compounding === 'daily'
+        ? `${tidy(x.principal)}*((1+${RATE}${n}/${x.yearDays})^${x.days}-1)`
+        : x.compounding === 'continuous'
+          ? `${tidy(x.principal)}*(EXP(${RATE}${n}*${x.days}/${x.yearDays})-1)`
+          : `${tidy(x.principal)}*${RATE}${n}*${x.days}/${x.yearDays}`;
+    const interest = p.parts
+      ? `(${p.parts.map((x) => (r.rounding === 'period' ? `ROUND(${piece(x)},2)` : piece(x))).join('+')})`
+      : p.compounding === 'daily'
         ? `${base}*((1+${RATE}${n}/${YEAR}${n})^${DAYS}${n}-1)`
         : p.compounding === 'continuous'
           ? `${base}*(EXP(${RATE}${n}*${DAYS}${n}/${YEAR}${n})-1)`
@@ -143,7 +151,7 @@ export function buildWorkbook(XLSX, r, ctx) {
       formula(`B${n}-A${n}`, p.days),
       ...(withEvents ? [num(p.principal, MONEY)] : []),
       ...rate,
-      num(p.yearDays),
+      typeof p.yearDays === 'number' ? num(p.yearDays) : text(p.yearDays), // e.g. "365/366" on a combined row
       ctx.formulaText(p),
       formula(r.rounding === 'period' ? `ROUND(${interest},2)` : interest, p.interest, MONEY),
       ...(hasNotes ? [note(p, i)] : []),

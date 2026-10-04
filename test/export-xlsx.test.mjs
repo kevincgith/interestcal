@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import XLSX from 'xlsx';
-import { calculateInterest } from '../site/calc.js';
+import { calculateInterest, mergeRatePeriods } from '../site/calc.js';
 import { buildWorkbook } from '../site/export-xlsx.js';
 
 const judgment = [
@@ -163,4 +163,17 @@ test('Excel export with principal added later: principal column, added-principal
   assert.equal(ws[`B${find('Principal added') + 1}`].f, `SUM(C${addHead + 2}:C${addHead + 2})`);
   assert.ok(Math.abs(ws[`B${find('Total amount due') + 1}`].v - r.totalDue) < 1e-9);
   assert.equal(find('Payments received'), -1);
+});
+
+test('Excel: a combined row (one row per rate period) sums its pieces in one live formula', () => {
+  const r = calculateInterest({ principal: 100000, start: '2023-07-01', end: '2024-07-01', rates: [{ effective: '2000-01-01', rate: 8 }] });
+  const merged = { ...r, periods: mergeRatePeriods(r.periods) };
+  const { out } = roundTrip(merged, [], 'judgment');
+  const sheet = out.Sheets[out.SheetNames[0]];
+  const cells = Object.entries(sheet).filter(([, c]) => c && c.f && /\+/.test(c.f) && /\*184\/365/.test(c.f));
+  assert.equal(cells.length, 1, 'one formula covering both pieces');
+  assert.match(cells[0][1].f, /^\(100000\*[A-Z]+\d+\*184\/365\+100000\*[A-Z]+\d+\*182\/366\)$/);
+  assert.ok(Math.abs(cells[0][1].v - r.totalInterest) < 1e-6);
+  const yearCell = Object.values(sheet).find((c) => c && c.v === '365/366');
+  assert.ok(yearCell, 'year days shown as 365/366');
 });

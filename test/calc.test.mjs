@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateInterest, isLeapYear, round2, addMonths } from '../site/calc.js';
+import { calculateInterest, isLeapYear, round2, addMonths, mergeRatePeriods } from '../site/calc.js';
 
 // Subset of the published table, enough for the cases below.
 const rates = [
@@ -449,4 +449,33 @@ test('leap year rule', () => {
   assert.equal(isLeapYear(1900), false);
   assert.equal(isLeapYear(2000), true);
   assert.equal(isLeapYear(2026), false);
+});
+
+test('one row per rate period: rows split by a new year or a payment are combined; totals unchanged', () => {
+  const rates = [{ effective: '2024-04-01', rate: 7 }, { effective: '2000-01-01', rate: 8 }];
+  const r = calculateInterest({
+    principal: 100000, start: '2023-07-01', end: '2024-07-01', rates,
+    payments: [{ date: '2023-10-01', amount: 10000 }], allocation: 'principal',
+  });
+  // Split rows: payment (1 Oct), new year (1 Jan, 365 -> 366), rate change (1 Apr)
+  assert.deepEqual(r.periods.map((p) => p.start), ['2023-07-01', '2023-10-01', '2024-01-01', '2024-04-01']);
+  const m = mergeRatePeriods(r.periods);
+  assert.deepEqual(m.map((p) => [p.start, p.end, p.days, p.rate]), [
+    ['2023-07-01', '2024-04-01', 275, 0.08],
+    ['2024-04-01', '2024-07-01', 91, 0.07],
+  ]);
+  assert.equal(m[0].parts.length, 3);
+  assert.equal(m[0].yearDays, '365/366');
+  assert.equal(m[0].principal, 100000); // at the start of the row
+  assert.equal(m[1].parts, undefined); // a single row is left as it was
+  const sum = (ps) => ps.reduce((n, p) => n + p.interest, 0);
+  assert.ok(Math.abs(sum(m) - sum(r.periods)) < 1e-9);
+});
+
+test('one row per rate period: a rate switch to the same rate of another kind stays a separate row', () => {
+  const periods = [
+    { start: '2026-01-01', end: '2026-02-01', days: 31, rate: 0.08, spread: 0, rateKind: 'judgment', yearDays: 365, principal: 1, interest: 1, compounding: 'simple' },
+    { start: '2026-02-01', end: '2026-03-01', days: 28, rate: 0.08, spread: 0, rateKind: 'fixed', yearDays: 365, principal: 1, interest: 1, compounding: 'simple' },
+  ];
+  assert.equal(mergeRatePeriods(periods).length, 2);
 });

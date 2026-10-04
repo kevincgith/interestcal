@@ -68,13 +68,19 @@
         </div>
       </label>
       <details id="advanced" class="advanced">
-        <summary>Advanced settings <span class="muted">(day count, rounding, compounding, rate switch)</span></summary>
+        <summary>Advanced settings <span class="muted">(day count, rows, rounding, compounding, rate switch)</span></summary>
         <div class="advanced-body">
           <label>Day count basis
             <select id="basis">
               <option value="act/act" selected>Actual/Actual</option>
               <option value="act/365">Actual/365 Fixed</option>
               <option value="act/360">Actual/360</option>
+            </select>
+          </label>
+          <label>Calculation rows
+            <select id="rows">
+              <option value="all" selected>Split at every change</option>
+              <option value="rate">One row per rate period</option>
             </select>
           </label>
           <label>Rounding

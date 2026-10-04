@@ -22,6 +22,12 @@ export function roman(n) {
   return out;
 }
 
+// "the sum of HK$100,000.00", or on a combined row whose principal changed, "the sums of HK$100,000.00 then HK$90,000.00"
+const sumText = (p, money) => {
+  const sums = [...new Set((p.parts ?? [p]).map((x) => x.principal))];
+  return sums.length === 1 ? `the sum of HK$${money(sums[0])}` : `the sums of ${sums.map((x) => `HK$${money(x)}`).join(' then ')}`;
+};
+
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 // ---- WordprocessingML ----
@@ -53,7 +59,7 @@ export function documentXml(r, { money, rate, formula }) {
     const days = `${p.days} ${p.days === 1 ? 'day' : 'days'}`;
     const amount = money(p.interest);
     rows.push(tableRow(
-      para(run(`(${roman(i + 1)})\tInterest on the sum of HK$${money(p.principal)} at the rate of ${rate(p.rate)} per annum ` +
+      para(run(`(${roman(i + 1)})\tInterest on ${sumText(p, money)} at the rate of ${rate(p.rate)} per annum ` +
         `from ${longDate(p.start)} to ${longDate(p.end)} (${days})`), { hanging: 680 }) +
         para(run(`(i.e. ${formula(p)} = ${amount})`)) +
         para(''),
