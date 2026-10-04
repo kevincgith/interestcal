@@ -109,3 +109,25 @@ export function wireSteppers(root, onChange) {
     }),
   );
 }
+
+/**
+ * Keep each figure inside its summary box: when an unbreakable one is too wide (e.g. 3,207,776,571.88), shrink
+ * its font a pixel at a time until it fits; text with spaces just wraps. Normal figures keep the full size. Refits when
+ * the figures change or the boxes resize (including a hidden tab being shown).
+ */
+export function autoFitText(container, selector = 'dd', minPx = 13) {
+  const fit = () => {
+    for (const el of container.querySelectorAll(selector)) {
+      el.style.fontSize = '';
+      if (!el.clientWidth) continue; // hidden: fitted once it's shown
+      let size = parseFloat(getComputedStyle(el).fontSize);
+      while (el.scrollWidth > el.clientWidth && size > minPx) {
+        size -= 1;
+        el.style.fontSize = `${size}px`;
+      }
+    }
+  };
+  new ResizeObserver(fit).observe(container);
+  new MutationObserver(fit).observe(container, { childList: true, characterData: true, subtree: true });
+  fit();
+}

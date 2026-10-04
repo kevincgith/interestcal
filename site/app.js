@@ -3,6 +3,7 @@ import { buildWorkbook } from './export-xlsx.js?v=__BUILD__';
 import { buildPdf } from './export-pdf.js?v=__BUILD__';
 import {
   $, money, fmtDate, fmtRate, parseNumber, isIsoDate, link, row, download, loadXlsx, loadPdf, busy, copyLink, wireSteppers,
+  autoFitText,
 } from './shared.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 // "5.000% + 1.000% = 6.000%" when a spread applies, otherwise just the rate
@@ -912,3 +913,5 @@ readQuery();
 loadRates()
   .then(() => $('form').requestSubmit())
   .catch((err) => showError(err.message));
+
+autoFitText(document.querySelector('#panel-interest .summary')); // very large amounts shrink to fit their box

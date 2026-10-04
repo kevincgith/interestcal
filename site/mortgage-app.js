@@ -4,7 +4,7 @@ import { buildMortgagePdf, buildMortgageWorkbook } from './mortgage-export.js?v=
 import { renderRateChart } from './rate-chart.js?v=__BUILD__';
 import {
   $, money, fmtDate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
-  wireSteppers,
+  wireSteppers, autoFitText,
 } from './shared.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 
@@ -745,3 +745,5 @@ loadData()
     updateHints();
     $('mform').requestSubmit();
   });
+
+autoFitText(document.querySelector('#panel-mortgage .summary')); // very large amounts shrink to fit their box

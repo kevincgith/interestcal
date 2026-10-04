@@ -282,3 +282,18 @@ test('compounding rows say how much interest was added; a year-end split says wh
     '+HK$21,115.40 interest compounded',
   ]);
 });
+
+test('very large amounts shrink to fit their summary box; normal ones keep the full size', async ({ page }) => {
+  await page.goto('?p=987654321.99&from=2000-01-01&to=2026-10-05');
+  await expect(page.locator('#panel-interest .summary dd').first()).not.toHaveText('');
+  const sizes = await page.locator('#panel-interest .summary div').evaluateAll((divs) =>
+    divs.filter((d) => d.clientWidth).map((d) => {
+      const dd = d.querySelector('dd');
+      return { text: dd.textContent, fits: dd.scrollWidth <= dd.clientWidth, px: parseFloat(getComputedStyle(dd).fontSize) };
+    }));
+  for (const s of sizes) expect(s.fits, s.text).toBe(true);
+  await page.goto('?p=1000000&from=2026-01-01&to=2026-10-05');
+  await expect(page.locator('#panel-interest .summary dd').first()).toHaveText('1,000,000.00');
+  const px = await page.locator('#panel-interest .summary dd').first().evaluate((dd) => parseFloat(getComputedStyle(dd).fontSize));
+  expect(px).toBeGreaterThan(20);
+});
