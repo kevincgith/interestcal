@@ -81,18 +81,23 @@ test('rate table sorts by effective date and by rate', async ({ page }) => {
   expect(await rates()).toEqual([...(await rates())].sort((a, b) => a - b));
 });
 
-test('PDF, Excel and CSV download with the right names; exports omit the site address', async ({ page }) => {
+test('PDF, Excel, Word and CSV download with the right names; exports omit the site address', async ({ page }) => {
   await page.goto(WORKBOOK);
   await expect(total(page)).toHaveText('4,434.64');
   const name = 'interest_judgment_actact_2025-11-24_2026-04-20';
 
-  for (const [button, ext] of [['Download PDF', 'pdf'], ['Download Excel', 'xlsx'], ['Download CSV', 'csv']]) {
+  for (const [button, ext] of [['Download PDF', 'pdf'], ['Download Excel', 'xlsx'], ['Download Word', 'docx'], ['Download CSV', 'csv']]) {
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
     expect(download.suggestedFilename()).toBe(`${name}.${ext}`);
     const path = await download.path();
     const bytes = await (await import('node:fs/promises')).readFile(path);
     expect(bytes.length).toBeGreaterThan(500);
     if (ext === 'pdf') expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
+    if (ext === 'docx') {
+      expect(bytes.subarray(0, 2).toString()).toBe('PK'); // a zip
+      expect(bytes.toString('utf8')).toContain('Interest on the Debt of HK$');
+      expect(bytes.toString('utf8')).not.toContain('127.0.0.1');
+    }
     if (ext === 'csv') {
       const csv = bytes.toString('utf8');
       expect(csv).toContain('Total Interest,"4,434.64"');

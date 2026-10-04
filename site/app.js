@@ -1,6 +1,7 @@
 import { calculateInterest } from './calc.js?v=__BUILD__';
 import { buildWorkbook } from './export-xlsx.js?v=__BUILD__';
 import { buildPdf } from './export-pdf.js?v=__BUILD__';
+import { buildDocx } from './export-docx.js?v=__BUILD__';
 import {
   $, money, fmtDate, fmtRate, parseNumber, isIsoDate, link, row, download, loadXlsx, loadPdf, busy, copyLink, wireSteppers,
   autoFitText,
@@ -795,6 +796,15 @@ $('xlsx').addEventListener('click', () => {
     const bytes = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), exportName(r, 'xlsx'));
   }, showError);
+});
+
+// Word: the interest schedule as a table, worded like a statutory demand ("Interest on the sum of HK$... at the rate of
+// ... per annum from ... to ... (n days)")
+$('docx').addEventListener('click', () => {
+  if (!lastResult) return;
+  const r = lastResult;
+  const bytes = buildDocx(r, { money: (n) => money.format(n), rate: fmtRate, formula });
+  download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), exportName(r, 'docx'));
 });
 
 $('pdf').addEventListener('click', () => {

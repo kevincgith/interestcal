@@ -59,6 +59,7 @@ You can choose one of three rates:
 - **Sortable rate table:** click **Effective date** or **Rate** to sort; click again to reverse. The PDF and Excel exports use the same order.
 - **Shareable link:** the inputs are stored in the page address (e.g. `?src=prime&p=1000000&from=2026-01-01&to=2026-09-30&basis=act%2Fact&round=total&spread=1`). **Copy link** copies it.
 - **Excel and CSV export:** the Excel file uses live formulas and has a second sheet with the rate sources.
+- **Word export:** the interest schedule as a table worded like a statutory demand, one row per period: "(i) Interest on the sum of HK$… at the rate of …% per annum from … to … (n days)", the working ("(i.e. principal × rate × days ÷ 365) = amount") and the amount, then the total. Ready to paste into a court document.
 - **Rounding:** you can round only the total (periods are added unrounded) or round each period to cents first. The second option makes the rows add up exactly to the total.
 
 ## How interest is calculated
@@ -86,6 +87,7 @@ You can choose one of three rates:
 | `site/index.html`, `app.js`, `style.css` | Static web UI. Amounts are shown as `xxx,xxx.xx`, and a spread is shown as `base + spread = rate`. |
 | `site/export-xlsx.js` | Excel export. The **Calculation** sheet has live formulas (days, base + spread, `principal × rate × days ÷ year days`, totals). The **Rates** sheet has the source URL and the rates used. A CSV export is also available. |
 | `site/vendor/xlsx.mini.min.js` | SheetJS 0.20.3 mini build (Apache-2.0), loaded only when you click Download Excel. It's copied from `node_modules/xlsx/dist/`. |
+| `site/export-docx.js` | Word export. Writes the `.docx` (a zip of a few XML files) directly, so it needs no library. |
 | `site/export-pdf.js`, `site/vendor/jspdf*.js` | PDF report, using jsPDF 4 and jsPDF-AutoTable 5 (both MIT). They load only when you click Download PDF and are copied from `node_modules`. |
 | `site/rates.json` | Judgment debt rates scraped from the Judiciary site |
 | `site/hibor.json`, `hibor-3m.json` | 1-month and 3-month HIBOR fixings since 1996: history from the HKMA API, and the recent days HKMA hasn't republished yet from [HKAB](https://www.hkab.org.hk/en/rates/hibor), which sets them each business day at 11:15 HKT (a few days overlap, as a cross-check). `scripts/backfill-hibor.mjs` fills in older history in small batches, saving after each one (rerun it to carry on). The daily update merges in recent fixings and fetches a few older pages per run until the history reaches 1996. Every download has a time limit, and the job is capped at 20 minutes. These are optional sources: an outage only logs a warning. |
