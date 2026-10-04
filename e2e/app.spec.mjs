@@ -339,3 +339,16 @@ test('Calculation rows: one row per rate period combines year-end rows, keeps th
   await expect(page.locator('#rows')).toHaveValue('rate');
   await expect(page.locator('#periods tr')).toHaveCount(1);
 });
+
+test('the Principal label stays on one line with its currency', async ({ page }) => {
+  await page.goto('./');
+  const label = page.locator('label', { hasText: 'Principal (' }).first();
+  const lineHeight = await label.evaluate((el) => {
+    const text = el.firstElementChild.getBoundingClientRect();
+    return { h: text.height, lh: parseFloat(getComputedStyle(el).lineHeight) || 22 };
+  });
+  expect(lineHeight.h).toBeLessThan(lineHeight.lh * 1.5);
+  const start = await page.locator('#start').boundingBox();
+  const principal = await page.locator('#principal').boundingBox();
+  expect(Math.abs(start.y - principal.y)).toBeLessThan(2); // inputs line up across the row
+});
