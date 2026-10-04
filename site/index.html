@@ -41,6 +41,7 @@
         <legend>Interest rate</legend>
         <label class="radio"><input type="radio" name="source" value="judgment" checked> Judgment debt rate</label>
         <label class="radio"><input type="radio" name="source" value="prime"> HSBC prime rate</label>
+        <label class="radio"><input type="radio" name="source" value="usprime"> US prime rate</label>
         <label class="radio"><input type="radio" name="source" value="fixed"> Fixed rate</label>
       </fieldset>
       <label>Principal (HK$)
@@ -107,6 +108,7 @@
               <legend>New rate</legend>
               <label class="radio"><input type="radio" name="source2" value="judgment" checked> Judgment debt rate</label>
               <label class="radio"><input type="radio" name="source2" value="prime"> HSBC prime rate</label>
+              <label class="radio"><input type="radio" name="source2" value="usprime"> US prime rate</label>
               <label class="radio"><input type="radio" name="source2" value="fixed"> Fixed rate</label>
             </fieldset>
             <label id="spread2Field" for="spread2" hidden>Spread over prime (% p.a.)
@@ -463,6 +465,8 @@
         <a href="https://www.hkma.gov.hk/eng/data-publications-and-research/data-and-statistics/monthly-statistical-bulletin/" target="_blank" rel="noopener">HKMA</a>
         and cross-checked daily against
         <a href="https://www.hsbc.com.hk/investments/market-information/hk/lending-rate/" target="_blank" rel="noopener">HSBC’s official prime rate page</a>,
+        the US prime rate from the Federal Reserve’s
+        <a href="https://www.federalreserve.gov/releases/h15/" target="_blank" rel="noopener">H.15 release</a>,
         or a fixed rate, with optional principal added later and partial payments.
         The start date earns interest and the end date does not.
         Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.

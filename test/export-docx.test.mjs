@@ -50,7 +50,7 @@ test('Word: a valid .docx with one row per period, worded like a statutory deman
   const text = doc.replace(/<w:tab\/>/g, '\t').replace(/<[^>]+>/g, '');
   assert.match(text, /Interest on the Debt of HK\$150,861,190\.50/);
   assert.match(text, /\(i\)\tInterest on the sum of HK\$150,861,190\.50 at the rate of 8\.250% per annum from 20 September 2025 to 2 January 2026 \(104 days\)/);
-  assert.match(text, /\(i\.e\. 150,861,190\.50 × 8\.250% × 104 ÷ 365\) = [\d,]+\.\d\d/);
+  assert.match(text, /\(i\.e\. 150,861,190\.50 × 8\.250% × 104 ÷ 365 = [\d,]+\.\d\d\)/);
   assert.match(text, /\(ii\)\tInterest on the sum of HK\$150,861,190\.50 at the rate of 8\.107% per annum from 2 January 2026 to 2 April 2026 \(90 days\)/);
   assert.match(text, /\(iii\)\tInterest .* from 2 April 2026 to 20 April 2026 \(18 days\)/);
   assert.ok(text.includes(`Total:${money(r.totalInterest)}`));

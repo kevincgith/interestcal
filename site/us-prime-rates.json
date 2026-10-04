@@ -1,0 +1,311 @@
+{
+  "source": "https://www.federalreserve.gov/releases/h15/",
+  "updatedAt": "2026-10-05",
+  "checkedAt": "2026-10-04",
+  "rates": [
+    {
+      "effective": "2026-09-17",
+      "rate": 7
+    },
+    {
+      "effective": "2025-12-11",
+      "rate": 6.75
+    },
+    {
+      "effective": "2025-10-30",
+      "rate": 7
+    },
+    {
+      "effective": "2025-09-17",
+      "rate": 7.25
+    },
+    {
+      "effective": "2024-12-19",
+      "rate": 7.5
+    },
+    {
+      "effective": "2024-11-08",
+      "rate": 7.75
+    },
+    {
+      "effective": "2024-09-19",
+      "rate": 8
+    },
+    {
+      "effective": "2023-07-27",
+      "rate": 8.5
+    },
+    {
+      "effective": "2023-05-04",
+      "rate": 8.25
+    },
+    {
+      "effective": "2023-03-23",
+      "rate": 8
+    },
+    {
+      "effective": "2023-02-02",
+      "rate": 7.75
+    },
+    {
+      "effective": "2022-12-15",
+      "rate": 7.5
+    },
+    {
+      "effective": "2022-11-03",
+      "rate": 7
+    },
+    {
+      "effective": "2022-09-22",
+      "rate": 6.25
+    },
+    {
+      "effective": "2022-07-28",
+      "rate": 5.5
+    },
+    {
+      "effective": "2022-06-16",
+      "rate": 4.75
+    },
+    {
+      "effective": "2022-05-05",
+      "rate": 4
+    },
+    {
+      "effective": "2022-03-17",
+      "rate": 3.5
+    },
+    {
+      "effective": "2020-03-16",
+      "rate": 3.25
+    },
+    {
+      "effective": "2020-03-04",
+      "rate": 4.25
+    },
+    {
+      "effective": "2019-10-31",
+      "rate": 4.75
+    },
+    {
+      "effective": "2019-09-19",
+      "rate": 5
+    },
+    {
+      "effective": "2019-08-01",
+      "rate": 5.25
+    },
+    {
+      "effective": "2018-12-20",
+      "rate": 5.5
+    },
+    {
+      "effective": "2018-09-27",
+      "rate": 5.25
+    },
+    {
+      "effective": "2018-06-14",
+      "rate": 5
+    },
+    {
+      "effective": "2018-03-22",
+      "rate": 4.75
+    },
+    {
+      "effective": "2017-12-14",
+      "rate": 4.5
+    },
+    {
+      "effective": "2017-06-15",
+      "rate": 4.25
+    },
+    {
+      "effective": "2017-03-16",
+      "rate": 4
+    },
+    {
+      "effective": "2016-12-15",
+      "rate": 3.75
+    },
+    {
+      "effective": "2015-12-17",
+      "rate": 3.5
+    },
+    {
+      "effective": "2008-12-16",
+      "rate": 3.25
+    },
+    {
+      "effective": "2008-10-29",
+      "rate": 4
+    },
+    {
+      "effective": "2008-10-08",
+      "rate": 4.5
+    },
+    {
+      "effective": "2008-04-30",
+      "rate": 5
+    },
+    {
+      "effective": "2008-03-18",
+      "rate": 5.25
+    },
+    {
+      "effective": "2008-01-30",
+      "rate": 6
+    },
+    {
+      "effective": "2008-01-22",
+      "rate": 6.5
+    },
+    {
+      "effective": "2007-12-11",
+      "rate": 7.25
+    },
+    {
+      "effective": "2007-10-31",
+      "rate": 7.5
+    },
+    {
+      "effective": "2007-09-18",
+      "rate": 7.75
+    },
+    {
+      "effective": "2006-06-29",
+      "rate": 8.25
+    },
+    {
+      "effective": "2006-05-10",
+      "rate": 8
+    },
+    {
+      "effective": "2006-03-28",
+      "rate": 7.75
+    },
+    {
+      "effective": "2006-01-31",
+      "rate": 7.5
+    },
+    {
+      "effective": "2005-12-13",
+      "rate": 7.25
+    },
+    {
+      "effective": "2005-11-01",
+      "rate": 7
+    },
+    {
+      "effective": "2005-09-20",
+      "rate": 6.75
+    },
+    {
+      "effective": "2005-08-09",
+      "rate": 6.5
+    },
+    {
+      "effective": "2005-06-30",
+      "rate": 6.25
+    },
+    {
+      "effective": "2005-05-03",
+      "rate": 6
+    },
+    {
+      "effective": "2005-03-22",
+      "rate": 5.75
+    },
+    {
+      "effective": "2005-02-02",
+      "rate": 5.5
+    },
+    {
+      "effective": "2004-12-14",
+      "rate": 5.25
+    },
+    {
+      "effective": "2004-11-10",
+      "rate": 5
+    },
+    {
+      "effective": "2004-09-21",
+      "rate": 4.75
+    },
+    {
+      "effective": "2004-08-10",
+      "rate": 4.5
+    },
+    {
+      "effective": "2004-06-30",
+      "rate": 4.25
+    },
+    {
+      "effective": "2003-06-27",
+      "rate": 4
+    },
+    {
+      "effective": "2002-11-07",
+      "rate": 4.25
+    },
+    {
+      "effective": "2001-12-12",
+      "rate": 4.75
+    },
+    {
+      "effective": "2001-11-07",
+      "rate": 5
+    },
+    {
+      "effective": "2001-10-03",
+      "rate": 5.5
+    },
+    {
+      "effective": "2001-09-18",
+      "rate": 6
+    },
+    {
+      "effective": "2001-08-22",
+      "rate": 6.5
+    },
+    {
+      "effective": "2001-06-28",
+      "rate": 6.75
+    },
+    {
+      "effective": "2001-05-16",
+      "rate": 7
+    },
+    {
+      "effective": "2001-04-19",
+      "rate": 7.5
+    },
+    {
+      "effective": "2001-03-21",
+      "rate": 8
+    },
+    {
+      "effective": "2001-02-01",
+      "rate": 8.5
+    },
+    {
+      "effective": "2001-01-04",
+      "rate": 9
+    },
+    {
+      "effective": "2000-05-17",
+      "rate": 9.5
+    },
+    {
+      "effective": "2000-03-22",
+      "rate": 9
+    },
+    {
+      "effective": "2000-02-03",
+      "rate": 8.75
+    },
+    {
+      "effective": "1999-11-17",
+      "rate": 8.5
+    }
+  ]
+}

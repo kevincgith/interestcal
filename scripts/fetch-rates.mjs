@@ -5,6 +5,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { parseRatesHtml, validateRates } from './parse-judiciary.mjs';
 import { parsePrimeXls } from './parse-prime.mjs';
 import { HSBC_URL, parseHsbcHtml, crossCheckPrime } from './parse-hsbc.mjs';
+import { H15_URL, parseH15Html, mergeUsPrime } from './parse-usprime.mjs';
 import {
   HIBOR_URL, HIBOR_TENORS, HIBOR_HISTORY_START, HKAB_PAGE, hkabUrl, parseHiborJson, parseHkabJson, mergeHibor,
 } from './parse-hibor.mjs';
@@ -121,6 +122,17 @@ const SOURCES = [
           warnings: [`HSBC cross-check failed: ${err.message}`],
         };
       }
+    },
+  },
+  // US prime: the Fed's H.15 release shows the last five business days; any change is added to the saved history
+  {
+    name: 'US prime rates',
+    url: H15_URL,
+    out: 'us-prime-rates.json',
+    validate: { minRows: 50, maxRate: 30 }, // 76 changes since 2000
+    parse: async (res, previous) => {
+      if (!previous?.rates?.length) throw new Error('No saved US prime history to add to');
+      return { rates: mergeUsPrime(previous.rates, parseH15Html(await res.text())) };
     },
   },
   // HIBOR: HKMA's recent fixings (a small, reliable request) merged into the history (scripts/backfill-hibor.mjs),

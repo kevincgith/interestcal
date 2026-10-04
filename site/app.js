@@ -83,8 +83,17 @@ const SOURCES = {
     title: 'HSBC prime rates',
     sourceName: 'HKMA Monthly Statistical Bulletin, table 6.4.1',
     label: 'HSBC best lending rate (HKMA table 6.4.1)',
+    spread: true, // takes a spread over prime
+  },
+  usprime: {
+    file: 'us-prime-rates.json',
+    title: 'US prime rates',
+    sourceName: 'Federal Reserve H.15: bank prime loan rate',
+    label: 'US prime rate (Federal Reserve H.15)',
+    spread: true,
   },
 };
+const hasSpread = (key) => !!SOURCES[key]?.spread;
 
 const CROSS_CHECK = {
   match: 'Cross-checked daily against HSBC’s official prime rate page: matches.',
@@ -119,7 +128,7 @@ function latestRateLine(r) {
   }
   const data = rateData[key];
   const latest = data.rates[0];
-  const name = { judgment: 'judgment debt rate', prime: 'HSBC prime rate' }[key];
+  const name = { judgment: 'judgment debt rate', prime: 'HSBC prime rate', usprime: 'US prime rate' }[key];
   const before = `${prefix}${r.switch ? `${name}; l` : 'L'}atest effective rate is ${latest.rate.toFixed(3)}% (from ${fmtDate(latest.effective)})`;
   const cc = data.crossCheck;
   if (!cc || cc.status === 'mismatch') return { before: `${before}.`, text: `${before}.` };
@@ -132,7 +141,7 @@ function rateTableFor(key, { spread = 0, fixedRate = null, from = FIXED_FROM } =
   if (key === 'fixed') return [{ effective: from, rate: fixedRate, spread: 0, kind: 'fixed' }];
   return [...rateData[key].rates]
     .sort((a, b) => a.effective.localeCompare(b.effective))
-    .map((x) => ({ ...x, spread: key === 'prime' ? spread : 0, kind: key }));
+    .map((x) => ({ ...x, spread: hasSpread(key) ? spread : 0, kind: key }));
 }
 
 // Rate A until the switch date, then rate B (the B rate in force on the switch date starts that day)
@@ -189,7 +198,7 @@ function renderAsAt() {
   const dates = keys.map(asAt);
   $('asAt').textContent = dates.every((d) => d === dates[0])
     ? `Rates updated as at ${fmtDate(dates[0])}`
-    : `Rates updated as at: ${keys.map((k) => `${SOURCES[k].title.toLowerCase()} ${fmtDate(asAt(k))}`).join(' · ')}`;
+    : `Rates updated as at: ${keys.map((k) => `${SOURCES[k].title} ${fmtDate(asAt(k))}`).join(' · ')}`;
 }
 
 // Rates that apply to some day in [start, end): the one in force on the start date plus any that start before the end date.
@@ -284,7 +293,7 @@ function warning(text) {
 const kindLabel = (key, spread, fixedRate) =>
   key === 'fixed'
     ? `Fixed rate of ${fmtPct(fixedRate)} p.a.`
-    : SOURCES[key].label + (key === 'prime' && spread ? ` ${spread < 0 ? '−' : '+'} ${Math.abs(spread)}%` : '');
+    : SOURCES[key].label + (hasSpread(key) && spread ? ` ${spread < 0 ? '−' : '+'} ${Math.abs(spread)}%` : '');
 const rateBasisLabel = (r) =>
   kindLabel(r.source, r.spreadA ?? r.spread, r.fixedRate) +
   (r.switch ? `; from ${fmtDate(r.switch.date)}: ${kindLabel(r.switch.source, r.switch.spread, r.switch.fixedRate)}` : '');
@@ -429,14 +438,14 @@ function render(r) {
 
 function writeQuery(r) {
   const q = new URLSearchParams({ src: r.source, p: String(r.principal), from: r.start, to: r.end, basis: r.basis, round: r.rounding });
-  if (r.source === 'prime') q.set('spread', String(r.spreadA ?? r.spread));
+  if (hasSpread(r.source)) q.set('spread', String(r.spreadA ?? r.spread));
   if (isFixed(r)) q.set('rate', String(r.fixedRate));
   if (r.compounding !== 'none') q.set('comp', r.compounding);
   if (PERIOD_NAME[r.compounding] && r.compoundDates === 'calendar') q.set('cdates', 'calendar');
   if (r.switch) {
     q.set('sw', r.switch.date);
     q.set('src2', r.switch.source);
-    if (r.switch.source === 'prime') q.set('spread2', String(r.switch.spread));
+    if (hasSpread(r.switch.source)) q.set('spread2', String(r.switch.spread));
     if (r.switch.source === 'fixed') q.set('rate2', String(r.switch.fixedRate));
   }
   // Payments as date:amount pairs, e.g. pay=2026-07-01:10000,2026-10-01:5000
@@ -504,10 +513,10 @@ function readQuery() {
 // Spread only applies to prime; the fixed rate field only to a fixed rate
 const currentSource2 = () => document.querySelector('input[name="source2"]:checked').value;
 function showSourceFields() {
-  $('spreadField').hidden = currentSource() !== 'prime';
+  $('spreadField').hidden = !hasSpread(currentSource());
   $('fixedField').hidden = currentSource() !== 'fixed';
   $('switchFields').hidden = !$('switchOn').checked;
-  $('spread2Field').hidden = currentSource2() !== 'prime';
+  $('spread2Field').hidden = !hasSpread(currentSource2());
   $('fixed2Field').hidden = currentSource2() !== 'fixed';
   $('compoundDatesField').hidden = !PERIOD_NAME[$('compounding').value];
 }
@@ -665,7 +674,7 @@ $('form').addEventListener('submit', (e) => {
   showError('');
   const source = currentSource();
   const principal = parseNumber($('principal').value);
-  const spread = source === 'prime' ? parseNumber($('spread').value || '0') : 0;
+  const spread = hasSpread(source) ? parseNumber($('spread').value || '0') : 0;
   const start = $('start').value;
   const end = $('end').value;
   const basis = $('basis').value;
@@ -680,7 +689,7 @@ $('form').addEventListener('submit', (e) => {
   if ($('switchOn').checked) {
     const date = $('switchDate').value;
     const source2 = currentSource2();
-    const spread2 = source2 === 'prime' ? parseNumber($('spread2').value || '0') : 0;
+    const spread2 = hasSpread(source2) ? parseNumber($('spread2').value || '0') : 0;
     const fixed2 = source2 === 'fixed' ? parseNumber($('fixedRate2').value) : null;
     if (!date) return showError('Please enter the date the new rate applies from.');
     if (!Number.isFinite(spread2)) return showError('Please enter a valid spread for the new rate.');

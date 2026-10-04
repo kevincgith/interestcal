@@ -2,7 +2,7 @@
 //   Interest on the Debt of HK$150,861,190.50                                   HK$
 //   (i) Interest on the sum of HK$150,861,190.50 at the rate of 8.250% per annum      409,185.15
 //       from 20 September 2025 to 2 October 2025 (12 days)
-//       (i.e. 150,861,190.50 × 8.250% × 12 ÷ 365) = 409,185.15
+//       (i.e. 150,861,190.50 × 8.250% × 12 ÷ 365 = 409,185.15)
 //   Total:                                                                   9,883.88
 // A .docx is a zip of a few XML files; it's written here directly (stored, uncompressed), so no library is needed.
 // Dates are the calculator's own periods: "from" the first day, which earns interest, "to" the end date, which doesn't
@@ -55,7 +55,7 @@ export function documentXml(r, { money, rate, formula }) {
     rows.push(tableRow(
       para(run(`(${roman(i + 1)})\tInterest on the sum of HK$${money(p.principal)} at the rate of ${rate(p.rate)} per annum ` +
         `from ${longDate(p.start)} to ${longDate(p.end)} (${days})`), { hanging: 680 }) +
-        para(run(`(i.e. ${formula(p)}) = ${amount}`)) +
+        para(run(`(i.e. ${formula(p)} = ${amount})`)) +
         para(''),
       para(run(amount), { align: 'right' }),
     ));

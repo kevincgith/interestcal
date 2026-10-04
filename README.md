@@ -13,6 +13,8 @@ You can choose one of three rates:
   - **HSBC has a newer change:** the HKMA table is updated monthly, so HSBC can be ahead. The newer change is added and marked "HSBC".
   - **Disagreement:** the HKMA data is kept, the page shows a warning, and the daily workflow fails so you get an email.
 
+- **US prime rate** (Interest tab), the "Bank prime loan" rate in the Federal Reserve's [H.15 release](https://www.federalreserve.gov/releases/h15/): the rate posted by most of the top 25 US banks. You can add a spread. The history since 2000 comes from the Fed's full H.15 data file (series RIFSPBLP_N.B); the daily update reads the release page, which shows the last five business days, and adds any change.
+
 - **Fixed rate**, e.g. 8% p.a., for contract rates not tied to a published rate.
 
 ## Features
@@ -59,7 +61,7 @@ You can choose one of three rates:
 - **Sortable rate table:** click **Effective date** or **Rate** to sort; click again to reverse. The PDF and Excel exports use the same order.
 - **Shareable link:** the inputs are stored in the page address (e.g. `?src=prime&p=1000000&from=2026-01-01&to=2026-09-30&basis=act%2Fact&round=total&spread=1`). **Copy link** copies it.
 - **Excel and CSV export:** the Excel file uses live formulas and has a second sheet with the rate sources.
-- **Word export:** the interest schedule as a table worded like a statutory demand, one row per period: "(i) Interest on the sum of HK$… at the rate of …% per annum from … to … (n days)", the working ("(i.e. principal × rate × days ÷ 365) = amount") and the amount, then the total. Ready to paste into a court document.
+- **Word export:** the interest schedule as a table worded like a statutory demand, one row per period: "(i) Interest on the sum of HK$… at the rate of …% per annum from … to … (n days)", the working ("(i.e. principal × rate × days ÷ 365 = amount)") and the amount, then the total. Ready to paste into a court document.
 - **Rounding:** you can round only the total (periods are added unrounded) or round each period to cents first. The second option makes the rows add up exactly to the total.
 
 ## How interest is calculated
@@ -94,8 +96,9 @@ You can choose one of three rates:
 | `site/mortgage.js`, `mortgage-app.js`, `mortgage-export.js` | Mortgage calculation, tab and exports |
 | `site/shared.js`, `tabs.js` | Helpers shared by both tabs; tab switching |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |
+| `site/us-prime-rates.json` | US prime rate changes since 2000 (Federal Reserve H.15) |
 | `scripts/fetch-rates.mjs` | Fetches and validates both sources, and rewrites a JSON file only when its rates change |
-| `scripts/parse-judiciary.mjs`, `parse-prime.mjs`, `parse-hsbc.mjs` | Parsers for each source, plus the HSBC cross-check |
+| `scripts/parse-judiciary.mjs`, `parse-prime.mjs`, `parse-hsbc.mjs`, `parse-usprime.mjs` | Parsers for each source, plus the HSBC cross-check |
 | `test/` | Tests, including the workbook's saved example (HK$135,436.48, 24 Nov 2025 → 20 Apr 2026 = HK$4,434.64) |
 | `.github/workflows/pages.yml` | Refreshes the rates daily and deploys to GitHub Pages |
 

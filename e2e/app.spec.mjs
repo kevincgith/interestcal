@@ -8,7 +8,8 @@ test('opens with sample inputs, calculates, and shows the rates date', async ({ 
   await page.goto('./');
   await expect(page.locator('#principal')).toHaveValue('1,000,000.00');
   await expect(total(page)).not.toHaveText('');
-  await expect(page.locator('#asAt')).toHaveText(/^Rates updated as at \d{2}-[A-Z][a-z]{2}-\d{4}/);
+  // One date when every source was checked the same day, otherwise one per source
+  await expect(page.locator('#asAt')).toHaveText(/^Rates updated as at(:.* )? \d{2}-[A-Z][a-z]{2}-\d{4}/);
   await expect(page.locator('#error')).toBeHidden();
 });
 
@@ -301,4 +302,14 @@ test('very large amounts shrink to fit their summary box; normal ones keep the f
   await expect(page.locator('#panel-interest .summary dd').first()).toHaveText('1,000,000.00');
   const px = await page.locator('#panel-interest .summary dd').first().evaluate((dd) => parseFloat(getComputedStyle(dd).fontSize));
   expect(px).toBeGreaterThan(20);
+});
+
+test('US prime rate: spread applies, latest rate line and rate table use the Fed H.15 data', async ({ page }) => {
+  await page.goto('?src=usprime&p=1000000&from=2025-01-01&to=2026-01-01&spread=2');
+  await expect(page.locator('input[name="source"][value="usprime"]')).toBeChecked();
+  await expect(page.locator('#spreadField')).toBeVisible();
+  await expect(page.locator('#periods tr').first()).toContainText('7.500% + 2.000% = 9.500%');
+  await expect(page.locator('#rateTitle')).toHaveText('US prime rates');
+  await expect(page.locator('#rateSource')).toContainText('Federal Reserve H.15');
+  await expect(page).toHaveURL(/src=usprime.*spread=2/);
 });
