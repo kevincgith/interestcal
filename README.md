@@ -71,7 +71,7 @@ You can choose one of three rates:
   | Basis | Year days | Notes |
   |---|---|---|
   | **Actual/Actual** (default) | 366 in a leap year, 365 otherwise | Periods are split at 1 January so each day uses its own year's count (ISDA style). This is the convention the HK courts use. |
-  | Actual/365 | always 365 | Also known as Actual/365 Fixed |
+  | Actual/365 Fixed | always 365 | |
   | Actual/360 | always 360 | |
 
 - The latest published rate keeps applying after its effective date.

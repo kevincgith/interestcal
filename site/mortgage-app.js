@@ -641,7 +641,7 @@ const inputItems = (m) => [
   ['Down payment (HK$)', money.format(m.inputs.price - m.loan)],
   ['Tenor', `${m.inputs.years} years (${m.months} instalments)`],
   ['Drawdown date', fmtDate(m.inputs.start)],
-  ['Interest method', m.inputs.method === 'monthly' ? 'Rate ÷ 12 each month (textbook)' : 'Actual days ÷ 365 (HK banks)'],
+  ['Interest method', m.inputs.method === 'monthly' ? 'Rate ÷ 12 each month (textbook)' : 'Actual/365 Fixed (HK banks)'],
   ...(m.inputs.extras.length ? [['Extra repayments', m.inputs.extras.map((x) => `${fmtDate(x.date)}: ${money.format(x.amount)}`).join('; ')]] : []),
   ['Calculated on', fmtDate(todayIso())],
 ];

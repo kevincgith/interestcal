@@ -33,7 +33,7 @@ const formula = (p) => {
 
 const BASES = {
   'act/act': 'Actual/Actual',
-  'act/365': 'Actual/365',
+  'act/365': 'Actual/365 Fixed',
   'act/360': 'Actual/360',
 };
 
