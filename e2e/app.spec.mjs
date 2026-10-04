@@ -350,5 +350,6 @@ test('the Principal label stays on one line with its currency', async ({ page })
   expect(lineHeight.h).toBeLessThan(lineHeight.lh * 1.5);
   const start = await page.locator('#start').boundingBox();
   const principal = await page.locator('#principal').boundingBox();
-  expect(Math.abs(start.y - principal.y)).toBeLessThan(2); // inputs line up across the row
+  // Side by side (wide screens), the inputs line up across the row; on phones the fields stack
+  if (start.x > principal.x + principal.width) expect(Math.abs(start.y - principal.y)).toBeLessThan(2);
 });
