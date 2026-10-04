@@ -4,8 +4,9 @@ import { buildPdf } from './export-pdf.js?v=__BUILD__';
 import { buildDocx } from './export-docx.js?v=__BUILD__';
 import {
   $, money, fmtDate, fmtRate, parseNumber, isIsoDate, link, row, download, loadXlsx, loadPdf, busy, copyLink, wireSteppers,
-  autoFitText,
+  autoFitText, flash,
 } from './shared.js?v=__BUILD__';
+import { saveCalculation, renderSaved } from './saved.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 // "5.000% + 1.000% = 6.000%" when a spread applies, otherwise just the rate
 const fmtRateWithSpread = (p) => {
@@ -557,6 +558,20 @@ function showSourceFields() {
 }
 
 $('share').addEventListener('click', () => copyLink(location.href, $('shareStatus')));
+// Save: keep this calculation (its link and a name) in the browser, listed under "Saved calculations"
+const SHORT_NAMES = { judgment: 'Judgment debt rate', prime: 'HSBC prime', usprime: 'US prime' };
+$('save').addEventListener('click', () => {
+  if (!lastResult || !lastQuery) return;
+  const r = lastResult;
+  const rateName = isFixed(r) ? `Fixed ${fmtPct(r.fixedRate)}` : SHORT_NAMES[r.source];
+  const ok = saveCalculation({
+    tab: 'interest',
+    query: lastQuery,
+    title: `${rateName} · ${r.currency}${money.format(r.principal)} · ${fmtDate(r.start)} to ${fmtDate(r.end)}`,
+  });
+  flash($('shareStatus'), ok ? 'Saved below' : 'This browser won’t save data here');
+});
+renderSaved();
 
 // ---- Sorting the detailed rate table: click a header; click again to reverse ----
 

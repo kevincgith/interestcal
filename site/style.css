@@ -303,3 +303,10 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
   padding: 6px 7px;
   font-size: 0.88rem;
 }
+
+/* Saved calculations */
+.saved-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
+.saved-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 0; border-top: 1px solid var(--border); }
+.saved-list .saved-name { flex: 1 1 260px; width: auto; height: 36px; font-weight: 600; }
+.saved-list .saved-meta { flex: 0 1 auto; }
+.saved-list .remove { margin-left: auto; }

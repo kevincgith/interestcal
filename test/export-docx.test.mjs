@@ -71,3 +71,29 @@ test('Word: amounts in US$ when asked', () => {
   assert.match(doc, /Interest on the sum of US\$1,000\.00/);
   assert.doesNotMatch(doc, /HK\$/);
 });
+
+const textOf = (bytes) => unzip(bytes)['word/document.xml'].replace(/<w:tab\/>/g, '\t').replace(/<\/w:p>/g, '\n').replace(/<[^>]+>/g, '');
+const amount = (text, label) => Number(text.match(new RegExp(`${label}\\n\\(?([\\d,]+\\.\\d\\d)`))[1].replace(/,/g, ''));
+
+test('Word summary: principal + interest = total due at the end date, then the daily interest', () => {
+  const r = calculateInterest({ principal: 1000000, start: '2026-01-01', end: '2026-10-05', rates: [{ effective: '2000-01-01', rate: 8 }] });
+  const text = textOf(buildDocx(r, { money, rate, formula }));
+  assert.equal(amount(text, 'Principal'), 1000000);
+  assert.equal(amount(text, 'Interest \\(as above\\)'), Number(r.totalInterest.toFixed(2)));
+  assert.equal(amount(text, 'Total amount due as at 5 October 2026'), Number(r.totalDue.toFixed(2)));
+  assert.match(text, /Daily interest from 5 October 2026 until payment: HK\$219\.18 \(i\.e\. 1,000,000\.00 × 8\.000% ÷ 365\)\./);
+  assert.doesNotMatch(text, /payments received|Principal added later/);
+});
+
+test('Word summary with principal added and a payment still adds up to the total due', () => {
+  const r = calculateInterest({
+    principal: 100000, start: '2026-01-01', end: '2026-07-01', rates: [{ effective: '2000-01-01', rate: 8 }],
+    additions: [{ date: '2026-02-01', amount: 20000, label: 'Costs' }], payments: [{ date: '2026-04-01', amount: 30000 }],
+  });
+  const text = textOf(buildDocx(r, { money, rate, formula }));
+  const [p, a, i, paid, due] = ['Principal', 'Principal added later', 'Interest \\(as above\\)', 'Less: payments received',
+    'Total amount due as at 1 July 2026'].map((l) => amount(text, l));
+  assert.deepEqual([p, a, paid], [100000, 20000, 30000]);
+  assert.ok(Math.abs(p + a + i - paid - due) < 0.011, `${p} + ${a} + ${i} - ${paid} = ${due}`);
+  assert.match(text, /Daily interest from 1 July 2026 until payment: HK\$[\d,.]+ \(i\.e\. [\d,.]+ × 8\.000% ÷ 365\)/);
+});

@@ -4,6 +4,8 @@
 //       from 20 September 2025 to 2 October 2025 (12 days)
 //       (i.e. 150,861,190.50 × 8.250% × 12 ÷ 365 = 409,185.15)
 //   Total:                                                                   9,883.88
+// then a summary (principal, any principal added or payments, interest, total amount due at the end date) and the
+// daily interest from the end date until payment.
 // A .docx is a zip of a few XML files; it's written here directly (stored, uncompressed), so no library is needed.
 // Dates are the calculator's own periods: "from" the first day, which earns interest, "to" the end date, which doesn't
 // (so 20 September to 2 October is 12 days), as on screen and in the other downloads.
@@ -69,12 +71,28 @@ export function documentXml(r, { money, rate, formula, currency: cur = 'HK$' }) 
   });
   rows.push(tableRow(para(run('Total:', { bold: true })), para(run(money(r.totalInterest), { bold: true }), { align: 'right' })));
 
+  // Summary: what's owed at the end date, then the daily interest from then until payment
+  const paid = (r.totalPaid ?? 0) - (r.excessPaid ?? 0);
+  const line = (label, amount, bold = false) => tableRow(para(run(label, { bold })), para(run(amount, { bold }), { align: 'right' }));
+  const summary = [
+    line('Principal', money(r.principal)),
+    ...(r.totalAdded > 0 ? [line('Principal added later', money(r.totalAdded))] : []),
+    line('Interest (as above)', money(r.totalInterest)),
+    ...(paid > 0 ? [line('Less: payments received', `(${money(paid)})`)] : []),
+    line(`Total amount due as at ${longDate(r.end)}`, money(r.totalDue), true),
+  ];
+  const daily = r.perDiem
+    ? para(run(`Daily interest from ${longDate(r.end)} until payment: ${cur}${money(r.perDiem.amount)} ` +
+        `(i.e. ${money(r.outstandingPrincipal)} × ${rate(r.perDiem.rate)} ÷ ${r.perDiem.yearDays}).`))
+    : '';
+
   const border = (side) => `<w:${side} w:val="single" w:sz="4" w:space="0" w:color="000000"/>`;
-  const table =
+  const tbl = (rowsXml) =>
     `<w:tbl><w:tblPr><w:tblW w:w="${LEFT_W + RIGHT_W}" w:type="dxa"/><w:tblLayout w:type="fixed"/>` +
     `<w:tblBorders>${['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(border).join('')}</w:tblBorders>` +
     `<w:tblCellMar><w:left w:w="85" w:type="dxa"/><w:right w:w="85" w:type="dxa"/></w:tblCellMar></w:tblPr>` +
-    `<w:tblGrid><w:gridCol w:w="${LEFT_W}"/><w:gridCol w:w="${RIGHT_W}"/></w:tblGrid>${rows.join('')}</w:tbl>`;
+    `<w:tblGrid><w:gridCol w:w="${LEFT_W}"/><w:gridCol w:w="${RIGHT_W}"/></w:tblGrid>${rowsXml.join('')}</w:tbl>`;
+  const table = `${tbl(rows)}${para('')}${tbl(summary)}${para('')}${daily}`;
 
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +

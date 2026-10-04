@@ -4,8 +4,9 @@ import { buildMortgagePdf, buildMortgageWorkbook } from './mortgage-export.js?v=
 import { renderRateChart } from './rate-chart.js?v=__BUILD__';
 import {
   $, money, fmtDate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
-  wireSteppers, autoFitText,
+  wireSteppers, autoFitText, flash,
 } from './shared.js?v=__BUILD__';
+import { saveCalculation } from './saved.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 
 const TYPES = { prime: 'Prime-based', hibor: 'HIBOR-based', fixed: 'Fixed rate' };
@@ -715,6 +716,16 @@ $('mCsv').addEventListener('click', () => {
 });
 
 $('mShare').addEventListener('click', () => copyLink(location.href, $('mShareStatus')));
+$('mSave').addEventListener('click', () => {
+  if (!last || !lastQuery) return;
+  const i = last.inputs;
+  const ok = saveCalculation({
+    tab: 'mortgage',
+    query: lastQuery,
+    title: `${TYPES[i.type]} · loan HK$${money.format(last.loan)} · ${i.years} yrs from ${fmtDate(i.start)}`,
+  });
+  flash($('mShareStatus'), ok ? 'Saved below' : 'This browser won’t save data here');
+});
 
 // ---- Start: default drawdown today, load rates, calculate once ----
 

@@ -353,3 +353,41 @@ test('the Principal label stays on one line with its currency', async ({ page })
   // Side by side (wide screens), the inputs line up across the row; on phones the fields stack
   if (start.x > principal.x + principal.width) expect(Math.abs(start.y - principal.y)).toBeLessThan(2);
 });
+
+test('saved calculations: save from either tab, rename, open and delete; kept after a reload', async ({ page }) => {
+  await page.goto('?src=prime&p=250000&from=2025-01-01&to=2026-01-01&spread=1');
+  await expect(total(page)).not.toHaveText('');
+  await expect(page.locator('#savedCard')).toBeHidden(); // nothing saved yet
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.locator('#shareStatus')).toHaveText('Saved below');
+  await expect(page.locator('#savedCard')).toBeVisible();
+  await page.locator('#savedCard summary').click();
+  const first = page.locator('#savedList li').first();
+  await expect(first.locator('.saved-name')).toHaveValue('HSBC prime · HK$250,000.00 · 01-Jan-2025 to 01-Jan-2026');
+  await first.locator('.saved-name').fill('Client A – loan interest');
+  await first.locator('.saved-name').press('Enter');
+  await first.locator('.saved-name').blur();
+
+  // Save a mortgage too
+  await page.getByRole('tab', { name: 'Mortgage' }).click();
+  await expect(page.locator('#mPayment')).not.toHaveText('');
+  await page.locator('#mSave').click();
+  await expect(page.locator('#savedList li')).toHaveCount(2);
+  await expect(page.locator('#savedList li').first()).toContainText('Mortgage · saved');
+
+  // Still there after a reload, with the new name; Open goes back to the calculation
+  await page.goto('./');
+  await page.locator('#savedCard summary').click();
+  await expect(page.locator('#savedList li')).toHaveCount(2);
+  const interest = page.locator('#savedList li', { hasText: 'Interest · saved' });
+  await expect(interest.locator('.saved-name')).toHaveValue('Client A – loan interest');
+  await interest.getByRole('link', { name: 'Open' }).click();
+  await expect(page.locator('#principal')).toHaveValue('250,000.00');
+  await expect(page.locator('input[name="source"][value="prime"]')).toBeChecked();
+
+  // Delete both: the card hides again
+  await page.locator('#savedCard summary').click();
+  await page.locator('#savedList li .remove').first().click();
+  await page.locator('#savedList li .remove').first().click();
+  await expect(page.locator('#savedCard')).toBeHidden();
+});

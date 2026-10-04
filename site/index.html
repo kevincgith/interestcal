@@ -211,6 +211,7 @@
         <button type="button" id="docx" class="secondary">Download Word</button>
         <button type="button" id="csv" class="secondary">Download CSV</button>
         <button type="button" id="share" class="secondary">Copy link</button>
+        <button type="button" id="save" class="secondary">Save</button>
         <span id="shareStatus" class="muted" role="status"></span>
       </div>
     </section>
@@ -405,6 +406,7 @@
           <button type="button" id="mXlsx" class="secondary">Download Excel</button>
           <button type="button" id="mCsv" class="secondary">Download CSV</button>
           <button type="button" id="mShare" class="secondary">Copy link</button>
+          <button type="button" id="mSave" class="secondary">Save</button>
           <span id="mShareStatus" class="muted" role="status"></span>
         </div>
       </section>
@@ -463,6 +465,12 @@
           Prime: HSBC best lending rate, as on the Interest tab.</p>
       </details>
     </section>
+
+    <details id="savedCard" class="card saved-card" hidden>
+      <summary>Saved calculations <span id="savedCount" class="muted"></span></summary>
+      <p class="muted m-note">Kept in this browser only; they aren't uploaded anywhere. Click a name to rename it.</p>
+      <ul id="savedList" class="saved-list"></ul>
+    </details>
 
     <footer class="about">
       <p>Simple interest at the judgment debt rate published by the
