@@ -44,7 +44,6 @@ h1 { margin: 0 0 8px; font-size: 1.6rem; }
 .latest-rate { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
 .latest-rate .latest-name, .latest-rate .latest-date { color: var(--muted); }
 .latest-rate .latest-date { font-size: 0.8rem; }
-.rate-news { margin: -4px 0 8px; font-size: 0.85rem; color: var(--muted); }
 a { color: var(--accent); }
 .muted { color: var(--muted); font-size: 0.9rem; font-weight: normal; }
 

@@ -94,7 +94,6 @@ async function loadRates() {
     }),
   );
   renderAsAt();
-  renderRateNews();
   renderRateTable();
   renderLatestRates(); // not awaited: HIBOR is optional and the page works without it
 }
@@ -141,24 +140,6 @@ const asAtText = (key) => {
   const time = rateData[key].checkedAt && rateData[key].checkedTime;
   return `${fmtDate(asAt(key))}${time ? ` ${time} HKT` : ''}`;
 };
-
-// "New: judgment debt rate 8.107% → 8.000% from 01-Jan-2027" for a week after a refresh picks up a new published
-// rate (or "stays at" when the Judiciary republishes the same rate for a new quarter). HIBOR changes daily, so it's
-// left out. A rate counts as new if it was added recently (updatedAt) and takes effect within 45 days of that.
-const NEWS_NAMES = { judgment: 'judgment debt rate', prime: 'HSBC prime rate', usprime: 'US prime rate' };
-const addDays = (iso, n) => new Date(Date.parse(iso) + n * 864e5).toISOString().slice(0, 10);
-function renderRateNews() {
-  const today = todayIso();
-  const items = Object.keys(SOURCES).flatMap((key) => {
-    const { updatedAt, rates } = rateData[key] ?? {};
-    const [latest, prev] = rates ?? [];
-    if (!updatedAt || !latest || updatedAt < addDays(today, -7) || latest.effective < addDays(updatedAt, -45)) return [];
-    const change = prev && prev.rate !== latest.rate ? `${fmtPct(prev.rate)} → ${fmtPct(latest.rate)}` : `stays at ${fmtPct(latest.rate)}`;
-    return [`${NEWS_NAMES[key]} ${change} from ${fmtDate(latest.effective)}`];
-  });
-  $('rateNews').hidden = !items.length;
-  $('rateNews').textContent = items.length ? `New: ${items.join(' · ')}` : '';
-}
 
 function renderAsAt() {
   const keys = Object.keys(SOURCES);

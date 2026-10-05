@@ -486,31 +486,6 @@ test('currency: HKD by default, USD for US prime, a chosen one sticks, and Other
   await expect(principalLabel).toContainText('Principal (HK$)');
 });
 
-test('header: "New:" line for a rate published in the last week, and nothing once it is older', async ({ page }) => {
-  const today = new Date().toLocaleDateString('en-CA');
-  const shift = (n) => new Date(Date.parse(today) + n * 864e5).toISOString().slice(0, 10);
-  let updatedAt = shift(-2);
-  await page.route('**/rates.json*', async (route) => {
-    const json = await (await route.fetch()).json();
-    const rates = [{ effective: shift(20), rate: 7.5 }, ...json.rates];
-    await route.fulfill({ json: { ...json, updatedAt, rates } });
-  });
-  for (const f of ['prime-rates.json', 'us-prime-rates.json']) {
-    await page.route(`**/${f}*`, async (route) => {
-      const json = await (await route.fetch()).json();
-      await route.fulfill({ json: { ...json, updatedAt: '2020-01-01' } });
-    });
-  }
-  await page.goto('./');
-  await expect(page.locator('#rateNews')).toBeVisible();
-  await expect(page.locator('#rateNews')).toHaveText(/^New: judgment debt rate [\d.]+% → 7\.500% from \d{2}-[A-Z][a-z]{2}-\d{4}$/);
-  updatedAt = shift(-10);
-  await page.reload();
-  await expect(page.locator('#asAt')).not.toHaveText('');
-  await expect(page.locator('#rateNews')).toBeHidden();
-});
-
-
 test('Word download always starts with the calculation inputs', async ({ page }) => {
   await page.goto('./');
   await expect(total(page)).not.toHaveText('');
