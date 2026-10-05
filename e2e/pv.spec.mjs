@@ -136,3 +136,62 @@ test('downloads: PDF, Excel and CSV, off while inputs have changed', async ({ pa
   await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
   for (const id of ['#pPdf', '#pXlsx', '#pCsv', '#pSave']) await expect(page.locator(id)).toBeEnabled();
 });
+
+test('repeating cash flow: added from the form, expanded into dated rows, kept in the link', async ({ page }) => {
+  await page.goto('?tab=pv&v=2027-01-01&r=6&c=monthly&cf=2028-01-31,5000,Deposit%20back');
+  await page.getByRole('button', { name: '+ Add repeating cash flow' }).click();
+  const row = page.locator('#pFlowRows .payment-row.repeat');
+  await row.getByLabel('Cash flow date').fill('2027-01-31');
+  await row.getByLabel('Cash flow amount').fill('-1000');
+  await row.getByLabel('Cash flow description').fill('Rent');
+  await expect(row.locator('.repeat-last')).toHaveText('· last on 31-Dec-2027'); // 12 monthly by default
+  await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
+
+  await expect(page.locator('#pRows tr')).toHaveCount(13);
+  await expect(page.locator('#pRows tr').nth(1).locator('td').nth(0)).toHaveText('28-Feb-2027');
+  await expect(page.locator('#pRows tr').nth(1).locator('td').nth(1)).toHaveText('Rent (2 of 12)');
+  await expect(page.locator('#pFuture')).toHaveText('−HK$7,000.00');
+  await expect(page).toHaveURL(/rf=2027-01-31%2C-1000%2Cmonth%2C12%2CRent/);
+
+  // Quarterly, 4 times: the link reopens it
+  await row.getByLabel('Repeats every').selectOption('quarter');
+  await row.getByLabel('Number of times').fill('4');
+  await expect(row.locator('.repeat-last')).toHaveText('· last on 31-Oct-2027');
+  await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#pRows tr')).toHaveCount(5);
+  await page.reload();
+  await expect(page.getByLabel('Repeats every')).toHaveValue('quarter');
+  await expect(page.locator('#pRows tr')).toHaveCount(5);
+
+  await page.getByLabel('Number of times').fill('0');
+  await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#pError')).toHaveText(/^Cash flow 2: enter how many times, a whole number from 1 to 1,200\.$/);
+});
+
+test('solve for the rate (IRR): Microsoft\'s XIRR example, rate box hidden, link and save', async ({ page }) => {
+  await page.goto('?tab=pv&v=2008-01-01&r=5&cf=2008-01-01,-10000&cf=2008-03-01,2750&cf=2008-10-30,4250&cf=2009-02-15,3250&cf=2009-04-01,2750');
+  await expect(page.locator('#pIrrTile')).toBeHidden();
+  await page.locator('#pSolve').selectOption('irr');
+  await expect(page.locator('#pRateField')).toBeHidden();
+  await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
+
+  await expect(page.locator('#pIrr')).toHaveText('37.336253% p.a.'); // Excel: XIRR = 0.373362535
+  await expect(page.locator('#pTotal')).toHaveText('HK$0.00');
+  await expect(page.locator('#pRateLine')).toContainText('at this rate the cash flows are worth zero');
+  await expect(page).toHaveURL(/s=irr/);
+  await expect(page).not.toHaveURL(/[?&]r=/);
+  await page.locator('#pSave').click();
+  await expect(page.locator('#savedList .saved-name').first()).toHaveValue('IRR 37.336253% · 5 cash flows · 01-Jan-2008');
+
+  // Back to Present value: the rate box holds the rate found
+  await page.locator('#pSolve').selectOption('pv');
+  await expect(page.locator('#pRate')).toHaveValue('37.336253');
+});
+
+test('IRR errors and the note for more than one answer', async ({ page }) => {
+  await page.goto('?tab=pv&v=2026-01-01&s=irr&cf=2027-01-01,500');
+  await expect(page.locator('#pError')).toHaveText('To find the rate, enter both money paid out (a minus amount) and money received.');
+  await page.goto('?tab=pv&v=2026-01-01&s=irr&cf=2026-01-01,-100&cf=2027-01-01,230&cf=2028-01-01,-132');
+  await expect(page.locator('#pIrr')).toHaveText('10.000% p.a.');
+  await expect(page.locator('#pWarn')).toContainText('More than one rate makes the cash flows worth zero (10.000% and 20.000% p.a.)');
+});

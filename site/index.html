@@ -540,7 +540,14 @@
             <button type="button" class="chip" data-date="year" data-target="pValuation" data-field="Valuation date">Year end</button>
           </span>
         </label>
-        <label for="pRate"><span class="label-row">Discount rate (% p.a.) <button type="button" class="help" aria-expanded="false" aria-label="What is the discount rate?">?</button></span>
+        <label for="pSolve"><span class="label-row">Solve for <button type="button" class="help" aria-expanded="false" aria-label="What can it solve for?">?</button></span>
+          <select id="pSolve">
+            <option value="pv" selected>Present value</option>
+            <option value="irr">Rate (IRR)</option>
+          </select>
+          <span class="help-text" hidden>Present value: what the cash flows are worth on the valuation date at the rate you enter. Rate (IRR): the rate at which they are worth exactly zero, i.e. the return they give. It needs money paid out (a minus amount) and money received. With Actual/365 and yearly compounding it is Excel’s XIRR.</span>
+        </label>
+        <label id="pRateField" for="pRate"><span class="label-row">Discount rate (% p.a.) <button type="button" class="help" aria-expanded="false" aria-label="What is the discount rate?">?</button></span>
           <div class="stepper">
             <button type="button" class="step" data-step="-0.25" aria-label="Decrease discount rate by 0.25%">−</button>
             <input id="pRate" type="text" inputmode="decimal" autocomplete="off" value="5">
@@ -574,10 +581,11 @@
 
         <fieldset class="payments">
           <legend>Cash flows</legend>
-          <p class="help-text pv-flows-note">Each amount on its date. Use a minus sign for money paid out (e.g. −100,000) to get a net present value. An amount dated before the valuation date is grown forward to it at the same rate.</p>
+          <p class="help-text pv-flows-note">Each amount on its date. Use a minus sign for money paid out (e.g. −100,000) to get a net present value. An amount dated before the valuation date is grown forward to it at the same rate. A repeating cash flow (e.g. rent each month) starts on its date and keeps that day of the month.</p>
           <div id="pFlowRows" class="event-rows"></div>
           <div class="payments-actions">
             <button type="button" id="pAddFlow" class="secondary">+ Add cash flow</button>
+            <button type="button" id="pAddRepeat" class="secondary">+ Add repeating cash flow</button>
           </div>
         </fieldset>
         <div class="actions">
@@ -591,6 +599,7 @@
         <p id="pStale" class="stale-note" role="status" hidden>Inputs changed. Press <strong>Calculate</strong> to recalculate.</p>
         <p id="pWarn" class="warning" hidden></p>
         <dl class="summary">
+          <div id="pIrrTile" hidden><dt>Rate (IRR)</dt><dd id="pIrr"></dd></div>
           <div><dt>Present value</dt><dd id="pTotal"></dd></div>
           <div><dt>Total of amounts</dt><dd id="pFuture"></dd></div>
           <div><dt>Discount</dt><dd id="pDiscount"></dd></div>

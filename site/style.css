@@ -365,3 +365,10 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1p
 #pRows .working { white-space: nowrap; color: var(--muted); font-size: 0.85rem; }
 #pRows .before { color: var(--muted); font-size: 0.8rem; display: block; }
 #pFoot td { font-weight: 700; border-top: 2px solid var(--border); }
+.payment-row .repeat-line { grid-column: 1 / -2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 0.9rem; color: var(--muted); }
+.repeat-line select { width: auto; }
+.repeat-line .repeat-count { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.repeat-line .repeat-times { width: 4.2em; text-align: center; }
+@media (max-width: 600px) {
+  .payment-row.with-label .repeat-line { grid-column: 1 / -1; grid-row: 3; }
+}

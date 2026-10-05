@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { presentValue, yearPieces, yearFraction, pvWorking, PV_COMPOUNDING } from '../site/pv.js';
+import { presentValue, yearPieces, yearFraction, pvWorking, expandFlows, solveRate, PV_COMPOUNDING, PV_BASES } from '../site/pv.js';
 import { toDay, fromDay } from '../site/calc.js';
 
 const close = (actual, expected, eps = 1e-9) =>
@@ -159,4 +159,77 @@ test('working text for each compounding', () => {
   // Before the valuation date: grown forward, so the working multiplies
   assert.equal(at({ flows: [{ date: '2026-07-01', amount: 100 }] }), '100.00 × (1 + 5.000%)^(365 ÷ 365)');
   assert.equal(at({ compounding: 'continuous', flows: [{ date: '2026-07-01', amount: 100 }] }), '100.00 × e^(5.000% × 365 ÷ 365)');
+});
+
+test('repeating cash flows expand into dated rows, keeping the first date\'s day of the month', () => {
+  const rows = expandFlows([{ date: '2027-01-31', amount: 1000, label: 'Rent', every: 'month', times: 4 }]);
+  assert.deepEqual(rows.map((r) => [r.date, r.label]), [
+    ['2027-01-31', 'Rent (1 of 4)'], ['2027-02-28', 'Rent (2 of 4)'], ['2027-03-31', 'Rent (3 of 4)'], ['2027-04-30', 'Rent (4 of 4)'],
+  ]);
+  assert.deepEqual(expandFlows([{ date: '2027-08-31', amount: 1, every: 'half-year', times: 3 }]).map((r) => [r.date, r.label]), [
+    ['2027-08-31', '(1 of 3)'], ['2028-02-29', '(2 of 3)'], ['2028-08-31', '(3 of 3)'],
+  ]);
+  assert.deepEqual(expandFlows([{ date: '2027-01-15', amount: 1, every: 'quarter', times: 1, label: 'Once' }]), [
+    { date: '2027-01-15', amount: 1, label: 'Once' },
+  ]);
+  assert.deepEqual(expandFlows([{ date: '2027-01-15', amount: 1, every: 'year', times: 3 }]).map((r) => r.date), ['2027-01-15', '2028-01-15', '2029-01-15']);
+});
+
+test('an annuity: 12 monthly payments of 1,000 at 6% compounded monthly', () => {
+  // Monthly compounding with Act/365 isn't exactly the textbook annuity (months differ in length), so check
+  // against the same sum done directly
+  const r = presentValue({
+    valuation: '2027-01-01', rate: 6, compounding: 'monthly',
+    flows: [{ date: '2027-02-01', amount: 1000, label: 'Rent', every: 'month', times: 12 }],
+  });
+  assert.equal(r.rows.length, 12);
+  assert.equal(r.rows[11].label, 'Rent (12 of 12)');
+  const expected = r.rows.reduce((s, x) => s + 1000 * (1 + 0.005) ** (-12 * x.days / 365), 0);
+  assert.equal(r.total, Math.round(expected * 100) / 100);
+  assert.equal(r.futureTotal, 12000);
+});
+
+test('repeating cash flow errors name the input row', () => {
+  const base = { valuation: '2027-01-01', rate: 5 };
+  assert.throws(() => presentValue({ ...base, flows: [{ date: '2027-01-01', amount: 1 }, { date: '2027-01-01', amount: 1, every: 'month', times: 0 }] }), /Cash flow 2: the number of times/);
+  assert.throws(() => presentValue({ ...base, flows: [{ date: '2027-01-01', amount: 1, every: 'month', times: 1201 }] }), /1 to 1,200/);
+  assert.throws(() => presentValue({ ...base, flows: [{ date: '2027-01-01', amount: 1, every: 'week', times: 2 }] }), /unknown repeat/);
+});
+
+test('IRR: Microsoft\'s XIRR example gives 0.373362535', () => {
+  const flows = [['2008-01-01', -10000], ['2008-03-01', 2750], ['2008-10-30', 4250], ['2009-02-15', 3250], ['2009-04-01', 2750]]
+    .map(([date, amount]) => ({ date, amount }));
+  const { rate, roots } = solveRate({ valuation: '2008-01-01', flows });
+  assert.ok(Math.abs(rate - 37.3362535) < 1e-6, `${rate}`);
+  assert.equal(roots.length, 1);
+});
+
+test('IRR: the present value at the solved rate is zero, for every compounding and basis', () => {
+  const flows = [
+    { date: '2026-03-31', amount: -1_000_000, label: 'Buy' },
+    { date: '2026-06-30', amount: 15_000, every: 'quarter', times: 20, label: 'Coupon' },
+    { date: '2031-03-31', amount: 1_000_000, label: 'Redeem' },
+  ];
+  for (const compounding of PV_COMPOUNDING) {
+    for (const basis of PV_BASES) {
+      const { rate } = solveRate({ valuation: '2026-03-31', compounding, basis, flows });
+      const res = presentValue({ valuation: '2026-03-31', rate, compounding, basis, flows });
+      assert.ok(Object.is(res.total, 0), `${compounding} ${basis}: ${rate}% leaves ${res.total}`); // 0, never -0
+      assert.ok(rate > 5 && rate < 7, `${compounding} ${basis}: ${rate}`); // about 6% a year
+    }
+  }
+});
+
+test('IRR: more than one answer returns the one closest to 0%; no answer and one-sided flows are errors', () => {
+  // -100 now, +230 in a year, -132 in two: zero at 10% and at 20%
+  const flows = [['2026-01-01', -100], ['2027-01-01', 230], ['2028-01-01', -132]].map(([date, amount]) => ({ date, amount }));
+  const { rate, roots } = solveRate({ valuation: '2026-01-01', flows });
+  assert.ok(Math.abs(rate - 10) < 1e-9);
+  assert.deepEqual(roots.map((r) => Math.round(r * 1e6) / 1e6), [10, 20]);
+  assert.throws(() => solveRate({ valuation: '2026-01-01', flows: [{ date: '2027-01-01', amount: 5 }] }), /both money paid out/);
+  // Paying 100 to get back 1 a year later: below -99%
+  assert.throws(
+    () => solveRate({ valuation: '2026-01-01', flows: [{ date: '2026-01-01', amount: -100 }, { date: '2027-01-01', amount: 0.5 }] }),
+    /No rate from −99% to 1,000%/,
+  );
 });

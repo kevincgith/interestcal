@@ -1,5 +1,5 @@
 // Present value tab: valuation date, discount rate, compounding, day count basis and dated cash flows.
-import { presentValue, pvWorking } from './pv.js?v=__BUILD__';
+import { presentValue, pvWorking, solveRate, REPEAT_MONTHS, MAX_REPEATS } from './pv.js?v=__BUILD__';
 import { buildPvPdf, buildPvWorkbook, buildPvCsv } from './pv-export.js?v=__BUILD__';
 import { addMonths } from './calc.js?v=__BUILD__';
 import { CURRENCIES } from './interest-text.js?v=__BUILD__';
@@ -47,11 +47,15 @@ $('pCurrency').addEventListener('change', () => {
   document.querySelectorAll('#pFlowRows .pay-amount').forEach((el) => (el.placeholder = `Amount (${cur()})`));
 });
 
-// ---- Cash flow rows: date + amount (may be negative) + optional description ----
+// ---- Cash flow rows: date + amount (may be negative) + optional description; a repeating row also has how often
+// and how many times ----
 
-function addFlowRow(date = '', amount = '', label = '') {
+const REPEAT_NAMES = { month: 'month', quarter: 'quarter', 'half-year': 'half-year', year: 'year' };
+
+/** @param {{every: string, times: number} | null} [repeat]  a repeating row (every month by default when {}) */
+function addFlowRow(date = '', amount = '', label = '', repeat = null) {
   const r = document.createElement('div');
-  r.className = 'payment-row with-label';
+  r.className = repeat ? 'payment-row with-label repeat' : 'payment-row with-label';
   const d = Object.assign(document.createElement('input'), { type: 'date', className: 'pay-date', value: date });
   d.setAttribute('aria-label', 'Cash flow date');
   const a = Object.assign(document.createElement('input'), {
@@ -74,8 +78,38 @@ function addFlowRow(date = '', amount = '', label = '') {
     markStale();
   });
   r.append(d, a, l, remove);
+  if (repeat) r.append(repeatLine(d, repeat));
   $('pFlowRows').append(r);
   return r;
+}
+
+// "Every [month] for [12] times · last on 31-Dec-2027"
+function repeatLine(dateInput, { every = 'month', times = 12 }) {
+  const line = Object.assign(document.createElement('div'), { className: 'repeat-line' });
+  const sel = document.createElement('select');
+  sel.className = 'repeat-every';
+  sel.setAttribute('aria-label', 'Repeats every');
+  sel.append(...Object.entries(REPEAT_NAMES).map(([value, text]) => Object.assign(document.createElement('option'), { value, textContent: text })));
+  sel.value = every in REPEAT_MONTHS ? every : 'month';
+  const n = Object.assign(document.createElement('input'), {
+    type: 'text', className: 'repeat-times', inputMode: 'numeric', autocomplete: 'off', value: String(times),
+  });
+  n.setAttribute('aria-label', 'Number of times');
+  const lastOn = Object.assign(document.createElement('span'), { className: 'repeat-last' });
+  const update = () => {
+    const k = Number(n.value);
+    lastOn.textContent = isIsoDate(dateInput.value) && Number.isInteger(k) && k >= 1 && k <= MAX_REPEATS
+      ? `· last on ${fmtDate(addMonths(dateInput.value, (k - 1) * REPEAT_MONTHS[sel.value]))}`
+      : '';
+  };
+  for (const el of [sel, n, dateInput]) el.addEventListener('input', update);
+  sel.addEventListener('change', update);
+  // "for [12] times" stays together when the line wraps on a phone
+  const count = Object.assign(document.createElement('span'), { className: 'repeat-count' });
+  count.append('for', n, 'times');
+  line.append('Every', sel, count, lastOn);
+  update();
+  return line;
 }
 
 // Amounts may be negative; accept "−" (typographic minus) and accounting brackets, e.g. (5,000)
@@ -97,7 +131,15 @@ function readFlows() {
     if (!date || !raw || !Number.isFinite(amount) || amount === 0) {
       throw new Error(`Cash flow ${i + 1}: enter a date and an amount other than 0.`);
     }
-    out.push({ date, amount, label });
+    if (!r.classList.contains('repeat')) {
+      out.push({ date, amount, label });
+      return;
+    }
+    const times = Number(r.querySelector('.repeat-times').value.trim());
+    if (!Number.isInteger(times) || times < 1 || times > MAX_REPEATS) {
+      throw new Error(`Cash flow ${i + 1}: enter how many times, a whole number from 1 to ${MAX_REPEATS.toLocaleString('en')}.`);
+    }
+    out.push({ date, amount, label, every: r.querySelector('.repeat-every').value, times });
   });
   if (!out.length) throw new Error('Add at least one cash flow with a date and an amount.');
   return out;
@@ -124,16 +166,25 @@ $('pAddFlow').addEventListener('click', () => {
   addFlowRow().querySelector('.pay-date').focus();
   markStale();
 });
+$('pAddRepeat').addEventListener('click', () => {
+  addFlowRow('', '', '', {}).querySelector('.pay-date').focus();
+  markStale();
+});
+// Rate (IRR) finds the rate, so the rate box is only for Present value
+const solving = () => $('pSolve').value === 'irr';
+const showSolveFields = () => ($('pRateField').hidden = solving());
+$('pSolve').addEventListener('change', showSolveFields);
 
 // ---- Calculate ----
 
 function readInputs() {
   const valuation = $('pValuation').value;
   if (!isIsoDate(valuation)) throw new Error('Enter a valuation date.');
+  const solve = solving() ? 'irr' : 'pv';
   const rate = parseNumber($('pRate').value.replace(/[−–]/g, '-'));
-  if (!$('pRate').value.trim() || !Number.isFinite(rate)) throw new Error('Enter a discount rate, e.g. 5 for 5% p.a.');
+  if (solve === 'pv' && (!$('pRate').value.trim() || !Number.isFinite(rate))) throw new Error('Enter a discount rate, e.g. 5 for 5% p.a.');
   return {
-    valuation, rate, compounding: $('pCompounding').value, basis: $('pBasis').value,
+    solve, valuation, rate, compounding: $('pCompounding').value, basis: $('pBasis').value,
     currencyCode: $('pCurrency').value, flows: readFlows(),
   };
 }
@@ -143,7 +194,15 @@ $('pform').addEventListener('submit', (e) => {
   showError('');
   try {
     const inputs = readInputs();
-    last = { ...presentValue(inputs), inputs, currency: CURRENCIES[inputs.currencyCode] ?? 'HK$' };
+    let roots = null;
+    if (inputs.solve === 'irr') {
+      const found = solveRate(inputs);
+      inputs.rate = found.rate;
+      roots = found.roots;
+      // Switching back to Present value starts from the rate found
+      $('pRate').value = String(Number(found.rate.toFixed(6)));
+    }
+    last = { ...presentValue(inputs), inputs, roots, currency: CURRENCIES[inputs.currencyCode] ?? 'HK$' };
   } catch (err) {
     showError(err.message);
     return;
@@ -154,14 +213,26 @@ $('pform').addEventListener('submit', (e) => {
   setStale(false);
 });
 
+const isIrr = (res) => res.inputs.solve === 'irr';
 const rateLine = (res) =>
-  `Discounted at ${fmtRate(res.rate)} p.a., ${COMPOUNDING_NAMES[res.compounding]}, ${BASIS_NAMES[res.basis]}.`;
+  isIrr(res)
+    ? `Rate (IRR) ${fmtRate(res.rate)} p.a., ${COMPOUNDING_NAMES[res.compounding]}, ${BASIS_NAMES[res.basis]}: at this ` +
+      'rate the cash flows are worth zero on the valuation date.'
+    : `Discounted at ${fmtRate(res.rate)} p.a., ${COMPOUNDING_NAMES[res.compounding]}, ${BASIS_NAMES[res.basis]}.`;
 function beforeNote(res) {
   const n = res.rows.filter((x) => x.before).length;
   if (!n) return '';
   return `${n === 1 ? 'One cash flow is' : `${n} cash flows are`} dated before the valuation date, so ` +
     `${n === 1 ? 'it is' : 'they are'} grown forward to it at the same rate (discount factor above 1).`;
 }
+// Cash flows that switch between paid and received more than once can have more than one IRR
+function rootsNote(res) {
+  if (!(res.roots?.length > 1)) return '';
+  const list = res.roots.map((r) => fmtRate(r / 100));
+  return `More than one rate makes the cash flows worth zero (${list.slice(0, -1).join(', ')} and ${list.at(-1)} p.a.); ` +
+    'this shows the one closest to 0%. It can happen when the cash flows switch between paid and received more than once.';
+}
+const notes = (res) => [rootsNote(res), beforeNote(res)].filter(Boolean);
 const working = (res, x) => pvWorking(res, x, { money: signed, rate: fmtRate });
 
 function render(res) {
@@ -170,8 +241,10 @@ function render(res) {
   $('pFuture').textContent = withCur(res.futureTotal, c);
   $('pDiscount').textContent = withCur(res.discount, c);
   $('pValOut').textContent = fmtDate(res.valuation);
+  $('pIrrTile').hidden = !isIrr(res);
+  $('pIrr').textContent = isIrr(res) ? `${fmtRate(res.rate)} p.a.` : '';
   $('pRateLine').textContent = rateLine(res);
-  $('pWarn').textContent = beforeNote(res);
+  $('pWarn').textContent = notes(res).join(' ');
   $('pWarn').hidden = !$('pWarn').textContent;
 
   $('pRows').replaceChildren(
@@ -194,12 +267,18 @@ autoFitText($('pResults').querySelector('.summary'));
 
 function writeQuery(res) {
   const i = res.inputs;
-  const q = new URLSearchParams({ tab: 'pv', v: i.valuation, r: String(i.rate) });
+  const q = new URLSearchParams({ tab: 'pv', v: i.valuation });
+  if (i.solve === 'irr') q.set('s', 'irr');
+  else q.set('r', String(i.rate));
   if (i.compounding !== 'yearly') q.set('c', i.compounding);
   if (i.basis !== 'act/365') q.set('b', BASIS_KEYS[i.basis]);
   if (i.currencyCode !== 'HKD') q.set('cur', i.currencyCode);
   // One cf per cash flow: date,amount,description (the description may itself contain commas)
-  for (const f of i.flows) q.append('cf', [f.date, f.amount, f.label].join(',').replace(/,$/, ''));
+  // A repeating one: rf=date,amount,every,times,description
+  for (const f of i.flows) {
+    if (f.every) q.append('rf', [f.date, f.amount, f.every, f.times, f.label].join(',').replace(/,$/, ''));
+    else q.append('cf', [f.date, f.amount, f.label].join(',').replace(/,$/, ''));
+  }
   lastQuery = `?${q}`;
   if (activeTab() === 'pv') history.replaceState(null, '', `${location.pathname}${lastQuery}`);
 }
@@ -222,6 +301,15 @@ function readQuery() {
       any = true;
     }
   }
+  for (const rf of q.getAll('rf')) {
+    const [date, amount, every, times, ...label] = rf.split(',');
+    if (isIsoDate(date) && Number.isFinite(Number(amount)) && Number(amount) !== 0 && every in REPEAT_MONTHS) {
+      addFlowRow(date, Number(amount), label.join(','), { every, times: Number(times) || 12 });
+      any = true;
+    }
+  }
+  if (q.get('s') === 'irr') $('pSolve').value = 'irr';
+  showSolveFields();
   return any;
 }
 
@@ -238,6 +326,7 @@ $('pReset').addEventListener('click', () => {
   $('pform').reset();
   $('pCurrency').value = 'HKD';
   setDefaults();
+  showSolveFields();
   $('pResults').hidden = true;
   last = null;
   setStale(false);
@@ -254,13 +343,13 @@ const exportName = (res, ext) =>
 const CURRENCY_NAMES = { CNY: 'RMB' };
 const inputItems = (res) => [
   ['Valuation date', fmtDate(res.valuation)],
-  ['Discount rate', `${fmtRate(res.rate)} p.a.`],
+  isIrr(res) ? ['Rate (IRR)', `${fmtRate(res.rate)} p.a. (solved: the cash flows are worth zero)`] : ['Discount rate', `${fmtRate(res.rate)} p.a.`],
   ['Compounding', COMPOUNDING_NAMES[res.compounding].replace(/^./, (c) => c.toUpperCase())],
   ['Day count basis', BASIS_NAMES[res.basis]],
   ['Currency', `${CURRENCY_NAMES[res.inputs.currencyCode] ?? res.inputs.currencyCode} (${res.currency})`],
   ['Calculated on', fmtDate(todayIso())],
 ];
-const exportLines = (res) => [beforeNote(res)].filter(Boolean);
+const exportLines = (res) => notes(res);
 
 $('pPdf').addEventListener('click', () => {
   if (!last) return;
@@ -284,7 +373,9 @@ $('pXlsx').addEventListener('click', () => {
   busy($('pXlsx'), async () => {
     const XLSX = await loadXlsx();
     // The valuation date and rate are live cells at the top; the rest of the inputs follow as text
-    const wb = buildPvWorkbook(XLSX, res, { inputs: inputItems(res).slice(2), lines: exportLines(res) });
+    const wb = buildPvWorkbook(XLSX, res, {
+      inputs: inputItems(res).slice(2), lines: exportLines(res), rateLabel: isIrr(res) ? 'Rate (IRR, p.a.)' : undefined,
+    });
     const bytes = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), exportName(res, 'xlsx'));
   }, showError);
@@ -303,10 +394,12 @@ $('pCsv').addEventListener('click', () => {
 });
 
 $('pShare').addEventListener('click', () => copyLink(location.href, $('pShareStatus')));
-// e.g. "PV HK$952,380.95 · 1 cash flow at 5.000% · 05-Oct-2026"
+// e.g. "PV HK$952,380.95 · 1 cash flow at 5.000% · 05-Oct-2026" or "IRR 37.336253% · 5 cash flows · 01-Jan-2008"
+const flowCount = (res) => `${res.rows.length} cash flow${res.rows.length === 1 ? '' : 's'}`;
 const titleFor = (res) =>
-  `PV ${withCur(res.total, res.currency)} · ${res.rows.length} cash flow${res.rows.length === 1 ? '' : 's'} at ` +
-  `${fmtRate(res.rate)} · ${fmtDate(res.valuation)}`;
+  isIrr(res)
+    ? `IRR ${fmtRate(res.rate)} · ${flowCount(res)} · ${fmtDate(res.valuation)}`
+    : `PV ${withCur(res.total, res.currency)} · ${flowCount(res)} at ${fmtRate(res.rate)} · ${fmtDate(res.valuation)}`;
 $('pSave').addEventListener('click', () => {
   if (!last || !lastQuery) return;
   const ok = saveCalculation({ tab: 'pv', query: lastQuery, title: titleFor(last) });

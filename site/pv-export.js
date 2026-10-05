@@ -161,13 +161,14 @@ const COLS = ['Date', 'Description', 'Amount', 'Days', 'Years', 'Discount Factor
 /**
  * Excel: one "Present value" sheet with the inputs (the valuation date and the rate as cells every formula uses),
  * the totals as live SUM formulas and a row per cash flow with live days, years, discount factor and present value.
- * @param {object} ctx { inputs: [label, value][] (shown as text, after the two live cells), lines: string[] }
+ * @param {object} ctx { inputs: [label, value][] (shown as text, after the two live cells), lines: string[],
+ *   rateLabel?: string (e.g. "Rate (IRR, p.a.)") }
  */
 export function buildPvWorkbook(XLSX, res, ctx) {
   const rows = [[{ t: 's', v: 'HK Interest Calculator: Present value' }], [DISCLAIMER_WITH_TERMS], []];
   const valRow = rows.length + 1; // 1-based row of the valuation date
   rows.push(['Valuation date', { t: 'n', v: serial(res.valuation), z: DATE }]);
-  rows.push(['Discount rate (p.a.)', { t: 'n', v: res.rate, z: PCT }]);
+  rows.push([ctx.rateLabel ?? 'Discount rate (p.a.)', { t: 'n', v: res.rate, z: PCT }]);
   for (const [k, v] of ctx.inputs) rows.push([k, v]);
   rows.push([]);
   const summaryAt = rows.length;
