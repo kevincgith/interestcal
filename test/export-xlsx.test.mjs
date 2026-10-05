@@ -94,9 +94,9 @@ test('Excel export: daily interest row is a live formula', () => {
   const r = calculateInterest({ principal: 135436.48, start: '2025-11-24', end: '2026-04-20', rates: judgment });
   const { out, rows } = roundTrip(r, judgment, 'judgment');
   const calc = rows('Calculation');
-  const i = calc.findIndex((x) => String(x[0]).startsWith('Daily interest after end date'));
+  const i = calc.findIndex((x) => String(x[0]).startsWith('Daily interest thereafter'));
   assert.ok(i >= 0);
-  assert.equal(calc[i][0], 'Daily interest after end date (at 8.000% ÷ 365)');
+  assert.equal(calc[i][0], 'Daily interest thereafter (at 8.000% ÷ 365)');
   const cell = out.Sheets.Calculation[`B${i + 1}`];
   assert.match(cell.f, /^\$B\$\d+\*0\.08\/365$/);
   assert.ok(Math.abs(cell.v - (135436.48 * 0.08) / 365) < 1e-9);

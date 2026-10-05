@@ -207,10 +207,10 @@ export function buildWorkbook(XLSX, r, ctx) {
   const owed = withEvents ? `B${totalAt('Outstanding principal')}` : P;
   set('perDiem', r.perDiem
     ? [
-        `Daily interest after end date (at ${(r.perDiem.rate * 100).toFixed(3)}% ÷ ${r.perDiem.yearDays})`,
+        `Daily interest thereafter (at ${(r.perDiem.rate * 100).toFixed(3)}% ÷ ${r.perDiem.yearDays})`,
         formula(`${owed}*${tidy(r.perDiem.rate)}/${r.perDiem.yearDays}`, r.perDiem.amount, MONEY),
       ]
-    : ['Daily interest after end date', '–']);
+    : ['Daily interest thereafter', '–']);
 
   const widths = [34, 44, 12, ...(withEvents ? [14] : []), ...(withSpread ? [12, 10] : []), 14, 11, 40, 16, ...(hasNotes ? [34] : [])];
   const calc = sheetFrom(XLSX, rows, widths);

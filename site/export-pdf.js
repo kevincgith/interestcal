@@ -131,7 +131,7 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
     headStyles: { fillColor: false, textColor: MUTED, fontStyle: 'normal', fontSize: 8, lineWidth: 0 },
     bodyStyles: { fontStyle: 'bold', fontSize: 13, lineWidth: { bottom: 0.75 } },
   });
-  if (ctx.perDiem) linkedLine({ text: `Daily interest after end date: ${ctx.currency ?? 'HK$'}${ctx.perDiem}` });
+  if (ctx.perDiem) linkedLine({ text: `Daily interest thereafter: ${ctx.currency ?? 'HK$'}${ctx.perDiem}` });
   if (ctx.summaryLine) linkedLine(ctx.summaryLine);
   if (ctx.compareLine) linkedLine({ text: ctx.compareLine });
 
