@@ -98,26 +98,25 @@ function updateHints() {
   const small = prime?.rates?.[0];
   const p = small && Number.isFinite(pc.premium) ? { ...small, rate: small.rate + pc.premium } : null;
   let hint = '';
-  // Which P, in words: "small P", "big P" or "P, where P = small P + 0.375%"
-  const pWords = pc.kind === 'small' ? 'small P' : pc.kind === 'big' ? 'big P' : 'P';
-  const pNote = pc.kind === 'other' ? `, where P = small P + ${pct(pc.premium)}` : '';
+  // P in words, and its working today: "small P" (5.000%), "big P (small P + 0.25%)" or "P (small P + 0.375%)",
+  // then "now 5.000% + 0.375% − 1.75% = 5.375% − 1.75% = 3.625%"
+  const pWords = pc.kind === 'small' ? 'small P' : `${pc.kind === 'big' ? 'big P' : 'P'} (small P + ${pct(pc.premium)})`;
+  const pWorking = (minus) => (pc.kind === 'small'
+    ? `now ${rate3(small.rate / 100)} − ${pct(minus)} = ${rate3((p.rate - minus) / 100)}`
+    : `now ${rate3(small.rate / 100)} + ${pct(pc.premium)} − ${pct(minus)} = ${rate3(p.rate / 100)} − ${pct(minus)} = ${rate3((p.rate - minus) / 100)}`);
   if (type === 'prime' && p) {
-    // "Rate: big P − 1.75% (3.500% today)."
+    // "Rate = big P (small P + 0.25%) − 1.75% (now 5.000% + 0.25% − 1.75% = 5.250% − 1.75% = 3.500%)."
     const d = parseNumber($('mDiscount').value);
-    if (Number.isFinite(d)) hint = `Rate: ${pWords} − ${pct(d)}${pNote} (${rate3((p.rate - d) / 100)} today).`;
+    if (Number.isFinite(d)) hint = `Rate = ${pWords} − ${pct(d)} (${pWorking(d)}).`;
   } else if (type === 'hibor' && p) {
-    // "Rate: 1-month HIBOR + 1.30%, capped at small P − 1.75% (cap 3.250% today). It resets at every monthly due date,
-    // using the actual 1-month HIBOR fixing up to 02-Oct-2026, then the current HIBOR above (2.96839%)."
+    // "Rate = the lower of 1-month HIBOR + 1.30% (now 2.96839% + 1.30% = 4.26839%) and small P − 1.75%
+    // (now 5.000% − 1.75% = 3.250%), reset at every monthly due date."
     const [h, m, c] = ['mHibor', 'mMargin', 'mCap'].map((id) => parseNumber($(id).value));
     if ([h, m, c].every(Number.isFinite)) {
       const name = TENOR_NAME[currentTenor()];
-      const hist = hibor[currentTenor()]?.rates;
-      const hiborText = `${Number(h.toFixed(5))}%`;
-      hint = `Rate: ${name} HIBOR + ${pct(m)}, capped at ${pWords} − ${pct(c)}${pNote} (cap ${rate3((p.rate - c) / 100)} today). ` +
-        (hist?.length
-          ? `It resets at every monthly due date, using the actual ${name} HIBOR fixing up to ${fmtDate(hist[0].effective)}, ` +
-            `then the current HIBOR above (${hiborText}).`
-          : `It resets at every monthly due date, using the current HIBOR above (${hiborText}); no HIBOR history is loaded.`);
+      const exact = (n) => `${Number(n.toFixed(5))}%`; // HIBOR as fixed, up to 5 decimals
+      hint = `Rate = the lower of ${name} HIBOR + ${pct(m)} (now ${exact(h)} + ${pct(m)} = ${exact(h + m)}) ` +
+        `and ${pWords} − ${pct(c)} (${pWorking(c)}), reset at every monthly due date.`;
     }
   }
   $('mRateHint').textContent = hint;
