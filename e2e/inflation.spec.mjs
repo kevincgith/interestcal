@@ -13,12 +13,13 @@ const fmt = (n) => n.toLocaleString('en', { minimumFractionDigits: 2, maximumFra
 test('inflation: HK$100 in 2000 is worth ... now, worked out as you type', async ({ page }) => {
   await page.goto('?');
   await page.getByRole('tab', { name: 'Inflation' }).click();
-  await expect(page).toHaveURL(/tab=inflation&a=100&f=2000&t=now/);
+  await expect(page).toHaveURL(/tab=inflation&a=100&in=2000&w=now/);
   await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * latest.index) / yearIndex(2000))}`);
   await expect(page.locator('#iValueLabel')).toHaveText(`Worth now (${monthNameOf(latest.month)})`);
   await expect(page.locator('#iSentence')).toContainText('Prices rose');
   await expect(page.locator('#iSentence')).toContainText('since 2000');
-  await expect(page.locator('#iToMonth')).toBeHidden(); // "Now" has no month to pick
+  await expect(page.locator('#iWorthMonth')).toBeHidden(); // "Now" has no month to pick
+  await expect(page.locator('[data-dir]')).toHaveCount(0); // no direction switch: the two fields say it
 
   // No Calculate button: typing updates it
   await page.locator('#iAmount').fill('250');
@@ -26,36 +27,48 @@ test('inflation: HK$100 in 2000 is worth ... now, worked out as you type', async
   await expect(page).toHaveURL(/a=250/);
 });
 
-test('inflation pickers: a year and a month on each side, months with no figures greyed out', async ({ page }) => {
+test('inflation the other way: HK$100 now was worth ... in 2000, just by picking the times', async ({ page }) => {
   await page.goto('?tab=inflation');
-  await page.locator('#iFromYear').selectOption('2010');
-  await page.locator('#iFromMonth').selectOption('03');
-  await page.locator('#iToYear').selectOption('2020');
-  await page.locator('#iToMonth').selectOption('03');
-  await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * monthIndex('2020-03')) / monthIndex('2010-03'))}`);
-  await expect(page).toHaveURL(/f=2010-03&t=2020-03/);
-
-  // 1980: only Oct to Dec; the latest year: no "full year" yet, nothing after the latest month
-  await page.locator('#iFromYear').selectOption('1980');
-  await expect(page.locator('#iFromMonth')).toHaveValue('10');
-  await expect(page.locator('#iFromMonth option[value="09"]')).toHaveJSProperty('disabled', true);
-  await expect(page.locator('#iFromMonth option[value="year"]')).toHaveJSProperty('disabled', true);
-  await page.locator('#iFromYear').selectOption(latest.month.slice(0, 4));
-  await expect(page.locator('#iFromMonth option[value="year"]')).toHaveJSProperty('disabled', true);
+  await page.locator('#iInYear').selectOption('now');
+  await page.locator('#iWorthYear').selectOption('2000');
+  await expect(page.locator('#iValueLabel')).toHaveText('Worth in 2000');
+  await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * yearIndex(2000)) / latest.index)}`);
+  await expect(page.locator('#iSentence')).toContainText(`had the same buying power as HK$${fmt((100 * yearIndex(2000)) / latest.index)} in 2000`);
+  await expect(page).toHaveURL(/in=now&w=2000/);
+  await page.reload();
+  await expect(page.locator('#iInYear')).toHaveValue('now');
+  await expect(page.locator('#iValueLabel')).toHaveText('Worth in 2000');
+  // Links made with the old switch still open the right way round
+  await page.goto('?tab=inflation&a=100&f=2000&t=now&d=back');
+  await expect(page.locator('#iInYear')).toHaveValue('now');
+  await expect(page.locator('#iWorthYear')).toHaveValue('2000');
 });
 
-test('inflation: “from” has to come before “to”; earlier “to” choices are greyed out', async ({ page }) => {
-  await page.goto('?tab=inflation&a=100&f=2010&t=2020');
-  await expect(page.locator('#iToYear option[value="2009"]')).toHaveJSProperty('disabled', true);
-  await expect(page.locator('#iToYear option[value="2010"]')).toHaveJSProperty('disabled', true); // nothing in 2010 is after all of 2010
-  await expect(page.locator('#iToYear option[value="2011"]')).toHaveJSProperty('disabled', false);
-  // Moving "from" past "to" moves "to" to now
-  await page.locator('#iFromYear').selectOption('2022');
-  await expect(page.locator('#iToYear')).toHaveValue('now');
+test('inflation pickers: a year and a month on each side, months with no figures greyed out', async ({ page }) => {
+  await page.goto('?tab=inflation');
+  await page.locator('#iInYear').selectOption('2010');
+  await page.locator('#iInMonth').selectOption('03');
+  await page.locator('#iWorthYear').selectOption('2020');
+  await page.locator('#iWorthMonth').selectOption('03');
+  await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * monthIndex('2020-03')) / monthIndex('2010-03'))}`);
+  await expect(page).toHaveURL(/in=2010-03&w=2020-03/);
+
+  // 1980: only Oct to Dec; the latest year: no "full year" yet
+  await page.locator('#iInYear').selectOption('1980');
+  await expect(page.locator('#iInMonth')).toHaveValue('10');
+  await expect(page.locator('#iInMonth option[value="09"]')).toHaveJSProperty('disabled', true);
+  await expect(page.locator('#iInMonth option[value="year"]')).toHaveJSProperty('disabled', true);
+  await page.locator('#iInYear').selectOption(latest.month.slice(0, 4));
+  await expect(page.locator('#iInMonth option[value="year"]')).toHaveJSProperty('disabled', true);
+});
+
+test('inflation: the same time on both sides asks for two different times', async ({ page }) => {
+  await page.goto('?tab=inflation&a=100&in=2010&w=2010-03');
+  await expect(page.locator('#iError')).toHaveText('Pick two different times: 2010 and Mar 2010 overlap.');
+  await expect(page.locator('#iResults')).toBeHidden();
+  await page.locator('#iWorthYear').selectOption('2015');
   await expect(page.locator('#iError')).toBeHidden();
-  // A link that goes backwards explains itself
-  await page.goto('?tab=inflation&a=100&f=2020&t=2010');
-  await expect(page.locator('#iToYear')).toHaveValue('now'); // 2010 isn't allowed after 2020
+  await expect(page.locator('#iResults')).toBeVisible();
 });
 
 test('price level chart: rebased so the chosen start month = 100', async ({ page }) => {
@@ -70,7 +83,7 @@ test('price level chart: rebased so the chosen start month = 100', async ({ page
 });
 
 test('inflation history tables, chart and source; save and recent', async ({ page }) => {
-  await page.goto('?tab=inflation&a=100&f=2000&t=2025');
+  await page.goto('?tab=inflation&a=100&in=2000&w=2025');
   await expect(page.locator('#iYears tr')).toHaveCount(cpi.yearly.length);
   await expect(page.locator('#iMonths tr')).toHaveCount(cpi.monthly.length);
   await expect(page.locator('#iChart svg')).toBeVisible();
@@ -81,23 +94,7 @@ test('inflation history tables, chart and source; save and recent', async ({ pag
   await page.locator('#iSave').click();
   await expect(page.locator('#savedList .saved-name').first()).toHaveValue(/^HK\$200\.00 in 2000 = HK\$[\d,.]+ in 2025$/);
   await page.locator('#iReset').click();
-  await expect(page).toHaveURL(/f=2000&t=now/);
-});
-
-test('now -> then: HK$100 now was worth ... in 2000; the link keeps the direction', async ({ page }) => {
-  await page.goto('?tab=inflation');
-  await page.getByRole('button', { name: 'Now → then' }).click();
-  await expect(page.locator('#iValueLabel')).toHaveText('Worth in 2000');
-  await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * yearIndex(2000)) / latest.index)}`);
-  await expect(page.locator('#iSlot1 #iToYear')).toHaveValue('now'); // the amount's picker comes first
-  await expect(page.locator('#iSlot2 #iFromYear')).toHaveValue('2000');
-  await expect(page).toHaveURL(/f=2000&t=now&d=back/);
-  await page.reload();
-  await expect(page.getByRole('button', { name: 'Now → then' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('#iSentence')).toContainText(`had the same buying power as HK$${fmt((100 * yearIndex(2000)) / latest.index)} in 2000`);
-  await page.getByRole('button', { name: 'Then → now' }).click();
-  await expect(page.locator('#iValueLabel')).toHaveText(/^Worth now/);
-  await expect(page).not.toHaveURL(/d=back/);
+  await expect(page).toHaveURL(/in=2000&w=now/);
 });
 
 test('the rates strip, at the top of the open tab, shows only the rates that tab uses', async ({ page }) => {

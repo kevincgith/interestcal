@@ -1,5 +1,5 @@
-// Inflation tab: "HK$ [100] in [2000] [full year] is worth HK$156.28 [Now]" or the other way, "HK$ [100] [Now] was
-// worth HK$63.99 in [2000]", worked out as you type, by the HK
+// Inflation tab: an amount In one time (a year, a month or now) and what it's Worth in another, either way round
+// (HK$100 in 2000 is worth HK$156.28 now; HK$100 now was worth HK$63.99 in 2000), worked out as you type, by the HK
 // Composite CPI, plus the yearly and monthly inflation history (C&SD table 510-60001, refreshed daily into cpi.json).
 import { adjustForInflation, cpiPoint, isBefore, monthName } from './inflation.js?v=__BUILD__';
 import { renderRateChart } from './rate-chart.js?v=__BUILD__';
@@ -22,8 +22,9 @@ function showError(msg) {
   $('iError').hidden = !msg;
 }
 
-// ---- Pickers: a year list ("Now" first on the "to" side) and a month list ("full year" or a month) ----
-// The value of each side: "now", a year ("2000") or a month ("2000-01")
+// ---- Pickers: "In" (the amount's time) and "Worth in" (the answer's), each a year list (Now first) and a month list
+// ("full year" or a month). Either can be the earlier one: the direction comes from the two choices.
+// The value of each: "now", a year ("2000") or a month ("2000-01").
 
 const side = (s) => ({ year: $(`i${s}Year`), month: $(`i${s}Month`) });
 function valueOf(s) {
@@ -50,83 +51,44 @@ const exists = (w) => {
     return false;
   }
 };
-const after = (from, to) => {
-  try {
-    return isBefore(cpiPoint(cpi, from), cpiPoint(cpi, to));
-  } catch {
-    return false;
-  }
-};
 
-// Grey out months with no figures (and, on the "to" side, anything not after "from"); keep a valid choice
+// Grey out months with no figures; keep a valid choice ("Now" has no month)
 function refreshMonths(s) {
   const { year, month } = side(s);
   month.hidden = year.value === 'now';
   if (year.value === 'now') return;
-  const ok = (m) => exists(m === 'year' ? year.value : `${year.value}-${m}`) &&
-    (s === 'From' || after(valueOf('From'), m === 'year' ? year.value : `${year.value}-${m}`));
-  for (const opt of month.options) opt.disabled = !ok(opt.value);
+  for (const opt of month.options) opt.disabled = !exists(opt.value === 'year' ? year.value : `${year.value}-${opt.value}`);
   if (month.selectedOptions[0]?.disabled) {
     const firstOk = [...month.options].find((o) => !o.disabled);
     if (firstOk) month.value = firstOk.value;
   }
 }
-// On the "to" side, years with nothing after "from" are greyed out, and so is "Now" if "from" is the latest month
-function refreshTo() {
-  const from = valueOf('From');
-  const { year } = side('To');
-  for (const opt of year.options) {
-    const y = opt.value;
-    opt.disabled = y === 'now'
-      ? !after(from, 'now')
-      : !['year', ...MONTH_NAMES.map((_, i) => String(i + 1).padStart(2, '0'))].some((m) => {
-        const w = m === 'year' ? y : `${y}-${m}`;
-        return exists(w) && after(from, w);
-      });
-  }
-  if (year.selectedOptions[0]?.disabled) year.value = 'now'; // "to" moved before "from": jump to now
-  refreshMonths('To');
-}
 
 function fillPickers() {
   const latest = cpi.monthly.at(-1).month;
   const firstYear = Number(cpi.monthly[0].month.slice(0, 4));
+  const opt = (value, text) => Object.assign(document.createElement('option'), { value, textContent: text });
   const years = [];
   for (let y = Number(latest.slice(0, 4)); y >= firstYear; y--) years.push(String(y));
-  const opt = (value, text) => Object.assign(document.createElement('option'), { value, textContent: text });
-  $('iFromYear').replaceChildren(...years.map((y) => opt(y, y)));
-  $('iToYear').replaceChildren(opt('now', `Now (${monthName(latest)})`), ...years.map((y) => opt(y, y)));
-  for (const s of ['From', 'To']) {
+  for (const s of ['In', 'Worth']) {
+    side(s).year.replaceChildren(opt('now', `Now (${monthName(latest)})`), ...years.map((y) => opt(y, y)));
     side(s).month.replaceChildren(opt('year', 'full year'), ...MONTH_NAMES.map((n, i) => opt(String(i + 1).padStart(2, '0'), n)));
   }
 }
-
-// ---- Which way: then -> now (the amount at the earlier time) or now -> then (the amount at the later time) ----
-// The earlier and later pickers swap between "In" (the amount's time) and "Worth in" (the answer's).
-
-let back = false;
-function placePickers() {
-  $('iSlot1').append(back ? $('iToPick') : $('iFromPick'));
-  $('iSlot2').append(back ? $('iFromPick') : $('iToPick'));
-  document.querySelectorAll('[data-dir]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.dir === 'back') === back)));
-}
-document.querySelectorAll('[data-dir]').forEach((b) =>
-  b.addEventListener('click', () => {
-    back = b.dataset.dir === 'back';
-    placePickers();
-    calculate({ record: true });
-  }),
-);
 
 // ---- Calculate as you type ----
 
 function calculate({ record = false } = {}) {
   showError('');
-  placePickers();
   const amount = parseNumber($('iAmount').value);
   try {
     if (!$('iAmount').value.trim() || !Number.isFinite(amount)) throw new Error('Enter an amount, e.g. 100.');
-    last = adjustForInflation(cpi, { amount, from: valueOf('From'), to: valueOf('To'), back });
+    const [at, worth] = [valueOf('In'), valueOf('Worth')];
+    const [a, b] = [cpiPoint(cpi, at), cpiPoint(cpi, worth)];
+    // The calculation runs earlier -> later; "back" when the amount is at the later time
+    if (isBefore(a, b)) last = adjustForInflation(cpi, { amount, from: at, to: worth });
+    else if (isBefore(b, a)) last = adjustForInflation(cpi, { amount, from: worth, to: at, back: true });
+    else throw new Error(`Pick two different times: ${a.label} and ${b.label} overlap.`);
   } catch (err) {
     last = null;
     $('iResults').hidden = true;
@@ -145,20 +107,13 @@ function scheduleRecent() {
   recentTimer = setTimeout(() => last && recordRecent({ tab: 'inflation', query: lastQuery, title: titleFor(last) }), 1500);
 }
 
-$('iFromYear').addEventListener('change', () => {
-  refreshMonths('From');
-  refreshTo();
-  calculate({ record: true });
-});
-$('iFromMonth').addEventListener('change', () => {
-  refreshTo();
-  calculate({ record: true });
-});
-$('iToYear').addEventListener('change', () => {
-  refreshMonths('To');
-  calculate({ record: true });
-});
-$('iToMonth').addEventListener('change', () => calculate({ record: true }));
+for (const s of ['In', 'Worth']) {
+  side(s).year.addEventListener('change', () => {
+    refreshMonths(s);
+    calculate({ record: true });
+  });
+  side(s).month.addEventListener('change', () => calculate({ record: true }));
+}
 $('iAmount').addEventListener('input', () => calculate({ record: true }));
 $('iAmount').addEventListener('blur', () => {
   const n = parseNumber($('iAmount').value);
@@ -170,36 +125,35 @@ const yearsText = (y) => {
   const r = Math.round(y * 10) / 10;
   return `${r % 1 ? r.toFixed(1) : r} year${r === 1 ? '' : 's'}`;
 };
-// "since 2000" / "since Jan 2000"; the "to" end only when it isn't now
-const sinceText = (r) => `${r.toPoint.key === cpi.monthly.at(-1).month && r.to === 'now' ? 'since' : 'from'} ${r.fromPoint.label}` +
-  `${r.to === 'now' ? '' : ` to ${r.toPoint.label}`}`;
+// "in 2000" / "now (Aug 2026)"
+const at = (p, w) => (w === 'now' ? p.label : `in ${p.label}`);
+// The amount's end and the answer's end
+const ends = (r) => (r.back
+  ? { amountAt: at(r.toPoint, r.to), answerAt: at(r.fromPoint, r.from) }
+  : { amountAt: at(r.fromPoint, r.from), answerAt: at(r.toPoint, r.to) });
+// "since 2000" (to now) or "from 2000 to 2020"
+const spanText = (r) => (r.to === 'now' ? `since ${r.fromPoint.label}` : `from ${r.fromPoint.label} to ${r.toPoint.label}`);
 
 function render(r) {
-  const answerAt = r.back ? r.fromPoint : r.toPoint;
-  $('iValueLabel').textContent = (r.back ? r.from : r.to) === 'now' ? `Worth ${answerAt.label}` : `Worth in ${answerAt.label}`;
+  const { amountAt, answerAt } = ends(r);
+  $('iValueLabel').textContent = `Worth ${answerAt}`;
   $('iValue').textContent = `HK$${money.format(r.value)}`;
   $('iChange').textContent = pct(r.change);
   $('iAnnual').textContent = `${pct(r.annual, 2)} a year`;
   $('iIndex').textContent = `${r.fromIndex} → ${r.toIndex}`;
-  // "in 2000" / "now (Aug 2026)"
-  const at = (p, w) => (w === 'now' ? p.label : `in ${p.label}`);
-  const [first, second] = r.back
-    ? [`HK$${money.format(r.amount)} ${at(r.toPoint, r.to)}`, `HK$${money.format(r.value)} ${at(r.fromPoint, r.from)}`]
-    : [`HK$${money.format(r.amount)} ${at(r.fromPoint, r.from)}`, `HK$${money.format(r.value)} ${at(r.toPoint, r.to)}`];
   $('iSentence').textContent =
-    `${first} had the same buying power as ${second}. Prices ${r.change >= 0 ? 'rose' : 'fell'} ` +
-    `${Math.abs(r.change * 100).toFixed(1)}% ${sinceText(r)}, about ${Math.abs(r.annual * 100).toFixed(1)}% a year over ` +
-    `${yearsText(r.years)} (Composite CPI ${r.fromIndex} and ${r.toIndex}, ${cpi.base}; a full year is C&SD’s average ` +
-    'for the year, counted from its middle).';
+    `HK$${money.format(r.amount)} ${amountAt} had the same buying power as HK$${money.format(r.value)} ${answerAt}. ` +
+    `Prices ${r.change >= 0 ? 'rose' : 'fell'} ${Math.abs(r.change * 100).toFixed(1)}% ${spanText(r)}, about ` +
+    `${Math.abs(r.annual * 100).toFixed(1)}% a year over ${yearsText(r.years)} (Composite CPI ${r.fromIndex} and ${r.toIndex}, ` +
+    `${cpi.base}; a full year is C&SD’s average for the year, counted from its middle).`;
   $('iResults').hidden = false;
 }
 autoFitText($('iResults').querySelector('.summary'));
 
-// ---- Link: ?tab=inflation&a=100&f=2000&t=now; f / t: a year, a month (2000-01) or now (the latest month) ----
+// ---- Link: ?tab=inflation&a=100&in=2000&w=now; in / w: a year, a month (2000-01) or now (the latest month) ----
 
 function writeQuery(r) {
-  const q = new URLSearchParams({ tab: 'inflation', a: String(r.amount), f: String(r.from), t: String(r.to) });
-  if (r.back) q.set('d', 'back');
+  const q = new URLSearchParams({ tab: 'inflation', a: String(r.amount), in: valueOf('In'), w: valueOf('Worth') });
   lastQuery = `?${q}`;
   if (activeTab() === 'inflation') history.replaceState(null, '', `${location.pathname}${lastQuery}`);
 }
@@ -208,19 +162,18 @@ function readQuery() {
   const q = new URLSearchParams(location.search);
   if (q.get('tab') !== 'inflation') return;
   if (q.has('a') && Number.isFinite(Number(q.get('a')))) $('iAmount').value = money.format(Number(q.get('a')));
-  const ok = (w) => w === 'now' || /^\d{4}(-\d{2})?$/.test(w ?? '');
-  if (ok(q.get('f')) && q.get('f') !== 'now' && exists(q.get('f'))) setValue('From', q.get('f'));
-  if (ok(q.get('t')) && exists(q.get('t'))) setValue('To', q.get('t'));
-  back = q.get('d') === 'back';
-  refreshTo();
+  // Older links: f / t in time order, d=back when the amount was at t
+  let [inAt, worth] = [q.get('in'), q.get('w')];
+  if (!q.has('in') && q.has('f')) [inAt, worth] = q.get('d') === 'back' ? [q.get('t'), q.get('f')] : [q.get('f'), q.get('t')];
+  const ok = (w) => (w === 'now' || /^\d{4}(-\d{2})?$/.test(w ?? '')) && exists(w);
+  if (ok(inAt)) setValue('In', inAt);
+  if (ok(worth)) setValue('Worth', worth);
 }
 
-// e.g. "HK$100.00 in 2000 = HK$156.28 now (Aug 2026)", or the other way: "HK$100.00 now (Aug 2026) = HK$63.99 in 2000"
+// e.g. "HK$100.00 in 2000 = HK$156.28 now (Aug 2026)", or "HK$100.00 now (Aug 2026) = HK$63.99 in 2000"
 const titleFor = (r) => {
-  const at = (p, w) => (w === 'now' ? p.label : `in ${p.label}`);
-  return r.back
-    ? `HK$${money.format(r.amount)} ${at(r.toPoint, r.to)} = HK$${money.format(r.value)} ${at(r.fromPoint, r.from)}`
-    : `HK$${money.format(r.amount)} ${at(r.fromPoint, r.from)} = HK$${money.format(r.value)} ${at(r.toPoint, r.to)}`;
+  const { amountAt, answerAt } = ends(r);
+  return `HK$${money.format(r.amount)} ${amountAt} = HK$${money.format(r.value)} ${answerAt}`;
 };
 $('iShare').addEventListener('click', () => copyLink(location.href, $('iShareStatus')));
 $('iSave').addEventListener('click', () => {
@@ -229,14 +182,12 @@ $('iSave').addEventListener('click', () => {
   flash($('iShareStatus'), ok ? 'Saved below' : 'This browser won’t save data here');
 });
 
-// ---- Defaults: HK$100 in 2000, now ----
+// ---- Defaults: HK$100 in 2000, worth now ----
 
 function setDefaults() {
   $('iAmount').value = '100.00';
-  back = false;
-  setValue('From', '2000');
-  setValue('To', 'now');
-  refreshTo();
+  setValue('In', '2000');
+  setValue('Worth', 'now');
 }
 $('iReset').addEventListener('click', () => {
   setDefaults();

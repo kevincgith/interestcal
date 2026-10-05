@@ -405,10 +405,8 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1p
 #tResults.stale > :not(.stale-note) { opacity: 0.45; }
 .summary .answer { border-color: var(--accent); }
 .summary dd small { display: block; font-size: 0.8rem; font-weight: normal; color: var(--muted); margin-top: 2px; }
-/* Inflation tab: "In" and "Worth in" are a year and a month side by side ("Now" has no month); the two pairs
-   swap places for Now -> then (inflation-app.js) */
-.i-slot, .i-pick { display: flex; gap: 8px; min-width: 0; }
-.i-slot > .i-pick { flex: 1; }
+/* Inflation tab: "In" and "Worth in" are each a year and a month side by side ("Now" has no month) */
+.i-pick { display: flex; gap: 8px; min-width: 0; }
 .i-pick select { flex: 1; min-width: 0; }
 .i-rebase { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .i-rebase select { width: auto; }
