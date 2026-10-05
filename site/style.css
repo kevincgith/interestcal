@@ -313,4 +313,4 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 
 /* Daily interest under Actual/Actual: one line per year length */
 .per-diem-line { display: block; white-space: nowrap; }
-.per-diem-basis { font-size: 0.8rem; font-weight: normal; color: var(--muted); }
+.per-diem-basis { font-size: 0.58em; /* relative to the figure, so shrink-to-fit scales it too */ font-weight: normal; color: var(--muted); }
