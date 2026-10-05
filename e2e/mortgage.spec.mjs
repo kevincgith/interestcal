@@ -54,7 +54,7 @@ test('HIBOR-based: the lower of H + margin and P - cap; future resets use the en
 
 test('HIBOR-based over past dates uses actual fixings', async ({ page }) => {
   await page.goto('?tab=mortgage&mt=hibor&mg=1.3&cap=1.75&price=8000000&ltv=70&yrs=30&from=2025-01-15');
-  await expect(page.locator('#mRateHint')).toContainText('Past resets use actual 1-month HIBOR fixings (HKMA');
+  await expect(page.locator('#mRateHint')).toContainText('using the actual 1-month HIBOR fixing up to');
   // Rates vary month to month in the past, then settle at the future assumption
   const rates = await page.locator('#mSchedule tr td:nth-child(3)').allTextContents();
   expect(new Set(rates.slice(0, 18)).size).toBeGreaterThan(1);
@@ -132,7 +132,7 @@ test('3-month HIBOR still resets at every monthly due date, using 3-month fixing
   const firstRates = async () => (await page.locator('#mSchedule tr td:nth-child(3)').allTextContents()).slice(0, 12);
   await page.goto(url('&ht=3m'));
   await expect(page.locator('#mRateHint')).toContainText('3-month HIBOR');
-  await expect(page.locator('#mRateHint')).toContainText('reset at every monthly due date');
+  await expect(page.locator('#mRateHint')).toContainText('resets at every monthly due date');
   const threeM = await firstRates();
   // The rate can change from one month to the next (not only every third month)
   const changes = threeM.slice(1).filter((r, i) => r !== threeM[i]).length;
@@ -314,11 +314,11 @@ test('Prime (P): big P and another bank’s P sit above small P; the discount an
   await expect(page.locator('#mPrimeKind')).toHaveValue('small');
   await expect(page.locator('#mSchedule tr').first()).toBeVisible();
   const small = await firstRate();
-  await expect(page.locator('#mRateHint')).toContainText('Small P');
+  await expect(page.locator('#mRateHint')).toContainText('Rate: small P − 1.75%');
 
   await page.locator('#mPrimeKind').selectOption('big');
   await expect(page.locator('#mPrimeExtraField')).toBeHidden();
-  await expect(page.locator('#mRateHint')).toContainText('Big P');
+  await expect(page.locator('#mRateHint')).toContainText('Rate: big P − 1.75%');
   await page.locator('#mform button[type="submit"]').click();
   await expect(page).toHaveURL(/pk=big/);
   await expect.poll(firstRate).toBeCloseTo(small + 0.25, 6);
@@ -329,6 +329,7 @@ test('Prime (P): big P and another bank’s P sit above small P; the discount an
   await page.locator('#mPrimeExtra').fill('0.5');
   await page.locator('#mform button[type="submit"]').click();
   await expect(page).toHaveURL(/pk=other%3A0\.5/);
+  await expect(page.locator('#mRateHint')).toContainText('Rate: P − 1.75%, where P = small P + 0.50%');
   await expect.poll(firstRate).toBeCloseTo(small + 0.5, 6);
 
   // The link reopens with the choice
@@ -339,7 +340,7 @@ test('Prime (P): big P and another bank’s P sit above small P; the discount an
   // HIBOR plan: the cap uses big P (a high HIBOR, so the cap applies)
   await page.goto('?tab=mortgage&mt=hibor&h=9&mg=1.3&cap=1.75&price=5000000&ltv=60&yrs=20&from=2035-01-15&pk=big');
   await expect(page.locator('#mSchedule tr').first()).toBeVisible();
-  await expect(page.locator('#mRateHint')).toContainText('Big P − 1.75%');
+  await expect(page.locator('#mRateHint')).toContainText('capped at big P − 1.75%');
   const capBig = await firstRate();
   await page.goto('?tab=mortgage&mt=hibor&h=9&mg=1.3&cap=1.75&price=5000000&ltv=60&yrs=20&from=2035-01-15');
   await expect(page.locator('#mSchedule tr').first()).toBeVisible();

@@ -98,19 +98,26 @@ function updateHints() {
   const small = prime?.rates?.[0];
   const p = small && Number.isFinite(pc.premium) ? { ...small, rate: small.rate + pc.premium } : null;
   let hint = '';
+  // Which P, in words: "small P", "big P" or "P, where P = small P + 0.375%"
+  const pWords = pc.kind === 'small' ? 'small P' : pc.kind === 'big' ? 'big P' : 'P';
+  const pNote = pc.kind === 'other' ? `, where P = small P + ${pct(pc.premium)}` : '';
   if (type === 'prime' && p) {
+    // "Rate: big P − 1.75% (3.500% today)."
     const d = parseNumber($('mDiscount').value);
-    if (Number.isFinite(d)) hint = `Now: ${pc.name} ${pct(p.rate)} − ${pct(d)} = ${pct(p.rate - d)} p.a.`;
+    if (Number.isFinite(d)) hint = `Rate: ${pWords} − ${pct(d)}${pNote} (${rate3((p.rate - d) / 100)} today).`;
   } else if (type === 'hibor' && p) {
+    // "Rate: 1-month HIBOR + 1.30%, capped at small P − 1.75% (cap 3.250% today). It resets at every monthly due date,
+    // using the actual 1-month HIBOR fixing up to 02-Oct-2026, then the current HIBOR above (2.96839%)."
     const [h, m, c] = ['mHibor', 'mMargin', 'mCap'].map((id) => parseNumber($(id).value));
     if ([h, m, c].every(Number.isFinite)) {
       const name = TENOR_NAME[currentTenor()];
       const hist = hibor[currentTenor()]?.rates;
-      hint = `Rate = the lower of ${name} HIBOR + ${pct(m)} and ${pc.name} − ${pct(c)} (now ${pct(p.rate - c)}), ` +
-        'reset at every monthly due date. ' +
+      const hiborText = `${Number(h.toFixed(5))}%`;
+      hint = `Rate: ${name} HIBOR + ${pct(m)}, capped at ${pWords} − ${pct(c)}${pNote} (cap ${rate3((p.rate - c) / 100)} today). ` +
         (hist?.length
-          ? `Past resets use actual ${name} HIBOR fixings (HKMA, ${fmtDate(hist.at(-1).effective)} to ${fmtDate(hist[0].effective)}); later ones use ${pct(h)}.`
-          : `Every reset uses ${pct(h)} (no HIBOR history loaded).`);
+          ? `It resets at every monthly due date, using the actual ${name} HIBOR fixing up to ${fmtDate(hist[0].effective)}, ` +
+            `then the current HIBOR above (${hiborText}).`
+          : `It resets at every monthly due date, using the current HIBOR above (${hiborText}); no HIBOR history is loaded.`);
     }
   }
   $('mRateHint').textContent = hint;
