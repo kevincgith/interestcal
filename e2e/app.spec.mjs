@@ -511,16 +511,14 @@ test('header: "New:" line for a rate published in the last week, and nothing onc
   await expect(page.locator('#rateNews')).toBeHidden();
 });
 
-test('Word download with calculation inputs: remembered, and does not mark the results stale', async ({ page }) => {
+
+test('Word download always starts with the calculation inputs', async ({ page }) => {
   await page.goto('./');
   await expect(total(page)).not.toHaveText('');
-  await page.locator('#advanced summary').click();
-  await page.locator('#wordInputs').selectOption('inputs');
-  await expect(page.locator('#staleNote')).toBeHidden();
+  await expect(page.locator('#wordInputs')).toHaveCount(0); // no longer a setting
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download Word' }).click()]);
   const doc = (await (await import('node:fs/promises')).readFile(await download.path())).toString('utf8');
   expect(doc).toContain('Calculation inputs');
   expect(doc).toContain('Day count basis');
-  await page.reload();
-  await expect(page.locator('#wordInputs')).toHaveValue('inputs');
+  expect(doc.indexOf('Calculation inputs')).toBeLessThan(doc.indexOf('Interest on the Debt of'));
 });

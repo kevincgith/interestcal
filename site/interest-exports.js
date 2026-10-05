@@ -60,8 +60,8 @@ export function setupInterestExports({
     if (!r) return;
     const bytes = buildDocx(r, {
       money: (n) => money.format(n), rate: fmtRate, formula, currency: r.currency,
-      inputs: $('wordInputs').value === 'inputs' ? printInputItems(r) : null,
-      sources: publishedKinds(r).map((k) => ({ name: SOURCES[k].sourceName, asAt: asAt(k) })),
+      inputs: printInputItems(r), // always: the document says how it was calculated
+    sources: publishedKinds(r).map((k) => ({ name: SOURCES[k].sourceName, asAt: asAt(k) })),
     });
     download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), exportName(r, 'docx'));
   });

@@ -480,16 +480,6 @@ function showSourceFields() {
   document.querySelectorAll('#form .pay-amount').forEach((el) => (el.placeholder = `Amount (${cur})`));
 }
 
-// Word download preference: remembered in this browser; it doesn't change the calculation, so it isn't "stale"
-try {
-  if (localStorage.getItem('interestcal.wordInputs') === 'inputs') $('wordInputs').value = 'inputs';
-} catch {}
-for (const type of ['input', 'change']) $('wordInputs').addEventListener(type, (e) => e.stopPropagation());
-$('wordInputs').addEventListener('change', () => {
-  try {
-    localStorage.setItem('interestcal.wordInputs', $('wordInputs').value);
-  } catch {}
-});
 $('currency').addEventListener('change', () => {
   currencyChosen = true;
   showSourceFields();
