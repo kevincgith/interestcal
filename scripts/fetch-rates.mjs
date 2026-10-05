@@ -175,22 +175,26 @@ async function update(source) {
   validateRates(rates, source.validate);
 
   const latest = `${rates.length} rates, latest ${rates[0].effective} @ ${rates[0].rate}%`;
-  const today = new Date().toISOString().slice(0, 10);
+  const hkNow = new Date(Date.now() + 8 * 3600e3).toISOString(); // Hong Kong time (UTC+8, no daylight saving)
+  const today = hkNow.slice(0, 10);
+  const time = hkNow.slice(11, 16);
   const content = { rates, ...meta };
   const changed = !previous ||
     JSON.stringify({ rates: previous.rates, crossCheck: previous.crossCheck }) !==
       JSON.stringify({ rates: content.rates, crossCheck: content.crossCheck });
 
-  // updatedAt: when the rates last changed. checkedAt: when they were last fully confirmed against the source
-  // (only advanced when every check passed, so the page never claims a check that did not happen).
+  // updatedAt: when the rates last changed. checkedAt / checkedTime: the Hong Kong date and time (HH:MM) they were last
+  // fully confirmed against the source (only advanced when every check passed, so the page never claims a check that
+  // did not happen).
   const data = {
     source: url,
     updatedAt: changed ? today : previous.updatedAt,
     checkedAt: warnings.length ? (previous?.checkedAt ?? previous?.updatedAt ?? today) : today,
+    ...(warnings.length ? (previous?.checkedTime ? { checkedTime: previous.checkedTime } : {}) : { checkedTime: time }),
     ...content,
   };
   await writeFile(file, (source.compact ? JSON.stringify(data) : JSON.stringify(data, null, 2)) + '\n');
-  console.log(`${name}: ${changed ? 'updated' : 'no change'} (${latest}), checked ${data.checkedAt}.`);
+  console.log(`${name}: ${changed ? 'updated' : 'no change'} (${latest}), checked ${data.checkedAt}${data.checkedTime ? ` ${data.checkedTime} HKT` : ''}.`);
   if (meta.crossCheck) console.log(`${name}: HSBC cross-check ${meta.crossCheck.status}.`);
   if (warnings.length) throw Object.assign(new Error(warnings.join('\n  ')), { saved: true });
 }

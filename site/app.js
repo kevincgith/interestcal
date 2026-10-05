@@ -222,12 +222,22 @@ async function loadRates() {
 // "As at": the date each rate file was last confirmed against its source by the daily update
 const asAt = (key) => rateData[key].checkedAt ?? rateData[key].updatedAt;
 
+// "04-Oct-2026 17:44 HKT": the date, plus the time of the daily refresh when the file has one (checkedTime)
+const asAtText = (key) => {
+  const time = rateData[key].checkedAt && rateData[key].checkedTime;
+  return `${fmtDate(asAt(key))}${time ? ` ${time} HKT` : ''}`;
+};
+
 function renderAsAt() {
   const keys = Object.keys(SOURCES);
   const dates = keys.map(asAt);
-  $('asAt').textContent = dates.every((d) => d === dates[0])
-    ? `Rates updated as at ${fmtDate(dates[0])}`
-    : `Rates updated as at: ${keys.map((k) => `${SOURCES[k].title} ${fmtDate(asAt(k))}`).join(' · ')}`;
+  if (dates.every((d) => d === dates[0])) {
+    // One refresh: show its date and the latest time any source was confirmed
+    const times = keys.map((k) => rateData[k].checkedTime).filter(Boolean).sort();
+    $('asAt').textContent = `Rates updated as at ${fmtDate(dates[0])}${times.length ? ` ${times.at(-1)} HKT` : ''}`;
+  } else {
+    $('asAt').textContent = `Rates updated as at: ${keys.map((k) => `${SOURCES[k].title} ${asAtText(k)}`).join(' · ')}`;
+  }
 }
 
 // Rates that apply to some day in [start, end): the one in force on the start date plus any that start before the end date.
