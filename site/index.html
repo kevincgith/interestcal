@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HK Interest Calculator</title>
-  <meta name="description" content="Simple interest on Hong Kong debts at the HK judgment debt rate, HSBC prime rate or a fixed rate, with partial payments, daily interest, and PDF and Excel export.">
+  <meta name="description" content="Hong Kong finance calculators: interest at the judgment debt rate, HSBC or US prime or a fixed rate; HIBOR and prime mortgages; present value, IRR and time value of money; and inflation by the official CPI. Rates updated daily.">
   <meta name="theme-color" content="#1f5f8b">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
@@ -13,12 +13,12 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="HK Interest Calculator">
   <meta property="og:title" content="HK Interest Calculator">
-  <meta property="og:description" content="Simple interest on Hong Kong debts at the HK judgment debt rate, HSBC prime rate or a fixed rate, with partial payments, daily interest, and PDF and Excel export.">
+  <meta property="og:description" content="Hong Kong finance calculators: interest at the judgment debt rate, HSBC or US prime or a fixed rate; HIBOR and prime mortgages; present value, IRR and time value of money; and inflation by the official CPI. Rates updated daily.">
   <meta property="og:url" content="https://app.kevinlhc.com/interestcal/">
   <meta property="og:image" content="https://app.kevinlhc.com/interestcal/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="HK Interest Calculator: simple interest at the HK judgment debt rate, HSBC prime rate or a fixed rate">
+  <meta property="og:image:alt" content="HK Interest Calculator: interest, mortgage, present value and inflation calculators for Hong Kong">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="style.css?v=__BUILD__">
 </head>
@@ -862,7 +862,7 @@
     </details>
 
     <footer class="about">
-      <p>Simple interest at the judgment debt rate published by the
+      <p><strong>Interest:</strong> simple (or compounded) interest at the judgment debt rate published by the
         <a href="https://www.judiciary.hk/en/court_services_facilities/interest_rate.html" target="_blank" rel="noopener">HK Judiciary</a>,
         the HSBC best lending (prime) rate published by the
         <a href="https://www.hkma.gov.hk/eng/data-publications-and-research/data-and-statistics/monthly-statistical-bulletin/" target="_blank" rel="noopener">HKMA</a>
@@ -872,15 +872,24 @@
         <a href="https://www.federalreserve.gov/releases/h15/" target="_blank" rel="noopener">H.15 release</a>,
         or a fixed rate, with optional principal added later and partial payments.
         The start date earns interest and the end date does not: each day earns interest once. A period counts the days from its start date up to, but not including, its end date (end date minus start date, as in Excel and the original workbook), so 1 to 2 January is 1 day. Where one period ends and the next begins, that shared date is counted once, in the later period, so no day is charged twice. If the end date itself should earn interest, use the next day as the end date.
-        Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.
-        The Mortgage tab works out equal monthly instalments (interest = balance × rate × days ÷ 365) at a prime-based,
+        Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.</p>
+      <p><strong>Mortgage:</strong> equal monthly instalments (interest = balance × rate × days ÷ 365) at a prime-based,
         HIBOR-based (1-month or 3-month HIBOR, set by
         <a href="https://www.hkab.org.hk/en/rates/hibor" target="_blank" rel="noopener">HKAB</a>, history from the
         <a href="https://apidocs.hkma.gov.hk/" target="_blank" rel="noopener">HKMA</a>) or fixed rate.</p>
+      <p><strong>PV:</strong> the present value of cash flows by dates or periods (T0, T+1, …), or the rate that makes it
+        zero (IRR), as in Excel’s XNPV, XIRR, NPV and IRR; and a time value of money calculator (N, I/Y, PV, PMT, FV) as
+        on a financial calculator.</p>
+      <p><strong>Inflation:</strong> what an amount at one time is worth at another, by the Composite Consumer Price
+        Index published by the
+        <a href="https://www.censtatd.gov.hk/en/web_table.html?id=510-60001" target="_blank" rel="noopener">Census and Statistics Department</a>,
+        with its history since 1980.</p>
       <p class="disclaimer">
         <strong>Disclaimer:</strong> for general information only, not legal, financial or mortgage advice.
-        Rates are collected automatically and may be delayed or wrong; the official publisher’s figures prevail.
-        Check every result before relying on it. Not affiliated with the HK Judiciary, HKMA, HKAB, HSBC or the Federal Reserve.
+        Rates and price index figures are collected automatically and may be delayed or wrong; the official publisher’s figures prevail.
+        Present value, time value of money and inflation results are estimates from the inputs you choose, not quotes or forecasts.
+        Check every result before relying on it. Not affiliated with the HK Judiciary, HKMA, HKAB, HSBC, the Census and
+        Statistics Department or the Federal Reserve.
       </p>
       <p class="license">
         © 2026 kevincgith · Free to use, copy and modify under the

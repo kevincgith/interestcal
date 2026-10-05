@@ -113,15 +113,17 @@ async function renderLatestRates() {
     }
   };
   const [h1, h3] = await Promise.all([hibor('hibor.json'), hibor('hibor-3m.json')]);
+  // Each rate shows on the tabs that use it (data-tabs; style.css hides the rest)
   const items = [
-    ['Judgment debt', inForce(rateData.judgment?.rates)],
-    ['HSBC prime', inForce(rateData.prime?.rates)],
-    ['US prime', inForce(rateData.usprime?.rates)],
-    ['1M HIBOR', h1],
-    ['3M HIBOR', h3],
+    ['Judgment debt', inForce(rateData.judgment?.rates), 'interest'],
+    ['HSBC prime', inForce(rateData.prime?.rates), 'interest mortgage'],
+    ['US prime', inForce(rateData.usprime?.rates), 'interest'],
+    ['1M HIBOR', h1, 'mortgage'],
+    ['3M HIBOR', h3, 'mortgage'],
   ].filter(([, r]) => r);
-  $('latestRates').replaceChildren(...items.map(([name, r]) => {
+  $('latestRates').replaceChildren(...items.map(([name, r, tabs]) => {
     const item = Object.assign(document.createElement('span'), { className: 'latest-rate' });
+    item.dataset.tabs = tabs;
     item.append(
       Object.assign(document.createElement('span'), { className: 'latest-name', textContent: name }),
       Object.assign(document.createElement('strong'), { textContent: fmtPct(r.rate) }),

@@ -1,8 +1,8 @@
 // The disclaimer printed on every download, matching the site footer. The full terms are on terms.html.
 
 export const DISCLAIMER =
-  'Disclaimer: for general information only, not legal, financial or mortgage advice. Rates are collected ' +
-  'automatically and may be delayed or wrong; the official publisher’s figures prevail. Check every figure before ' +
+  'Disclaimer: for general information only, not legal, financial or mortgage advice. Rates and price index ' +
+  'figures are collected automatically and may be delayed or wrong; the official publisher’s figures prevail. Check every figure before ' +
   'relying on it.';
 export const TERMS_URL = 'https://app.kevinlhc.com/interestcal/terms.html';
 // For plain-text downloads (Word, Excel, CSV), which can't hold a named link

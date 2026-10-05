@@ -15,6 +15,7 @@ export function registerQuery(name, fn) {
 
 function show(name) {
   current = name;
+  document.body.dataset.tab = name; // the header shows only the rates this tab uses (style.css)
   for (const t of TABS) {
     const selected = t === name;
     document.getElementById(`tab-${t}`).setAttribute('aria-selected', String(selected));

@@ -96,3 +96,21 @@ test('now -> then: HK$100 now was worth ... in 2000; the link keeps the directio
   await expect(page.locator('#iWorth')).toHaveText('is worth');
   await expect(page).not.toHaveURL(/d=back/);
 });
+
+test('the header shows only the rates the open tab uses', async ({ page }) => {
+  await page.goto('?');
+  const header = page.locator('header');
+  await expect(header.getByText('Judgment debt')).toBeVisible();
+  await expect(header.getByText('US prime')).toBeVisible();
+  await expect(header.getByText('1M HIBOR')).toBeHidden();
+  await page.getByRole('tab', { name: 'Mortgage' }).click();
+  await expect(header.getByText('1M HIBOR')).toBeVisible();
+  await expect(header.getByText('HSBC prime')).toBeVisible();
+  await expect(header.getByText('Judgment debt')).toBeHidden();
+  await page.getByRole('tab', { name: 'PV', exact: true }).click();
+  await expect(page.locator('#asAt')).toBeHidden();
+  await expect(page.locator('#latestRates')).toBeHidden();
+  await page.getByRole('tab', { name: 'Inflation' }).click();
+  await expect(page.locator('#latestCpi')).toBeVisible();
+  await expect(page.locator('#latestRates')).toBeHidden();
+});

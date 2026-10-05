@@ -14,10 +14,10 @@ const PREVIEW = `
   <div>
     <div style="font-size:68px;font-weight:800;letter-spacing:-1px;line-height:1.05">HK Interest Calculator</div>
     <div style="margin-top:22px;font-size:32px;line-height:1.35;color:#3d4a55">
-      Simple interest at the HK judgment debt rate, HSBC prime rate or a fixed rate
+      Interest, mortgages, present value and inflation, with Hong Kong rates and CPI
     </div>
     <div style="margin-top:28px;font-size:26px;color:#1f5f8b;font-weight:600">
-      Partial payments · Daily interest · PDF &amp; Excel · Updated daily
+      Judgment debt · Prime · HIBOR · NPV &amp; IRR · CPI · Updated daily
     </div>
   </div>
 </body>`;

@@ -44,6 +44,13 @@ h1 { margin: 0 0 8px; font-size: 1.6rem; }
 .latest-rate { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
 .latest-rate .latest-name, .latest-rate .latest-date { color: var(--muted); }
 .latest-rate .latest-date { font-size: 0.8rem; }
+/* Only the rates the open tab uses: Interest (judgment, HSBC and US prime), Mortgage (HSBC prime, HIBOR),
+   Inflation (HK inflation); PV uses none, so the rates and their "updated as at" line give way to the tabs */
+body[data-tab="interest"] .latest-rate[data-tabs]:not([data-tabs~="interest"]),
+body[data-tab="mortgage"] .latest-rate[data-tabs]:not([data-tabs~="mortgage"]) { display: none; }
+body[data-tab="pv"] :is(#asAt, #latestRates),
+body[data-tab="inflation"] :is(#asAt, #latestRates),
+body:not([data-tab="inflation"]) #latestCpi { display: none; }
 a { color: var(--accent); }
 .muted { color: var(--muted); font-size: 0.9rem; font-weight: normal; }
 
