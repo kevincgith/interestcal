@@ -10,6 +10,7 @@ import {
 } from './shared.js?v=__BUILD__';
 import { saveCalculation, recordRecent } from './saved.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
+import { tvmMode, tvmQuery, setFlowsQuery } from './tvm-app.js?v=__BUILD__';
 
 const COMPOUNDING_NAMES = {
   yearly: 'compounded yearly', 'half-yearly': 'compounded half-yearly', quarterly: 'compounded quarterly',
@@ -23,7 +24,9 @@ const PERIOD_WORDS = { year: 'year', 'half-year': 'half-year', quarter: 'quarter
 
 let last = null; // last calculation
 let lastQuery = '';
-registerQuery('pv', () => lastQuery);
+// The tab's link is the calculator's when it's showing, else this form's
+registerQuery('pv', () => (tvmMode() ? tvmQuery() : lastQuery));
+setFlowsQuery(() => lastQuery);
 
 const cur = () => CURRENCIES[$('pCurrency').value] ?? 'HK$';
 // Signed money with a real minus sign: -1,234.50 -> "−1,234.50"
@@ -336,7 +339,8 @@ function render(res) {
   );
   const foot = row(['Total', '', '', '', signed(res.futureTotal), '', signed(res.total), ''], ['', '', 'col-days', '', 'num', '', 'num', '']);
   $('pFoot').replaceChildren(foot);
-  $('pResults').hidden = false;
+  $('pResults').dataset.shown = '1';
+  $('pResults').hidden = tvmMode(); // worked out even while the calculator shows, for switching back
 }
 autoFitText($('pResults').querySelector('.summary'));
 
@@ -364,7 +368,7 @@ function writeQuery(res) {
     else q.append('cf', [when, f.amount, f.label].join(',').replace(/,$/, ''));
   }
   lastQuery = `?${q}`;
-  if (activeTab() === 'pv') history.replaceState(null, '', `${location.pathname}${lastQuery}`);
+  if (activeTab() === 'pv' && !tvmMode()) history.replaceState(null, '', `${location.pathname}${lastQuery}`);
 }
 
 /** Fills the form from a ?tab=pv link; returns true when the link had cash flows */
@@ -422,6 +426,7 @@ $('pReset').addEventListener('click', () => {
   showSolveFields();
   showTimingFields();
   $('pResults').hidden = true;
+  delete $('pResults').dataset.shown;
   last = null;
   setStale(false);
   showError('');

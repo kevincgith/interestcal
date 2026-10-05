@@ -531,6 +531,10 @@
 
     <section id="panel-pv" role="tabpanel" aria-labelledby="tab-pv" hidden>
       <form id="pform" class="card" novalidate>
+        <div class="pv-mode view-toggle" role="group" aria-label="What to calculate">
+          <button type="button" class="secondary" data-mode="flows" aria-pressed="true">Cash flows</button>
+          <button type="button" class="secondary" data-mode="tvm" aria-pressed="false">N, I/Y, PV, PMT, FV</button>
+        </div>
         <label for="pTiming"><span class="label-row">Timing <button type="button" class="help" aria-expanded="false" aria-label="Dates or periods?">?</button></span>
           <select id="pTiming">
             <option value="dates" selected>Dates</option>
@@ -638,6 +642,113 @@
           <button type="button" id="pShare" class="secondary">Copy link</button>
           <button type="button" id="pSave" class="secondary">Save</button>
           <span id="pShareStatus" class="muted" role="status"></span>
+        </div>
+      </section>
+      <form id="tform" class="card" novalidate hidden>
+        <div class="pv-mode view-toggle" role="group" aria-label="What to calculate">
+          <button type="button" class="secondary" data-mode="flows" aria-pressed="false">Cash flows</button>
+          <button type="button" class="secondary" data-mode="tvm" aria-pressed="true">N, I/Y, PV, PMT, FV</button>
+        </div>
+        <div class="tvm-examples">
+          <span class="muted">Try:</span>
+          <button type="button" class="chip" data-example="loan">Loan payment</button>
+          <button type="button" class="chip" data-example="savings">Savings goal</button>
+          <button type="button" class="chip" data-example="payoff">How long to repay</button>
+          <button type="button" class="chip" data-example="rate">What rate?</button>
+          <button type="button" class="chip" data-example="lump">A future sum today</button>
+        </div>
+        <fieldset class="source tvm-solve">
+          <legend>Solve for</legend>
+          <label class="radio"><input type="radio" name="tsolve" value="n"> N</label>
+          <label class="radio"><input type="radio" name="tsolve" value="rate"> I/Y</label>
+          <label class="radio"><input type="radio" name="tsolve" value="pv"> PV</label>
+          <label class="radio"><input type="radio" name="tsolve" value="pmt" checked> PMT</label>
+          <label class="radio"><input type="radio" name="tsolve" value="fv"> FV</label>
+        </fieldset>
+        <label for="tFreq"><span class="label-row">Payments <button type="button" class="help" aria-expanded="false" aria-label="How do payments and the term work?">?</button></span>
+          <select id="tFreq">
+            <option value="monthly" selected>Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="half-yearly">Half-yearly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+          <span class="help-text" hidden>How often payments are made. Enter the term in years (or as a number of payments) and the rate as % a year: the page works out the number of payments and the rate each period for you, so there’s no need to multiply or divide by 12.</span>
+        </label>
+        <label for="tN" data-key="n">Term (N)
+          <span class="tvm-n">
+            <input id="tN" type="text" inputmode="decimal" autocomplete="off" value="30">
+            <select id="tNUnit" aria-label="Term in">
+              <option value="years" selected>years</option>
+              <option value="payments">payments</option>
+            </select>
+          </span>
+          <span id="tNHint" class="rate-hint"></span>
+        </label>
+        <label for="tRate" data-key="rate">Rate (I/Y, % p.a.)
+          <input id="tRate" type="text" inputmode="decimal" autocomplete="off" value="5">
+          <span id="tRateHint" class="rate-hint"></span>
+        </label>
+        <label for="tPv" data-key="pv"><span class="label-row">Present value (PV) <button type="button" class="help" aria-expanded="false" aria-label="Which sign do I use?">?</button></span>
+          <input id="tPv" type="text" inputmode="text" autocomplete="off" value="1,000,000.00">
+          <span class="help-text" hidden>+ for money you receive, − for money you pay, as on a financial calculator. A loan you receive is PV + and its payments are PMT −. Savings you pay in are PMT − (or PV − for a lump sum) and come back as FV +.</span>
+        </label>
+        <label for="tPmt" data-key="pmt">Payment (PMT)
+          <input id="tPmt" type="text" inputmode="text" autocomplete="off" value="">
+          <span id="tPmtHint" class="rate-hint"></span>
+        </label>
+        <label for="tFv" data-key="fv">Future value (FV)
+          <input id="tFv" type="text" inputmode="text" autocomplete="off" value="0.00">
+        </label>
+        <details id="tAdvanced" class="advanced">
+          <summary>More settings <span class="muted">(compounding, payment timing, currency)</span></summary>
+          <div class="advanced-body">
+            <label for="tComp"><span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="When does compounding differ from payments?">?</button></span>
+              <select id="tComp">
+                <option value="same" selected>Same as payments</option>
+                <option value="12">Monthly</option>
+                <option value="4">Quarterly</option>
+                <option value="2">Half-yearly</option>
+                <option value="1">Yearly</option>
+              </select>
+              <span class="help-text" hidden>Usually the same as the payments. Some loans compound differently, e.g. Canadian mortgages compound half-yearly but are paid monthly: the rate a payment is then (1 + rate ÷ 2)^(2 ÷ 12) − 1.</span>
+            </label>
+            <label for="tDue">Payments made
+              <select id="tDue">
+                <option value="end" selected>At the end of each period</option>
+                <option value="start">At the start of each period</option>
+              </select>
+            </label>
+            <label for="tCurrency">Currency
+              <select id="tCurrency"></select>
+            </label>
+          </div>
+        </details>
+        <div class="actions">
+          <button type="submit">Calculate</button>
+          <button type="button" id="tReset" class="secondary">Reset</button>
+        </div>
+        <p id="tError" class="error" role="alert" hidden></p>
+      </form>
+
+      <section id="tResults" hidden>
+        <p id="tStale" class="stale-note" role="status" hidden>Inputs changed. Press <strong>Calculate</strong> to recalculate.</p>
+        <dl class="summary">
+          <div class="answer"><dt id="tAnswerLabel"></dt><dd id="tAnswer"></dd></div>
+          <div><dt>Total of payments</dt><dd id="tPaid"></dd></div>
+          <div><dt id="tInterestLabel">Interest</dt><dd id="tInterest"></dd></div>
+          <div><dt>Rate with compounding</dt><dd id="tEffective"></dd></div>
+        </dl>
+        <p id="tSentence" class="verified"></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Year</th><th>Payments</th><th>Interest</th><th>Balance at year end</th></tr></thead>
+            <tbody id="tYears"></tbody>
+          </table>
+        </div>
+        <div class="exports">
+          <button type="button" id="tShare" class="secondary">Copy link</button>
+          <button type="button" id="tSave" class="secondary">Save</button>
+          <span id="tShareStatus" class="muted" role="status"></span>
         </div>
       </section>
     </section>

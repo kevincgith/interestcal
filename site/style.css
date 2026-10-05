@@ -377,3 +377,14 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1p
 #pTable.periods .col-days { display: none; }
 .rate-hint { display: block; font-size: 0.82rem; font-weight: normal; color: var(--muted); min-height: 0; }
 .rate-hint:empty { display: none; }
+/* PV tab: cash flows or the N, I/Y, PV, PMT, FV calculator */
+.pv-mode { grid-column: 1 / -1; margin: 0 0 4px; }
+.tvm-examples { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tvm-solve { grid-column: 1 / -1; }
+.tvm-solve .radio { display: inline-flex; margin-right: 18px; }
+.tvm-n { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.tvm-n select { width: auto; }
+#tform label.solved input:not([type="radio"]) { border-style: dashed; color: var(--accent); font-weight: 700; }
+#tResults.stale > :not(.stale-note) { opacity: 0.45; }
+.summary .answer { border-color: var(--accent); }
+.summary dd small { display: block; font-size: 0.8rem; font-weight: normal; color: var(--muted); margin-top: 2px; }
