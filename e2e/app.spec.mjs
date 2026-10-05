@@ -521,3 +521,19 @@ test('Word download always starts with the calculation inputs', async ({ page })
   expect(doc).toContain('Day count basis');
   expect(doc.indexOf('Calculation inputs')).toBeLessThan(doc.indexOf('Interest on the Debt of'));
 });
+
+test('header shows the latest HSBC prime rate and 1-month / 3-month HIBOR', async ({ page }) => {
+  const fs = await import('node:fs/promises');
+  const read = async (f) => JSON.parse(await fs.readFile(new URL(`../site/${f}`, import.meta.url), 'utf8')).rates[0];
+  const [prime, h1, h3] = await Promise.all([read('prime-rates.json'), read('hibor.json'), read('hibor-3m.json')]);
+  const pct = (n) => `${Number(n.toFixed(6)).toLocaleString('en', { minimumFractionDigits: 3, maximumFractionDigits: 6 })}%`;
+  const [y, m, d] = h1.effective.split('-');
+  const date = `${d}-${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}-${y}`;
+  await page.goto('./');
+  await expect(page.locator('#latestRates')).toHaveText(
+    `HSBC prime ${pct(prime.rate)} · 1M HIBOR ${pct(h1.rate)} · 3M HIBOR ${pct(h3.rate)} (HIBOR ${date})`);
+  // Without HIBOR data the line still shows prime
+  await page.route('**/hibor*.json*', (route) => route.abort());
+  await page.reload();
+  await expect(page.locator('#latestRates')).toHaveText(`HSBC prime ${pct(prime.rate)}`);
+});

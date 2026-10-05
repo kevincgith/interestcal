@@ -96,6 +96,29 @@ async function loadRates() {
   renderAsAt();
   renderRateNews();
   renderRateTable();
+  renderLatestRates(); // not awaited: HIBOR is optional and the page works without it
+}
+
+// "HSBC prime 5.000% · 1M HIBOR 2.96839% · 3M HIBOR 3.24482% (02-Oct-2026)": today's headline rates under the header
+async function renderLatestRates() {
+  const latest = async (file) => {
+    try {
+      const res = await fetch(file, { cache: 'no-cache' });
+      return res.ok ? (await res.json()).rates?.[0] : null;
+    } catch {
+      return null;
+    }
+  };
+  const [h1, h3] = await Promise.all([latest('hibor.json'), latest('hibor-3m.json')]);
+  const prime = rateData.prime?.rates?.[0];
+  const parts = [
+    prime && `HSBC prime ${fmtPct(prime.rate)}`,
+    h1 && `1M HIBOR ${fmtPct(h1.rate)}`,
+    h3 && `3M HIBOR ${fmtPct(h3.rate)}`,
+  ].filter(Boolean);
+  const hiborDate = h1?.effective ?? h3?.effective;
+  $('latestRates').textContent = parts.join(' · ') + (hiborDate ? ` (HIBOR ${fmtDate(hiborDate)})` : '');
+  $('latestRates').hidden = !parts.length;
 }
 
 // "As at": the date each rate file was last confirmed against its source by the daily update
