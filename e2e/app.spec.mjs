@@ -631,3 +631,17 @@ test('changed inputs turn off the downloads and Save until Calculate is pressed'
   await page.locator('#form button[type="submit"]').click();
   for (const b of buttons) await expect(b).toBeEnabled();
 });
+
+test('recent calculations can be cleared; saved ones stay', async ({ page }) => {
+  await page.goto('?src=judgment&p=100000&from=2025-01-01&to=2025-06-30');
+  await page.locator('#form').getByRole('button', { name: 'Calculate' }).click();
+  await page.locator('#save').click();
+  await expect(page.locator('#recentCard')).toBeVisible();
+  await page.locator('#recentCard summary').click();
+  await page.getByRole('button', { name: 'Clear recent calculations' }).click();
+  await expect(page.locator('#recentCard')).toBeHidden();
+  await expect(page.locator('#recentList li')).toHaveCount(0);
+  await expect(page.locator('#savedList li')).toHaveCount(1); // saved calculations are untouched
+  await page.reload();
+  await expect(page.locator('#recentCard')).toBeHidden(); // gone for good, not just hidden
+});

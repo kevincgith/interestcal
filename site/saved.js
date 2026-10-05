@@ -1,6 +1,7 @@
 // Saved and recent calculations: each is a calculation's shareable link plus a name, kept in this browser's
 // localStorage only (never uploaded). "Saved calculations" are the ones the user chose to keep (rename, open, delete);
-// "Recent calculations" are the last 5 the user ran with Calculate, kept automatically (open, or save to keep).
+// "Recent calculations" are the last 5 the user ran with Calculate, kept automatically (open, save to keep, or clear
+// them all).
 // Storage can be unavailable (private windows, blocked site data): saving then says so and nothing breaks.
 
 const KEY = 'interestcal.saved';
@@ -122,6 +123,15 @@ export function renderRecent() {
     }),
   );
 }
+
+/** Forget the recent calculations (saved ones stay) */
+export function clearRecent() {
+  try {
+    localStorage.removeItem(RECENT_KEY);
+  } catch {}
+  renderRecent();
+}
+document.getElementById('clearRecent')?.addEventListener('click', clearRecent);
 
 // Another browser tab saved, deleted or ran something
 window.addEventListener('storage', (e) => {
