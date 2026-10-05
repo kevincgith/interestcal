@@ -183,9 +183,14 @@ td.formula { color: var(--muted); font-size: 0.9rem; white-space: normal; min-wi
   margin-bottom: -1px;
   white-space: nowrap;
 }
-/* Three tabs on a phone: tighter padding so "Present value" stays on one line */
+/* Three tabs on a phone: tighter spacing so "Present value" stays on one line, even with wider fonts (Linux); on the
+   narrowest screens a label may wrap rather than push the page sideways */
 @media (max-width: 420px) {
-  .tabs [role="tab"] { padding: 10px 12px; }
+  .tabs { gap: 2px; }
+  .tabs [role="tab"] { padding: 10px 9px; }
+}
+@media (max-width: 359px) {
+  .tabs [role="tab"] { white-space: normal; }
 }
 .tabs [role="tab"][aria-selected="true"] { color: var(--text); background: var(--surface); border-color: var(--border); }
 .tabs [role="tab"]:hover { color: var(--accent); }
