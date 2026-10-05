@@ -522,18 +522,26 @@ test('Word download always starts with the calculation inputs', async ({ page })
   expect(doc.indexOf('Calculation inputs')).toBeLessThan(doc.indexOf('Interest on the Debt of'));
 });
 
-test('header shows the latest HSBC prime rate and 1-month / 3-month HIBOR', async ({ page }) => {
+test("header shows today's judgment, HSBC prime, US prime, 1M and 3M HIBOR rates in one style", async ({ page }) => {
   const fs = await import('node:fs/promises');
-  const read = async (f) => JSON.parse(await fs.readFile(new URL(`../site/${f}`, import.meta.url), 'utf8')).rates[0];
-  const [prime, h1, h3] = await Promise.all([read('prime-rates.json'), read('hibor.json'), read('hibor-3m.json')]);
+  const today = new Date().toLocaleDateString('en-CA');
+  const inForce = async (f) =>
+    JSON.parse(await fs.readFile(new URL(`../site/${f}`, import.meta.url), 'utf8')).rates.find((r) => r.effective <= today);
   const pct = (n) => `${Number(n.toFixed(6)).toLocaleString('en', { minimumFractionDigits: 3, maximumFractionDigits: 6 })}%`;
-  const [y, m, d] = h1.effective.split('-');
-  const date = `${d}-${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}-${y}`;
+  const date = (iso) => {
+    const [y, m, d] = iso.split('-');
+    return `${d}-${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}-${y}`;
+  };
+  const expected = [];
+  for (const [name, f] of [['Judgment debt', 'rates.json'], ['HSBC prime', 'prime-rates.json'], ['US prime', 'us-prime-rates.json'],
+    ['1M HIBOR', 'hibor.json'], ['3M HIBOR', 'hibor-3m.json']]) {
+    const r = await inForce(f);
+    expected.push(`${name}${pct(r.rate)}${date(r.effective)}`);
+  }
   await page.goto('./');
-  await expect(page.locator('#latestRates')).toHaveText(
-    `HSBC prime ${pct(prime.rate)} · 1M HIBOR ${pct(h1.rate)} · 3M HIBOR ${pct(h3.rate)} (HIBOR ${date})`);
-  // Without HIBOR data the line still shows prime
+  await expect(page.locator('#latestRates .latest-rate')).toHaveText(expected);
+  // Without HIBOR data the other three still show
   await page.route('**/hibor*.json*', (route) => route.abort());
   await page.reload();
-  await expect(page.locator('#latestRates')).toHaveText(`HSBC prime ${pct(prime.rate)}`);
+  await expect(page.locator('#latestRates .latest-rate')).toHaveCount(3);
 });

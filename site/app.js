@@ -99,26 +99,38 @@ async function loadRates() {
   renderLatestRates(); // not awaited: HIBOR is optional and the page works without it
 }
 
-// "HSBC prime 5.000% · 1M HIBOR 2.96839% · 3M HIBOR 3.24482% (02-Oct-2026)": today's headline rates under the header
+// Today's rates under the header, all in one style: name, rate (at least 3 decimals, more when published with more,
+// e.g. HIBOR's 5) and the date it applies from (a HIBOR fixing's own date). The rate in force today, not a future
+// quarter the Judiciary has already announced.
 async function renderLatestRates() {
-  const latest = async (file) => {
+  const today = todayIso();
+  const inForce = (rates) => rates?.find((r) => r.effective <= today);
+  const hibor = async (file) => {
     try {
       const res = await fetch(file, { cache: 'no-cache' });
-      return res.ok ? (await res.json()).rates?.[0] : null;
+      return res.ok ? inForce((await res.json()).rates) : null;
     } catch {
-      return null;
+      return null; // optional: the other rates still show
     }
   };
-  const [h1, h3] = await Promise.all([latest('hibor.json'), latest('hibor-3m.json')]);
-  const prime = rateData.prime?.rates?.[0];
-  const parts = [
-    prime && `HSBC prime ${fmtPct(prime.rate)}`,
-    h1 && `1M HIBOR ${fmtPct(h1.rate)}`,
-    h3 && `3M HIBOR ${fmtPct(h3.rate)}`,
-  ].filter(Boolean);
-  const hiborDate = h1?.effective ?? h3?.effective;
-  $('latestRates').textContent = parts.join(' · ') + (hiborDate ? ` (HIBOR ${fmtDate(hiborDate)})` : '');
-  $('latestRates').hidden = !parts.length;
+  const [h1, h3] = await Promise.all([hibor('hibor.json'), hibor('hibor-3m.json')]);
+  const items = [
+    ['Judgment debt', inForce(rateData.judgment?.rates)],
+    ['HSBC prime', inForce(rateData.prime?.rates)],
+    ['US prime', inForce(rateData.usprime?.rates)],
+    ['1M HIBOR', h1],
+    ['3M HIBOR', h3],
+  ].filter(([, r]) => r);
+  $('latestRates').replaceChildren(...items.map(([name, r]) => {
+    const item = Object.assign(document.createElement('span'), { className: 'latest-rate' });
+    item.append(
+      Object.assign(document.createElement('span'), { className: 'latest-name', textContent: name }),
+      Object.assign(document.createElement('strong'), { textContent: fmtPct(r.rate) }),
+      Object.assign(document.createElement('span'), { className: 'latest-date', textContent: fmtDate(r.effective) }),
+    );
+    return item;
+  }));
+  $('latestRates').hidden = !items.length;
 }
 
 // "As at": the date each rate file was last confirmed against its source by the daily update

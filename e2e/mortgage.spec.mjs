@@ -225,7 +225,7 @@ test('HIBOR history card draws both tenors and shows a fixing on hover', async (
   await expect(page.locator('#hiborLatest')).toHaveText(/^\d{2}-[A-Z][a-z]{2}-\d{4}$/);
   await page.locator('#hiborCard [data-range="all"]').click();
   await expect(page.locator('#hiborCard [data-range="all"]')).toHaveAttribute('aria-pressed', 'true');
-  await page.locator('#hiborChart svg').scrollIntoViewIfNeeded();
+  await page.locator('#hiborChart').scrollIntoViewIfNeeded(); // the box, not the drawing: it's redrawn as settings change
   const box = await page.locator('#hiborChart svg').boundingBox();
   await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
   await expect(page.locator('#hiborChart .tip')).toBeVisible();
@@ -248,7 +248,7 @@ test('rate history: prime toggle and spreads change the lines, legend and toolti
   await expect(page.locator('#hiborChart .legend')).toContainText('HSBC prime rate − 1.75%');
   await page.locator('#seriesCtl [data-spread="1m"]').fill('1.3');
   await expect(page.locator('#hiborChart .legend')).toContainText('1-month HIBOR + 1.30%');
-  await page.locator('#hiborChart svg').scrollIntoViewIfNeeded();
+  await page.locator('#hiborChart').scrollIntoViewIfNeeded(); // the box, not the drawing: it's redrawn as settings change
   const box = await page.locator('#hiborChart svg').boundingBox();
   await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.5);
   await expect(page.locator('#hiborChart .tip')).toContainText(/1-month HIBOR: [\d.]+% \([\d.]+% \+ 1\.30%\)/);
@@ -269,7 +269,7 @@ test('rate history: mortgage line is the lower of HIBOR + margin and prime - cap
   await expect(page.locator('#seriesCtl [data-spread="1m"]')).toHaveValue('1.3');
   await expect(page.locator('#seriesCtl [data-spread="prime"]')).toHaveValue('-1.75');
   await expect(page.locator('#hiborChart .legend')).toContainText('Mortgage rate');
-  await page.locator('#hiborChart svg').scrollIntoViewIfNeeded();
+  await page.locator('#hiborChart').scrollIntoViewIfNeeded(); // the box, not the drawing: it's redrawn as settings change
   const box = await page.locator('#hiborChart svg').boundingBox();
   await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
   await expect(page.locator('#hiborChart .tip')).toContainText(/Mortgage rate: [\d.]+% \((1-month HIBOR \+ 1\.30%|prime − 1\.75%, the cap)\)/);
