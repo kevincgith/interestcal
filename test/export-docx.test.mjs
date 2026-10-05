@@ -105,3 +105,11 @@ test('Word: Actual/365 Fixed gives one daily figure', () => {
   assert.match(text, /Daily interest from 5 October 2026 until payment: HK\$219\.18 \(i\.e\. 1,000,000\.00 × 8\.000% ÷ 365\)\./);
   assert.doesNotMatch(text, /leap year/);
 });
+
+test('Word: optional calculation inputs above the table', () => {
+  const r = calculateInterest({ principal: 1000, start: '2026-01-01', end: '2026-02-01', rates: [{ effective: '2000-01-01', rate: 8 }] });
+  const without = textOf(buildDocx(r, { money, rate, formula }));
+  assert.doesNotMatch(without, /Calculation inputs/);
+  const text = textOf(buildDocx(r, { money, rate, formula, inputs: [['Interest rate', 'Fixed rate of 8.000% p.a.'], ['Day count basis', 'Actual/Actual']] }));
+  assert.match(text, /^Calculation inputs\nInterest rate\nFixed rate of 8\.000% p\.a\.\nDay count basis\nActual\/Actual\n\nInterest on the Debt of HK\$1,000\.00/);
+});

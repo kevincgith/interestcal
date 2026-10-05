@@ -48,10 +48,10 @@ const tableRow = (left, right) => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${cell(L
 /**
  * @param {object} r    result of calculateInterest
  * @param {object} ctx  { money: (n) => string, rate: (fraction) => string, formula: (period) => string,
- *   currency?: 'HK$' (default) or 'US$' }
+ *   currency?: e.g. 'HK$' (default), inputs?: [label, value][] for a "Calculation inputs" block above the table }
  * @returns {string} word/document.xml
  */
-export function documentXml(r, { money, rate, formula, currency: cur = 'HK$' }) {
+export function documentXml(r, { money, rate, formula, currency: cur = 'HK$', inputs }) {
   const rows = [
     tableRow(
       para(run(`Interest on the Debt of ${cur}${money(r.principal)}`, { bold: true })),
@@ -97,7 +97,17 @@ export function documentXml(r, { money, rate, formula, currency: cur = 'HK$' }) 
     `<w:tblBorders>${['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(border).join('')}</w:tblBorders>` +
     `<w:tblCellMar><w:left w:w="85" w:type="dxa"/><w:right w:w="85" w:type="dxa"/></w:tblCellMar></w:tblPr>` +
     `<w:tblGrid><w:gridCol w:w="${LEFT_W}"/><w:gridCol w:w="${RIGHT_W}"/></w:tblGrid>${rowsXml.join('')}</w:tbl>`;
-  const table = `${tbl(rows)}${para('')}${tbl(summary)}${para('')}${daily}`;
+  // Optional block above the table: the inputs, as label / value lines without borders
+  const plainRow = ([k, v]) =>
+    `<w:tr>${cell(3200, para(run(k)))}${cell(LEFT_W + RIGHT_W - 3200, para(run(v)))}</w:tr>`;
+  const inputsBlock = inputs?.length
+    ? para(run('Calculation inputs', { bold: true })) +
+      `<w:tbl><w:tblPr><w:tblW w:w="${LEFT_W + RIGHT_W}" w:type="dxa"/><w:tblLayout w:type="fixed"/>` +
+      `<w:tblCellMar><w:left w:w="0" w:type="dxa"/><w:right w:w="85" w:type="dxa"/></w:tblCellMar></w:tblPr>` +
+      `<w:tblGrid><w:gridCol w:w="3200"/><w:gridCol w:w="${LEFT_W + RIGHT_W - 3200}"/></w:tblGrid>` +
+      `${inputs.map(plainRow).join('')}</w:tbl>${para('')}`
+    : '';
+  const table = `${inputsBlock}${tbl(rows)}${para('')}${tbl(summary)}${para('')}${daily}`;
 
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +

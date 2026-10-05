@@ -65,6 +65,8 @@ You can choose one of three rates:
 - **Shareable link:** the inputs are stored in the page address (e.g. `?src=prime&p=1000000&from=2026-01-01&to=2026-09-30&basis=act%2Fact&round=total&spread=1`). **Copy link** copies it.
 - **Excel and CSV export:** the Excel file uses live formulas and has a second sheet with the rate sources.
 - **Word export:** the interest schedule as a table worded like a statutory demand, one row per period: "(i) Interest on the sum of HK$… at the rate of …% per annum from … to … (n days)", the working ("(i.e. principal × rate × days ÷ 365 = amount)") and the amount, then the total, a summary (principal, any principal added or payments, interest, total amount due at the end date) and the daily interest from the end date until payment. Ready to paste into a court document.
+- **What's new:** for a week after a refresh picks up a newly published rate, a line under the header says so, e.g. "New: judgment debt rate 8.107% → 8.000% from 01-Jan-2027" (or "stays at" when the same rate is republished). HIBOR changes daily, so it isn't included.
+- **Word download with inputs:** in Advanced settings, "Word download: With calculation inputs" adds the inputs (rate, principal, dates, day count and so on) above the table. The choice is remembered in your browser.
 - **Saved calculations:** **Save** (on either tab) keeps the calculation's link and a name in your browser's local storage, never uploaded. The **Saved calculations** card lists them, newest first: rename, open or delete. Up to 50 are kept.
 - **Rounding:** you can round only the total (periods are added unrounded) or round each period to cents first. The second option makes the rows add up exactly to the total.
 

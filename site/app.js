@@ -4,7 +4,7 @@ import { buildPdf } from './export-pdf.js?v=__BUILD__';
 import { buildDocx } from './export-docx.js?v=__BUILD__';
 import {
   $, money, fmtDate, fmtRate, parseNumber, isIsoDate, link, row, download, loadXlsx, loadPdf, busy, copyLink, wireSteppers,
-  autoFitText, flash,
+  autoFitText, flash, todayIso,
 } from './shared.js?v=__BUILD__';
 import { saveCalculation, renderSaved } from './saved.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
@@ -227,6 +227,7 @@ async function loadRates() {
     }),
   );
   renderAsAt();
+  renderRateNews();
   renderRateTable();
 }
 
@@ -238,6 +239,24 @@ const asAtText = (key) => {
   const time = rateData[key].checkedAt && rateData[key].checkedTime;
   return `${fmtDate(asAt(key))}${time ? ` ${time} HKT` : ''}`;
 };
+
+// "New: judgment debt rate 8.107% → 8.000% from 01-Jan-2027" for a week after a refresh picks up a new published
+// rate (or "stays at" when the Judiciary republishes the same rate for a new quarter). HIBOR changes daily, so it's
+// left out. A rate counts as new if it was added recently (updatedAt) and takes effect within 45 days of that.
+const NEWS_NAMES = { judgment: 'judgment debt rate', prime: 'HSBC prime rate', usprime: 'US prime rate' };
+const addDays = (iso, n) => new Date(Date.parse(iso) + n * 864e5).toISOString().slice(0, 10);
+function renderRateNews() {
+  const today = todayIso();
+  const items = Object.keys(SOURCES).flatMap((key) => {
+    const { updatedAt, rates } = rateData[key] ?? {};
+    const [latest, prev] = rates ?? [];
+    if (!updatedAt || !latest || updatedAt < addDays(today, -7) || latest.effective < addDays(updatedAt, -45)) return [];
+    const change = prev && prev.rate !== latest.rate ? `${fmtPct(prev.rate)} → ${fmtPct(latest.rate)}` : `stays at ${fmtPct(latest.rate)}`;
+    return [`${NEWS_NAMES[key]} ${change} from ${fmtDate(latest.effective)}`];
+  });
+  $('rateNews').hidden = !items.length;
+  $('rateNews').textContent = items.length ? `New: ${items.join(' · ')}` : '';
+}
 
 function renderAsAt() {
   const keys = Object.keys(SOURCES);
@@ -614,6 +633,16 @@ function showSourceFields() {
   document.querySelectorAll('#form .pay-amount').forEach((el) => (el.placeholder = `Amount (${cur})`));
 }
 
+// Word download preference: remembered in this browser; it doesn't change the calculation, so it isn't "stale"
+try {
+  if (localStorage.getItem('interestcal.wordInputs') === 'inputs') $('wordInputs').value = 'inputs';
+} catch {}
+for (const type of ['input', 'change']) $('wordInputs').addEventListener(type, (e) => e.stopPropagation());
+$('wordInputs').addEventListener('change', () => {
+  try {
+    localStorage.setItem('interestcal.wordInputs', $('wordInputs').value);
+  } catch {}
+});
 $('currency').addEventListener('change', () => {
   currencyChosen = true;
   showSourceFields();
@@ -947,7 +976,10 @@ $('xlsx').addEventListener('click', () => {
 $('docx').addEventListener('click', () => {
   if (!lastResult) return;
   const r = lastResult;
-  const bytes = buildDocx(r, { money: (n) => money.format(n), rate: fmtRate, formula, currency: r.currency });
+  const bytes = buildDocx(r, {
+    money: (n) => money.format(n), rate: fmtRate, formula, currency: r.currency,
+    inputs: $('wordInputs').value === 'inputs' ? printInputItems(r) : null,
+  });
   download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), exportName(r, 'docx'));
 });
 
