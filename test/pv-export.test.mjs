@@ -114,3 +114,36 @@ test('CSV export: totals, rows sorted by date, quoted text, disclaimer', () => {
   assert.match(lines[head + 2], /^2026-10-05,"Today, ""quoted""",1234\.56,0,/);
   assert.match(lines.at(-1), /^"?Disclaimer:/);
 });
+
+test('Excel export, periods: live years, discount factor and present value from the periods-a-year and rate cells', () => {
+  const flows = [{ period: 0, amount: -10000, label: 'Now' }, { period: 1, amount: 3000, times: 3, label: 'Back' }, { period: 8, amount: 2000 }];
+  const res = { ...presentValue({ timing: 'periods', periodLength: 'quarter', rate: 8, flows }), currency: 'HK$' };
+  const { ws, rows } = roundTrip(res);
+  assert.equal(rows[3][0], 'Periods a year');
+  assert.equal(ws.B4.v, 4);
+  const head = rows.findIndex((r) => r[0] === 'Period');
+  assert.deepEqual(rows[head], ['Period', 'Description', 'Amount', 'Years', 'Discount Factor', 'Present Value']);
+  res.rows.forEach((row, i) => {
+    const n = head + 2 + i;
+    assert.equal(ws[`A${n}`].v, row.period);
+    assert.ok(Math.abs(evaluate(ws, `D${n}`) - row.t) < 1e-12);
+    assert.ok(Math.abs(evaluate(ws, `E${n}`) - row.df) < 1e-12, ws[`E${n}`].f);
+    assert.ok(Math.abs(evaluate(ws, `F${n}`) - row.pv) < 1e-6);
+  });
+  assert.equal(ws[`E${head + 3}`].f, `(1+$B$5/$B$4)^(-A${head + 3})`);
+  const pvRow = rows.findIndex((r) => r[0] === 'Present value (HK$)') + 1;
+  assert.equal(evaluate(ws, `B${pvRow}`), res.total);
+  assert.equal(rows[head + 1 + res.rows.length][0], 'Total');
+});
+
+test('PDF and CSV exports, periods: T0 / T+n instead of dates', () => {
+  const res = { ...presentValue({ timing: 'periods', periodLength: 'year', rate: 10, flows: [{ period: 0, amount: -100 }, { period: 2, amount: 121 }] }), currency: 'HK$' };
+  const pdf = buildPvPdf({ jsPDF, autoTable }, res, ctx(res)).output();
+  for (const s of ['Period', 'T0', 'T+2']) assert.ok(pdf.includes(`(${s})`), s);
+  const csv = buildPvCsv(res, ctx(res)).slice(1).split('\n');
+  const head = csv.indexOf('Period,Description,Amount,Years,Discount Factor,Present Value,Working');
+  assert.ok(head > 0);
+  assert.match(csv[head + 1], /^T0,,-100\.00,0\.000000,1\.0000000000,-100\.00,/);
+  assert.match(csv[head + 2], /^T\+2,,121\.00,2\.000000,/);
+  assert.equal(csv[head + 3], 'Total,,21.00,,,0.00,');
+});

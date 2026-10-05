@@ -1,7 +1,8 @@
-// Present value tab: valuation date, discount rate, compounding, day count basis and dated cash flows.
-import { presentValue, pvWorking, solveRate, REPEAT_MONTHS, MAX_REPEATS } from './pv.js?v=__BUILD__';
-import { buildPvPdf, buildPvWorkbook, buildPvCsv } from './pv-export.js?v=__BUILD__';
-import { addMonths } from './calc.js?v=__BUILD__';
+// Present value tab: valuation date, discount rate, compounding, day count basis and dated cash flows, or cash flows
+// by period (T0, T+1, ...).
+import { presentValue, pvWorking, solveRate, REPEAT_MONTHS, MAX_REPEATS, PERIOD_LENGTHS } from './pv.js?v=__BUILD__';
+import { buildPvPdf, buildPvWorkbook, buildPvCsv, periodName } from './pv-export.js?v=__BUILD__';
+import { addMonths, toDay } from './calc.js?v=__BUILD__';
 import { CURRENCIES } from './interest-text.js?v=__BUILD__';
 import {
   $, money, fmtDate, fmtRate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
@@ -18,6 +19,7 @@ const COMPOUNDING_NAMES = {
 const BASIS_NAMES = { 'act/365': 'Actual/365 Fixed', 'act/360': 'Actual/360', 'act/act': 'Actual/Actual (ISDA)' };
 const BASIS_KEYS = { 'act/365': '365', 'act/360': '360', 'act/act': 'aa' }; // link values (no slash)
 const CURRENCY_LABELS = { CNY: 'RMB' };
+const PERIOD_WORDS = { year: 'year', 'half-year': 'half-year', quarter: 'quarter', month: 'month' };
 
 let last = null; // last calculation
 let lastQuery = '';
@@ -53,11 +55,17 @@ $('pCurrency').addEventListener('change', () => {
 const REPEAT_NAMES = { month: 'month', quarter: 'quarter', 'half-year': 'half-year', year: 'year' };
 
 /** @param {{every: string, times: number} | null} [repeat]  a repeating row (every month by default when {}) */
-function addFlowRow(date = '', amount = '', label = '', repeat = null) {
+function addFlowRow(date = '', amount = '', label = '', repeat = null, period = '') {
   const r = document.createElement('div');
   r.className = repeat ? 'payment-row with-label repeat' : 'payment-row with-label';
   const d = Object.assign(document.createElement('input'), { type: 'date', className: 'pay-date', value: date });
   d.setAttribute('aria-label', 'Cash flow date');
+  // Periods timing: a whole period number instead of the date (CSS shows one or the other)
+  const pd = Object.assign(document.createElement('input'), {
+    type: 'text', className: 'pay-period', inputMode: 'numeric', autocomplete: 'off', placeholder: 'Period (0 = now)',
+    value: period === '' ? '' : String(period),
+  });
+  pd.setAttribute('aria-label', 'Cash flow period');
   const a = Object.assign(document.createElement('input'), {
     type: 'text', className: 'pay-amount', placeholder: `Amount (${cur()})`, inputMode: 'text', autocomplete: 'off',
     value: amount === '' ? '' : signed(amount),
@@ -77,14 +85,14 @@ function addFlowRow(date = '', amount = '', label = '', repeat = null) {
     r.remove();
     markStale();
   });
-  r.append(d, a, l, remove);
-  if (repeat) r.append(repeatLine(d, repeat));
+  r.append(d, pd, a, l, remove);
+  if (repeat) r.append(repeatLine(d, pd, repeat));
   $('pFlowRows').append(r);
   return r;
 }
 
 // "Every [month] for [12] times · last on 31-Dec-2027"
-function repeatLine(dateInput, { every = 'month', times = 12 }) {
+function repeatLine(dateInput, periodInput, { every = 'month', times = 12 }) {
   const line = Object.assign(document.createElement('div'), { className: 'repeat-line' });
   const sel = document.createElement('select');
   sel.className = 'repeat-every';
@@ -98,16 +106,20 @@ function repeatLine(dateInput, { every = 'month', times = 12 }) {
   const lastOn = Object.assign(document.createElement('span'), { className: 'repeat-last' });
   const update = () => {
     const k = Number(n.value);
-    lastOn.textContent = isIsoDate(dateInput.value) && Number.isInteger(k) && k >= 1 && k <= MAX_REPEATS
-      ? `· last on ${fmtDate(addMonths(dateInput.value, (k - 1) * REPEAT_MONTHS[sel.value]))}`
-      : '';
+    const ok = Number.isInteger(k) && k >= 1 && k <= MAX_REPEATS;
+    const p = Number(periodInput.value);
+    if (byPeriods()) lastOn.textContent = ok && periodInput.value.trim() && Number.isInteger(p) && p >= 0 ? `· last at ${periodName(p + k - 1)}` : '';
+    else lastOn.textContent = ok && isIsoDate(dateInput.value) ? `· last on ${fmtDate(addMonths(dateInput.value, (k - 1) * REPEAT_MONTHS[sel.value]))}` : '';
   };
-  for (const el of [sel, n, dateInput]) el.addEventListener('input', update);
+  for (const el of [sel, n, dateInput, periodInput]) el.addEventListener('input', update);
   sel.addEventListener('change', update);
+  line.update = update;
   // "for [12] times" stays together when the line wraps on a phone
   const count = Object.assign(document.createElement('span'), { className: 'repeat-count' });
   count.append('for', n, 'times');
-  line.append('Every', sel, count, lastOn);
+  // Periods timing repeats every period: the "every" list gives way to the word "period"
+  const periodWord = Object.assign(document.createElement('span'), { className: 'repeat-period', textContent: 'period' });
+  line.append('Every', sel, periodWord, count, lastOn);
   update();
   return line;
 }
@@ -122,24 +134,31 @@ function readAmount(s) {
 
 function readFlows() {
   const out = [];
+  const periods = byPeriods();
   [...$('pFlowRows').children].forEach((r, i) => {
     const date = r.querySelector('.pay-date').value;
+    const periodRaw = r.querySelector('.pay-period').value.trim();
     const raw = r.querySelector('.pay-amount').value.trim();
     const label = r.querySelector('.pay-label').value.trim();
-    if (!date && !raw && !label) return;
+    const when = periods ? periodRaw : date;
+    if (!when && !raw && !label) return;
     const amount = readAmount(raw);
-    if (!date || !raw || !Number.isFinite(amount) || amount === 0) {
-      throw new Error(`Cash flow ${i + 1}: enter a date and an amount other than 0.`);
+    if (!when || !raw || !Number.isFinite(amount) || amount === 0) {
+      throw new Error(`Cash flow ${i + 1}: enter ${periods ? 'a period (0 for now)' : 'a date'} and an amount other than 0.`);
+    }
+    const at = periods ? { period: Number(periodRaw) } : { date };
+    if (periods && !(Number.isInteger(at.period) && at.period >= 0)) {
+      throw new Error(`Cash flow ${i + 1}: the period must be a whole number, 0 for now, 1 for T+1, and so on.`);
     }
     if (!r.classList.contains('repeat')) {
-      out.push({ date, amount, label });
+      out.push({ ...at, amount, label });
       return;
     }
     const times = Number(r.querySelector('.repeat-times').value.trim());
     if (!Number.isInteger(times) || times < 1 || times > MAX_REPEATS) {
       throw new Error(`Cash flow ${i + 1}: enter how many times, a whole number from 1 to ${MAX_REPEATS.toLocaleString('en')}.`);
     }
-    out.push({ date, amount, label, every: r.querySelector('.repeat-every').value, times });
+    out.push(periods ? { ...at, amount, label, times } : { ...at, amount, label, every: r.querySelector('.repeat-every').value, times });
   });
   if (!out.length) throw new Error('Add at least one cash flow with a date and an amount.');
   return out;
@@ -162,12 +181,13 @@ const markStale = () => {
 $('pform').addEventListener('input', markStale);
 $('pform').addEventListener('change', markStale);
 wireSteppers($('pform'), markStale);
+const whenInput = (r) => r.querySelector(byPeriods() ? '.pay-period' : '.pay-date');
 $('pAddFlow').addEventListener('click', () => {
-  addFlowRow().querySelector('.pay-date').focus();
+  whenInput(addFlowRow()).focus();
   markStale();
 });
 $('pAddRepeat').addEventListener('click', () => {
-  addFlowRow('', '', '', {}).querySelector('.pay-date').focus();
+  whenInput(addFlowRow('', '', '', {})).focus();
   markStale();
 });
 // Rate (IRR) finds the rate, so the rate box is only for Present value
@@ -175,16 +195,53 @@ const solving = () => $('pSolve').value === 'irr';
 const showSolveFields = () => ($('pRateField').hidden = solving());
 $('pSolve').addEventListener('change', showSolveFields);
 
+// ---- Timing: dates, or periods (T0, T+1, ...) ----
+
+const byPeriods = () => $('pTiming').value === 'periods';
+const perYear = () => PERIOD_LENGTHS[$('pPeriod').value];
+function showTimingFields() {
+  const periods = byPeriods();
+  $('pform').classList.toggle('periods', periods);
+  for (const id of ['pValField', 'pCompField', 'pBasisField']) $(id).hidden = periods;
+  $('pPeriodField').hidden = !periods;
+  document.querySelectorAll('#pFlowRows .repeat-line').forEach((l) => l.update());
+  updateRateHint();
+}
+// Periods: the rate a period, e.g. "= 2.000% a quarter", so nobody has to divide by 4 themselves
+function updateRateHint() {
+  const rate = parseNumber($('pRate').value.replace(/[−–]/g, '-'));
+  const m = perYear();
+  $('pRateHint').textContent = byPeriods() && m > 1 && Number.isFinite(rate) && $('pRate').value.trim()
+    ? `= ${fmtRate(rate / 100 / m)} a ${PERIOD_WORDS[$('pPeriod').value]}`
+    : '';
+}
+// Switching to periods: rows with a date but no period get the nearest whole period from the valuation date
+$('pTiming').addEventListener('change', () => {
+  if (byPeriods() && isIsoDate($('pValuation').value)) {
+    const v = toDay($('pValuation').value);
+    for (const r of $('pFlowRows').children) {
+      const date = r.querySelector('.pay-date').value;
+      const p = r.querySelector('.pay-period');
+      if (!p.value.trim() && isIsoDate(date) && toDay(date) >= v) p.value = String(Math.round(((toDay(date) - v) / 365.25) * perYear()));
+    }
+  }
+  showTimingFields();
+});
+$('pPeriod').addEventListener('change', updateRateHint);
+$('pRate').addEventListener('input', updateRateHint);
+wireSteppers($('pRateField'), updateRateHint);
+
 // ---- Calculate ----
 
 function readInputs() {
+  const timing = byPeriods() ? 'periods' : 'dates';
   const valuation = $('pValuation').value;
-  if (!isIsoDate(valuation)) throw new Error('Enter a valuation date.');
+  if (timing === 'dates' && !isIsoDate(valuation)) throw new Error('Enter a valuation date.');
   const solve = solving() ? 'irr' : 'pv';
   const rate = parseNumber($('pRate').value.replace(/[−–]/g, '-'));
   if (solve === 'pv' && (!$('pRate').value.trim() || !Number.isFinite(rate))) throw new Error('Enter a discount rate, e.g. 5 for 5% p.a.');
   return {
-    solve, valuation, rate, compounding: $('pCompounding').value, basis: $('pBasis').value,
+    solve, timing, periodLength: $('pPeriod').value, valuation, rate, compounding: $('pCompounding').value, basis: $('pBasis').value,
     currencyCode: $('pCurrency').value, flows: readFlows(),
   };
 }
@@ -214,11 +271,27 @@ $('pform').addEventListener('submit', (e) => {
 });
 
 const isIrr = (res) => res.inputs.solve === 'irr';
-const rateLine = (res) =>
-  isIrr(res)
+const isPeriods = (res) => res.timing === 'periods';
+// "8.000% p.a. = 2.000% a quarter" (yearly periods: just "8.000% p.a.")
+function periodRate(res) {
+  const m = res.periodsPerYear;
+  return m === 1 ? `${fmtRate(res.rate)} p.a.` : `${fmtRate(res.rate)} p.a. = ${fmtRate(res.rate / m)} a ${PERIOD_WORDS[res.periodLength]}`;
+}
+// Periods: the yearly rate with the interest a period compounded, (1 + r/m)^m - 1
+const effective = (res) => (1 + res.rate / res.periodsPerYear) ** res.periodsPerYear - 1;
+function rateLine(res) {
+  if (isPeriods(res)) {
+    const each = `each period a ${PERIOD_WORDS[res.periodLength]}`;
+    const eff = res.periodsPerYear > 1 ? ` (${fmtRate(effective(res))} a year with compounding)` : '';
+    return isIrr(res)
+      ? `Rate (IRR) ${periodRate(res)}${eff}, ${each}: at this rate the cash flows are worth zero at T0.`
+      : `Discounted at ${periodRate(res)}, ${each}, to T0.`;
+  }
+  return isIrr(res)
     ? `Rate (IRR) ${fmtRate(res.rate)} p.a., ${COMPOUNDING_NAMES[res.compounding]}, ${BASIS_NAMES[res.basis]}: at this ` +
       'rate the cash flows are worth zero on the valuation date.'
     : `Discounted at ${fmtRate(res.rate)} p.a., ${COMPOUNDING_NAMES[res.compounding]}, ${BASIS_NAMES[res.basis]}.`;
+}
 function beforeNote(res) {
   const n = res.rows.filter((x) => x.before).length;
   if (!n) return '';
@@ -240,9 +313,12 @@ function render(res) {
   $('pTotal').textContent = withCur(res.total, c);
   $('pFuture').textContent = withCur(res.futureTotal, c);
   $('pDiscount').textContent = withCur(res.discount, c);
-  $('pValOut').textContent = fmtDate(res.valuation);
+  $('pValLabel').textContent = isPeriods(res) ? 'Valued at' : 'Valuation date';
+  $('pValOut').textContent = isPeriods(res) ? 'T0 (now)' : fmtDate(res.valuation);
   $('pIrrTile').hidden = !isIrr(res);
-  $('pIrr').textContent = isIrr(res) ? `${fmtRate(res.rate)} p.a.` : '';
+  $('pIrr').textContent = isIrr(res) ? (isPeriods(res) ? periodRate(res) : `${fmtRate(res.rate)} p.a.`) : '';
+  $('pColWhen').textContent = isPeriods(res) ? 'Period' : 'Date';
+  $('pTable').classList.toggle('periods', isPeriods(res));
   $('pRateLine').textContent = rateLine(res);
   $('pWarn').textContent = notes(res).join(' ');
   $('pWarn').hidden = !$('pWarn').textContent;
@@ -250,14 +326,15 @@ function render(res) {
   $('pRows').replaceChildren(
     ...res.rows.map((x) => {
       const tr = row(
-        [fmtDate(x.date), x.label, String(x.days), x.t.toFixed(4), signed(x.amount), x.df.toFixed(6), signed(x.pv), working(res, x)],
-        ['', '', 'num', 'num', 'num', 'num', 'num', 'working'],
+        [isPeriods(res) ? periodName(x.period) : fmtDate(x.date), x.label, isPeriods(res) ? '' : String(x.days), x.t.toFixed(4),
+          signed(x.amount), x.df.toFixed(6), signed(x.pv), working(res, x)],
+        ['', '', 'num col-days', 'num', 'num', 'num', 'num', 'working'],
       );
       if (x.before) tr.cells[0].append(Object.assign(document.createElement('span'), { className: 'before', textContent: 'before valuation date' }));
       return tr;
     }),
   );
-  const foot = row(['Total', '', '', '', signed(res.futureTotal), '', signed(res.total), ''], ['', '', '', '', 'num', '', 'num', '']);
+  const foot = row(['Total', '', '', '', signed(res.futureTotal), '', signed(res.total), ''], ['', '', 'col-days', '', 'num', '', 'num', '']);
   $('pFoot').replaceChildren(foot);
   $('pResults').hidden = false;
 }
@@ -267,17 +344,24 @@ autoFitText($('pResults').querySelector('.summary'));
 
 function writeQuery(res) {
   const i = res.inputs;
-  const q = new URLSearchParams({ tab: 'pv', v: i.valuation });
+  const periods = i.timing === 'periods';
+  const q = new URLSearchParams({ tab: 'pv' });
+  if (periods) {
+    q.set('tm', 'p');
+    q.set('pl', i.periodLength);
+  } else q.set('v', i.valuation);
   if (i.solve === 'irr') q.set('s', 'irr');
   else q.set('r', String(i.rate));
-  if (i.compounding !== 'yearly') q.set('c', i.compounding);
-  if (i.basis !== 'act/365') q.set('b', BASIS_KEYS[i.basis]);
+  if (!periods && i.compounding !== 'yearly') q.set('c', i.compounding);
+  if (!periods && i.basis !== 'act/365') q.set('b', BASIS_KEYS[i.basis]);
   if (i.currencyCode !== 'HKD') q.set('cur', i.currencyCode);
   // One cf per cash flow: date,amount,description (the description may itself contain commas)
   // A repeating one: rf=date,amount,every,times,description
+  // Periods timing: the period number instead of the date, and "p" (every period) for how often
   for (const f of i.flows) {
-    if (f.every) q.append('rf', [f.date, f.amount, f.every, f.times, f.label].join(',').replace(/,$/, ''));
-    else q.append('cf', [f.date, f.amount, f.label].join(',').replace(/,$/, ''));
+    const when = periods ? f.period : f.date;
+    if (f.times != null) q.append('rf', [when, f.amount, periods ? 'p' : f.every, f.times, f.label].join(',').replace(/,$/, ''));
+    else q.append('cf', [when, f.amount, f.label].join(',').replace(/,$/, ''));
   }
   lastQuery = `?${q}`;
   if (activeTab() === 'pv') history.replaceState(null, '', `${location.pathname}${lastQuery}`);
@@ -293,21 +377,30 @@ function readQuery() {
   const basis = Object.keys(BASIS_KEYS).find((k) => BASIS_KEYS[k] === q.get('b'));
   if (basis) $('pBasis').value = basis;
   if (q.get('cur') in CURRENCIES) $('pCurrency').value = q.get('cur');
+  const periods = q.get('tm') === 'p';
+  if (periods) $('pTiming').value = 'periods';
+  if (q.get('pl') in PERIOD_LENGTHS) $('pPeriod').value = q.get('pl');
+  const isPeriod = (x) => /^\d+$/.test(x);
+  const okWhen = (x) => (periods ? isPeriod(x) : isIsoDate(x));
+  const okAmount = (x) => Number.isFinite(Number(x)) && Number(x) !== 0;
   let any = false;
   for (const cf of q.getAll('cf')) {
-    const [date, amount, ...label] = cf.split(',');
-    if (isIsoDate(date) && Number.isFinite(Number(amount)) && Number(amount) !== 0) {
-      addFlowRow(date, Number(amount), label.join(','));
+    const [when, amount, ...label] = cf.split(',');
+    if (okWhen(when) && okAmount(amount)) {
+      if (periods) addFlowRow('', Number(amount), label.join(','), null, Number(when));
+      else addFlowRow(when, Number(amount), label.join(','));
       any = true;
     }
   }
   for (const rf of q.getAll('rf')) {
-    const [date, amount, every, times, ...label] = rf.split(',');
-    if (isIsoDate(date) && Number.isFinite(Number(amount)) && Number(amount) !== 0 && every in REPEAT_MONTHS) {
-      addFlowRow(date, Number(amount), label.join(','), { every, times: Number(times) || 12 });
-      any = true;
-    }
+    const [when, amount, every, times, ...label] = rf.split(',');
+    if (!okWhen(when) || !okAmount(amount) || !(periods || every in REPEAT_MONTHS)) continue;
+    const repeat = { every: periods ? 'month' : every, times: Number(times) || 12 };
+    if (periods) addFlowRow('', Number(amount), label.join(','), repeat, Number(when));
+    else addFlowRow(when, Number(amount), label.join(','), repeat);
+    any = true;
   }
+  showTimingFields();
   if (q.get('s') === 'irr') $('pSolve').value = 'irr';
   showSolveFields();
   return any;
@@ -327,6 +420,7 @@ $('pReset').addEventListener('click', () => {
   $('pCurrency').value = 'HKD';
   setDefaults();
   showSolveFields();
+  showTimingFields();
   $('pResults').hidden = true;
   last = null;
   setStale(false);
@@ -338,14 +432,22 @@ $('pReset').addEventListener('click', () => {
 // ---- Downloads ----
 
 // e.g. present_value_2026-10-05_3_cash_flows.pdf
+// e.g. present_value_2026-10-05_3_cash_flows.pdf, or present_value_quarters_3_cash_flows.pdf by periods
 const exportName = (res, ext) =>
-  `present_value_${res.valuation}_${res.rows.length}_cash_flow${res.rows.length === 1 ? '' : 's'}.${ext}`;
+  `present_value_${isPeriods(res) ? `${res.periodLength}s` : res.valuation}_${res.rows.length}_cash_flow${res.rows.length === 1 ? '' : 's'}.${ext}`;
 const CURRENCY_NAMES = { CNY: 'RMB' };
+// The first two are the Excel sheet's live cells (valuation date or period length, and the rate)
 const inputItems = (res) => [
-  ['Valuation date', fmtDate(res.valuation)],
-  isIrr(res) ? ['Rate (IRR)', `${fmtRate(res.rate)} p.a. (solved: the cash flows are worth zero)`] : ['Discount rate', `${fmtRate(res.rate)} p.a.`],
-  ['Compounding', COMPOUNDING_NAMES[res.compounding].replace(/^./, (c) => c.toUpperCase())],
-  ['Day count basis', BASIS_NAMES[res.basis]],
+  isPeriods(res)
+    ? ['Timing', `Periods T0, T+1, ..., each a ${PERIOD_WORDS[res.periodLength]} (${res.periodsPerYear} a year)`]
+    : ['Valuation date', fmtDate(res.valuation)],
+  isIrr(res)
+    ? ['Rate (IRR)', `${isPeriods(res) ? periodRate(res) : `${fmtRate(res.rate)} p.a.`} (solved: the cash flows are worth zero)`]
+    : ['Discount rate', isPeriods(res) ? periodRate(res) : `${fmtRate(res.rate)} p.a.`],
+  ...(isPeriods(res) ? [] : [
+    ['Compounding', COMPOUNDING_NAMES[res.compounding].replace(/^./, (c) => c.toUpperCase())],
+    ['Day count basis', BASIS_NAMES[res.basis]],
+  ]),
   ['Currency', `${CURRENCY_NAMES[res.inputs.currencyCode] ?? res.inputs.currencyCode} (${res.currency})`],
   ['Calculated on', fmtDate(todayIso())],
 ];
@@ -396,10 +498,11 @@ $('pCsv').addEventListener('click', () => {
 $('pShare').addEventListener('click', () => copyLink(location.href, $('pShareStatus')));
 // e.g. "PV HK$952,380.95 · 1 cash flow at 5.000% · 05-Oct-2026" or "IRR 37.336253% · 5 cash flows · 01-Jan-2008"
 const flowCount = (res) => `${res.rows.length} cash flow${res.rows.length === 1 ? '' : 's'}`;
+const whenFor = (res) => (isPeriods(res) ? `by ${PERIOD_WORDS[res.periodLength]}` : fmtDate(res.valuation));
 const titleFor = (res) =>
   isIrr(res)
-    ? `IRR ${fmtRate(res.rate)} · ${flowCount(res)} · ${fmtDate(res.valuation)}`
-    : `PV ${withCur(res.total, res.currency)} · ${flowCount(res)} at ${fmtRate(res.rate)} · ${fmtDate(res.valuation)}`;
+    ? `IRR ${fmtRate(res.rate)} · ${flowCount(res)} · ${whenFor(res)}`
+    : `PV ${withCur(res.total, res.currency)} · ${flowCount(res)} at ${fmtRate(res.rate)} · ${whenFor(res)}`;
 $('pSave').addEventListener('click', () => {
   if (!last || !lastQuery) return;
   const ok = saveCalculation({ tab: 'pv', query: lastQuery, title: titleFor(last) });

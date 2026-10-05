@@ -17,6 +17,9 @@
 //     first date's day of the month where the month has it (31 Jan, 28/29 Feb, 31 Mar, ...).
 //   - Solving for the rate (IRR) finds the rate at which the present value is zero; with Act/365 and yearly
 //     compounding that is Excel's XIRR.
+//   - Periods timing (instead of dates): cash flows at T0, T+1, T+2, ... with a period length of a year, half-year,
+//     quarter or month (m periods a year). The rate is still % p.a.; each period uses r/m, so the discount factor at
+//     T+n is (1 + r/m)^(-n). With yearly periods that is Excel's NPV (counting from T0) and IRR.
 import { toDay, isLeapYear, round2, addMonths } from './calc.js';
 
 export const PV_COMPOUNDING = ['yearly', 'half-yearly', 'quarterly', 'monthly', 'daily', 'continuous', 'simple'];
@@ -24,6 +27,8 @@ export const PV_BASES = ['act/365', 'act/360', 'act/act'];
 const PER_YEAR = { yearly: 1, 'half-yearly': 2, quarterly: 4, monthly: 12 };
 export const REPEAT_MONTHS = { month: 1, quarter: 3, 'half-year': 6, year: 12 };
 export const MAX_REPEATS = 1200;
+export const PERIOD_LENGTHS = { year: 1, 'half-year': 2, quarter: 4, month: 12 }; // periods a year
+export const MAX_PERIOD = 6000;
 
 const MS_PER_DAY = 86_400_000;
 const yearOf = (day) => new Date(day * MS_PER_DAY).getUTCFullYear();
@@ -88,7 +93,55 @@ export function expandFlows(flows) {
 }
 
 /**
+ * Periods timing: cash flows at whole periods (0 = T0 = now) with repeating ones expanded, one per period, e.g.
+ * "Rent" from T+1 for 3 times -> T+1, T+2, T+3.
+ * @param {{period: number, amount: number, label?: string, times?: number}[]} flows
+ * @returns {{period: number, amount: number, label: string}[]}
+ */
+export function expandPeriodFlows(flows) {
+  return flows.flatMap((f, i) => {
+    if (!(Number.isFinite(f.amount) && f.amount !== 0)) throw new Error(`Cash flow ${i + 1}: enter an amount other than 0`);
+    if (!(Number.isInteger(f.period) && f.period >= 0 && f.period <= MAX_PERIOD)) {
+      throw new Error(`Cash flow ${i + 1}: the period must be a whole number from 0 (now) to ${MAX_PERIOD.toLocaleString('en')}`);
+    }
+    const label = f.label ?? '';
+    if (f.times == null) return [{ period: f.period, amount: f.amount, label }];
+    if (!(Number.isInteger(f.times) && f.times >= 1 && f.times <= MAX_REPEATS)) {
+      throw new Error(`Cash flow ${i + 1}: the number of times must be a whole number from 1 to ${MAX_REPEATS.toLocaleString('en')}`);
+    }
+    return Array.from({ length: f.times }, (_, k) => ({
+      period: f.period + k,
+      amount: f.amount,
+      label: f.times === 1 ? label : `${label ? `${label} ` : ''}(${k + 1} of ${f.times})`,
+    }));
+  });
+}
+
+/** Present value by periods: see presentValue with timing 'periods' */
+function presentValueByPeriods({ rate, periodLength = 'year', flows }) {
+  const m = PERIOD_LENGTHS[periodLength];
+  if (!m) throw new Error(`Unknown period length: ${periodLength}`);
+  const r = rate / 100;
+  if (r / m <= -1) throw new Error(`The rate per period must be above -100%`);
+  const rows = expandPeriodFlows(flows)
+    .map((f, i) => {
+      const df = (1 + r / m) ** -f.period;
+      return { i, period: f.period, label: f.label, amount: f.amount, t: f.period / m, df, pv: f.amount * df, before: false };
+    })
+    .sort((a, b) => a.period - b.period || a.i - b.i)
+    .map(({ i, ...row }) => row);
+  const total = round2(rows.reduce((s, x) => s + x.pv, 0)) || 0;
+  const futureTotal = round2(rows.reduce((s, x) => s + x.amount, 0)) || 0;
+  return {
+    timing: 'periods', periodLength, periodsPerYear: m, rate: r, rows, total, futureTotal,
+    discount: round2(futureTotal - total) || 0,
+  };
+}
+
+/**
  * @param {object} input
+ * @param {'dates' | 'periods'} [input.timing]  dates (default) or periods (T0, T+1, ...: then valuation, compounding and
+ *   basis are not used; periodLength is one of PERIOD_LENGTHS and flows are {period, amount, label?, times?})
  * @param {string} input.valuation  valuation date "YYYY-MM-DD"
  * @param {number} input.rate       discount rate in % p.a. (5 = 5%)
  * @param {string} [input.compounding]  one of PV_COMPOUNDING (default yearly)
@@ -97,7 +150,13 @@ export function expandFlows(flows) {
  * @returns {{ valuation, rate, compounding, basis, rows, total, futureTotal, discount }}
  *   rows are sorted by date (ties keep their input order); rate is a fraction
  */
-export function presentValue({ valuation, rate, compounding = 'yearly', basis = 'act/365', flows }) {
+export function presentValue({ timing = 'dates', valuation, rate, compounding = 'yearly', basis = 'act/365', periodLength, flows }) {
+  if (!['dates', 'periods'].includes(timing)) throw new Error(`Unknown timing: ${timing}`);
+  if (timing === 'periods') {
+    if (!Number.isFinite(rate)) throw new Error('Enter a discount rate');
+    if (!flows?.length) throw new Error('Add at least one cash flow');
+    return presentValueByPeriods({ rate, periodLength, flows });
+  }
   if (!PV_COMPOUNDING.includes(compounding)) throw new Error(`Unknown compounding: ${compounding}`);
   if (!PV_BASES.includes(basis)) throw new Error(`Unknown day count basis: ${basis}`);
   if (!Number.isFinite(rate)) throw new Error('Enter a discount rate');
@@ -122,7 +181,7 @@ export function presentValue({ valuation, rate, compounding = 'yearly', basis = 
   // "|| 0" turns a total that rounds to -0 (e.g. at the IRR) into 0, so it never shows as "-0.00"
   const total = round2(rows.reduce((s, x) => s + x.pv, 0)) || 0;
   const futureTotal = round2(rows.reduce((s, x) => s + x.amount, 0)) || 0;
-  return { valuation, rate: r, compounding, basis, rows, total, futureTotal, discount: round2(futureTotal - total) || 0 };
+  return { timing: 'dates', valuation, rate: r, compounding, basis, rows, total, futureTotal, discount: round2(futureTotal - total) || 0 };
 }
 
 // Rates tried when looking for an IRR: -99% to 100% in steps of 0.25%, then to 1,000% in steps of 5%
@@ -132,19 +191,32 @@ const RATE_GRID = [
 ];
 
 /**
- * The rate (IRR) at which the present value of the cash flows is zero, for the given compounding and basis. It looks
- * from -99% to 1,000% p.a.; when more than one rate works (cash flows that change sign more than once), it returns the
- * one closest to 0% and lists them all.
+ * The rate (IRR) at which the present value of the cash flows is zero, for the given compounding and basis (or, with
+ * periods timing, the rate a period x periods a year). It looks from -99% to 1,000%; when more than one rate works
+ * (cash flows that change sign more than once), it returns the one closest to 0% and lists them all.
  * @returns {{ rate: number, roots: number[] }}  rates in % p.a.
  */
-export function solveRate({ valuation, compounding = 'yearly', basis = 'act/365', flows }) {
+export function solveRate({ timing = 'dates', valuation, compounding = 'yearly', basis = 'act/365', periodLength, flows }) {
+  if (!flows?.length) throw new Error('Add at least one cash flow');
+  const needBoth = (list) => {
+    if (!list.some((f) => f.amount > 0) || !list.some((f) => f.amount < 0)) {
+      throw new Error('To find the rate, enter both money paid out (a minus amount) and money received.');
+    }
+  };
+  if (timing === 'periods') {
+    // Solve for the rate per period i, then quote it a year as i x m (the nominal rate, like the rate entered)
+    const m = PERIOD_LENGTHS[periodLength];
+    if (!m) throw new Error(`Unknown period length: ${periodLength}`);
+    const list = expandPeriodFlows(flows);
+    needBoth(list);
+    const roots = findRoots((i) => list.reduce((sum, f) => sum + f.amount * (1 + i) ** -f.period, 0));
+    if (!roots.length) throw new Error('No rate from −99% to 1,000% a period makes the present value zero.');
+    return pickRoot(roots.map((i) => i * m * 100));
+  }
   if (!PV_COMPOUNDING.includes(compounding)) throw new Error(`Unknown compounding: ${compounding}`);
   if (!PV_BASES.includes(basis)) throw new Error(`Unknown day count basis: ${basis}`);
-  if (!flows?.length) throw new Error('Add at least one cash flow');
   const list = expandFlows(flows);
-  if (!list.some((f) => f.amount > 0) || !list.some((f) => f.amount < 0)) {
-    throw new Error('To find the rate, enter both money paid out (a minus amount) and money received.');
-  }
+  needBoth(list);
   const v = toDay(valuation);
   const items = list.map((f) => {
     const pieces = yearPieces(v, toDay(f.date), basis);
@@ -156,24 +228,36 @@ export function solveRate({ valuation, compounding = 'yearly', basis = 'act/365'
       if (compounding === 'simple' && 1 + r * it.t <= 0) return NaN;
       sum += it.amount * discountFactor(r, compounding, it.pieces);
     }
-    return Number.isFinite(sum) ? sum : NaN;
+    return sum;
   };
+  const roots = findRoots(npv);
+  if (!roots.length) throw new Error('No rate from −99% to 1,000% p.a. makes the present value zero.');
+  return pickRoot(roots.map((r) => r * 100));
+}
 
+// The answer closest to 0%, and all of them
+const pickRoot = (pct) => ({ rate: pct.reduce((best, r) => (Math.abs(r) < Math.abs(best) ? r : best)), roots: pct });
+
+/** Every rate on RATE_GRID's range where f changes sign, each narrowed down by bisection */
+function findRoots(f) {
+  const value = (r) => {
+    const y = f(r);
+    return Number.isFinite(y) ? y : NaN;
+  };
   const roots = [];
   let prev = null;
   for (const r of RATE_GRID) {
-    const y = npv(r);
+    const y = value(r);
     if (Number.isNaN(y)) {
       prev = null;
       continue;
     }
     if (y === 0) roots.push(r);
     else if (prev && prev.y !== 0 && Math.sign(prev.y) !== Math.sign(y)) {
-      // Bisect between the two grid rates
       let [lo, hi, ylo] = [prev.r, r, prev.y];
       for (let k = 0; k < 100 && hi - lo > 1e-15; k++) {
         const mid = (lo + hi) / 2;
-        const ym = npv(mid);
+        const ym = value(mid);
         if (Math.sign(ym) === Math.sign(ylo)) [lo, ylo] = [mid, ym];
         else hi = mid;
       }
@@ -181,10 +265,7 @@ export function solveRate({ valuation, compounding = 'yearly', basis = 'act/365'
     }
     prev = { r, y };
   }
-  if (!roots.length) throw new Error('No rate from −99% to 1,000% p.a. makes the present value zero.');
-  const pct = roots.map((r) => r * 100);
-  const rate = pct.reduce((best, r) => (Math.abs(r) < Math.abs(best) ? r : best));
-  return { rate, roots: pct };
+  return roots;
 }
 
 /**
@@ -197,6 +278,10 @@ export function solveRate({ valuation, compounding = 'yearly', basis = 'act/365'
  */
 export function pvWorking(res, row, fmt) {
   const amount = fmt.money(row.amount);
+  if (res.timing === 'periods') {
+    if (row.period === 0) return `${amount} (at T0)`;
+    return `${amount} ÷ (1 + ${fmt.rate(res.rate / res.periodsPerYear)})^${row.period}`;
+  }
   if (row.days === 0) return `${amount} (on the valuation date)`;
   const op = row.before ? '×' : '÷';
   const pieces = row.pieces.map((p) => ({ days: Math.abs(p.days), yearDays: p.yearDays }));

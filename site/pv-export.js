@@ -22,6 +22,7 @@ export function buildPvPdf({ jsPDF, autoTable }, res, ctx) {
   const width = doc.internal.pageSize.getWidth();
   const height = doc.internal.pageSize.getHeight();
   const { fmt } = ctx;
+  const periods = res.timing === 'periods';
   let y = MARGIN;
 
   const table = (opts) => {
@@ -65,10 +66,11 @@ export function buildPvPdf({ jsPDF, autoTable }, res, ctx) {
   y += 4;
 
   table({
-    head: [['Date', 'Description', 'Days', 'Years', 'Amount', 'Discount factor', 'Present value', 'Working']],
+    head: [[periods ? 'Period' : 'Date', 'Description', periods ? '' : 'Days', 'Years', 'Amount', 'Discount factor', 'Present value', 'Working']],
     body: [
       ...res.rows.map((r) => [
-        `${fmt.date(r.date)}${r.before ? '\n(before valuation date)' : ''}`, pdfText(r.label), String(r.days), r.t.toFixed(4),
+        periods ? periodName(r.period) : `${fmt.date(r.date)}${r.before ? '\n(before valuation date)' : ''}`, pdfText(r.label),
+        periods ? '' : String(r.days), r.t.toFixed(4),
         pdfText(fmt.money(r.amount)), r.df.toFixed(6), pdfText(fmt.money(r.pv)), pdfText(ctx.working(r)),
       ]),
       ['Total', '', '', '', pdfText(fmt.money(res.futureTotal)), '', pdfText(fmt.money(res.total)), ''],
@@ -157,6 +159,9 @@ export function pvFormulas(res, row, ref) {
 }
 
 const COLS = ['Date', 'Description', 'Amount', 'Days', 'Years', 'Discount Factor', 'Present Value'];
+const PERIOD_COLS = ['Period', 'Description', 'Amount', 'Years', 'Discount Factor', 'Present Value'];
+// "T0", "T+3"
+export const periodName = (n) => (n === 0 ? 'T0' : `T+${n}`);
 
 /**
  * Excel: one "Present value" sheet with the inputs (the valuation date and the rate as cells every formula uses),
@@ -166,8 +171,11 @@ const COLS = ['Date', 'Description', 'Amount', 'Days', 'Years', 'Discount Factor
  */
 export function buildPvWorkbook(XLSX, res, ctx) {
   const rows = [[{ t: 's', v: 'HK Interest Calculator: Present value' }], [DISCLAIMER_WITH_TERMS], []];
-  const valRow = rows.length + 1; // 1-based row of the valuation date
-  rows.push(['Valuation date', { t: 'n', v: serial(res.valuation), z: DATE }]);
+  const periods = res.timing === 'periods';
+  const valRow = rows.length + 1; // 1-based row of the valuation date (periods: the periods a year)
+  rows.push(periods
+    ? ['Periods a year', { t: 'n', v: res.periodsPerYear, z: '0' }]
+    : ['Valuation date', { t: 'n', v: serial(res.valuation), z: DATE }]);
   rows.push([ctx.rateLabel ?? 'Discount rate (p.a.)', { t: 'n', v: res.rate, z: PCT }]);
   for (const [k, v] of ctx.inputs) rows.push([k, v]);
   rows.push([]);
@@ -176,12 +184,27 @@ export function buildPvWorkbook(XLSX, res, ctx) {
   for (const line of ctx.lines) rows.push([line]);
   rows.push([]);
 
-  rows.push(COLS);
+  const cols = periods ? PERIOD_COLS : COLS;
+  rows.push(cols);
   const first = rows.length + 1;
-  const col = (name) => String.fromCharCode('A'.charCodeAt(0) + COLS.indexOf(name));
-  const [A, C, D, E, F, G] = ['Date', 'Amount', 'Days', 'Years', 'Discount Factor', 'Present Value'].map(col);
+  const col = (name) => String.fromCharCode('A'.charCodeAt(0) + cols.indexOf(name));
+  const [A, C, E, F, G] = [cols[0], 'Amount', 'Years', 'Discount Factor', 'Present Value'].map(col);
   res.rows.forEach((row, i) => {
     const n = first + i;
+    if (periods) {
+      // Periods: years = period / periods a year; discount factor = (1 + rate / periods a year)^(-period)
+      const [m, r] = [`$B$${valRow}`, `$B$${valRow + 1}`];
+      rows.push([
+        row.period,
+        row.label,
+        { t: 'n', v: row.amount, z: MONEY },
+        { t: 'n', f: `${A}${n}/${m}`, v: row.t, z: '0.0000' },
+        { t: 'n', f: `(1+${r}/${m})^(-${A}${n})`, v: row.df, z: '0.000000' },
+        { t: 'n', f: `${C}${n}*${F}${n}`, v: row.pv, z: MONEY },
+      ]);
+      return;
+    }
+    const D = col('Days');
     const f = pvFormulas(res, row, { val: `$B$${valRow}`, rate: `$B$${valRow + 1}`, date: `${A}${n}`, days: `${D}${n}`, years: `${E}${n}` });
     rows.push([
       { t: 'n', v: serial(row.date), z: DATE },
@@ -195,7 +218,9 @@ export function buildPvWorkbook(XLSX, res, ctx) {
   });
   const last = first + res.rows.length - 1;
   const total = (c, v) => ({ t: 'n', f: `SUM(${c}${first}:${c}${last})`, v, z: MONEY });
-  rows.push(['Total', '', total(C, res.futureTotal), '', '', '', total(G, res.total)]);
+  const totalLine = cols.map((name) => (name === 'Amount' ? total(C, res.futureTotal) : name === 'Present Value' ? total(G, res.total) : ''));
+  totalLine[0] = 'Total';
+  rows.push(totalLine);
   const totalRow = rows.length;
   const cur = res.currency ? ` (${res.currency})` : '';
   rows[summaryAt] = [`Present value${cur}`, { t: 'n', f: `ROUND(${G}${totalRow},2)`, v: res.total, z: MONEY }];
@@ -233,9 +258,17 @@ export function buildPvCsv(res, ctx) {
     [`Discount${cur}`, m(res.discount)],
     ...ctx.lines.map((l) => [l]),
     [],
-    ['Date', 'Description', 'Amount', 'Days', 'Years', 'Discount Factor', 'Present Value', 'Working'],
-    ...res.rows.map((r) => [r.date, r.label, m(r.amount), r.days, r.t.toFixed(6), r.df.toFixed(10), m(r.pv), ctx.working(r)]),
-    ['Total', '', m(res.futureTotal), '', '', '', m(res.total), ''],
+    ...(res.timing === 'periods'
+      ? [
+        ['Period', 'Description', 'Amount', 'Years', 'Discount Factor', 'Present Value', 'Working'],
+        ...res.rows.map((r) => [periodName(r.period), r.label, m(r.amount), r.t.toFixed(6), r.df.toFixed(10), m(r.pv), ctx.working(r)]),
+        ['Total', '', m(res.futureTotal), '', '', m(res.total), ''],
+      ]
+      : [
+        ['Date', 'Description', 'Amount', 'Days', 'Years', 'Discount Factor', 'Present Value', 'Working'],
+        ...res.rows.map((r) => [r.date, r.label, m(r.amount), r.days, r.t.toFixed(6), r.df.toFixed(10), m(r.pv), ctx.working(r)]),
+        ['Total', '', m(res.futureTotal), '', '', '', m(res.total), ''],
+      ]),
     [],
     [DISCLAIMER_WITH_TERMS],
   ];

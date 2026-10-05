@@ -23,9 +23,9 @@ test('present value from a link: rows sorted by date, earlier cash flow grown fo
   await expect(page.locator('#pFoot td')).toHaveText(['Total', '', '', '', '130,000.00', '', '119,583.51', '']);
 });
 
-test('tabs: the Present value tab keeps its own link and opens with a default cash flow', async ({ page }) => {
+test('tabs: the PV tab keeps its own link and opens with a default cash flow', async ({ page }) => {
   await page.goto('?src=judgment&p=135436.48&from=2025-11-24&to=2026-04-20');
-  await page.getByRole('tab', { name: 'Present value' }).click();
+  await page.getByRole('tab', { name: 'PV', exact: true }).click();
   await expect(page.locator('#panel-pv')).toBeVisible();
   await expect(page.locator('#panel-interest')).toBeHidden();
   await expect(page).toHaveURL(/tab=pv&v=\d{4}-\d{2}-\d{2}&r=5&cf=/);
@@ -36,7 +36,7 @@ test('tabs: the Present value tab keeps its own link and opens with a default ca
   await expect(page).toHaveURL(/src=judgment&p=135436\.48/);
   // Arrow keys move between all three tabs
   await page.getByRole('tab', { name: 'Interest' }).press('ArrowLeft');
-  await expect(page.getByRole('tab', { name: 'Present value' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'PV', exact: true })).toHaveAttribute('aria-selected', 'true');
 });
 
 test('editing marks results out of date; Calculate updates the link; negative and bracketed amounts', async ({ page }) => {
@@ -194,4 +194,46 @@ test('IRR errors and the note for more than one answer', async ({ page }) => {
   await page.goto('?tab=pv&v=2026-01-01&s=irr&cf=2026-01-01,-100&cf=2027-01-01,230&cf=2028-01-01,-132');
   await expect(page.locator('#pIrr')).toHaveText('10.000% p.a.');
   await expect(page.locator('#pWarn')).toContainText('More than one rate makes the cash flows worth zero (10.000% and 20.000% p.a.)');
+});
+
+test('periods timing: Excel\'s NPV example, T+n rows, fields that don\'t apply hidden, link', async ({ page }) => {
+  await page.goto(LINK);
+  await page.locator('#pTiming').selectOption('periods');
+  for (const id of ['#pValField', '#pCompField', '#pBasisField']) await expect(page.locator(id)).toBeHidden();
+  await expect(page.locator('#pPeriodField')).toBeVisible();
+  await expect(page.locator('.pv-flows-note .periods-only').first()).toBeVisible();
+  // The rows with dates got the nearest whole year: 2027-10-05 -> 1, 2028-10-05 -> 2; the one before stays empty
+  await expect(page.getByLabel('Cash flow period').nth(0)).toHaveValue('1');
+
+  // Excel: NPV(10%, -10000, 3000, 4200, 6800) = 1,188.44, the first value at T+1
+  const removes = page.getByRole('button', { name: 'Remove cash flow' });
+  while (await removes.count()) await removes.first().click();
+  for (const [period, amount] of [[1, -10000], [2, 3000], [3, 4200], [4, 6800]]) {
+    await page.getByRole('button', { name: '+ Add cash flow' }).click();
+    const row = page.locator('#pFlowRows .payment-row').last();
+    await row.getByLabel('Cash flow period').fill(String(period));
+    await row.getByLabel('Cash flow amount').fill(String(amount));
+  }
+  await page.locator('#pRate').fill('10');
+  await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#pTotal')).toHaveText('HK$1,188.44');
+  await expect(page.locator('#pValOut')).toHaveText('T0 (now)');
+  await expect(page.locator('#pColWhen')).toHaveText('Period');
+  await expect(page.locator('#pRows tr').first().locator('td').first()).toHaveText('T+1');
+  await expect(page).toHaveURL(/tm=p&pl=year&r=10&cf=1%2C-10000/);
+  await page.reload();
+  await expect(page.locator('#pTotal')).toHaveText('HK$1,188.44');
+});
+
+test('periods timing: quarterly IRR of a bond at par is the coupon rate; rate a period shown', async ({ page }) => {
+  await page.goto('?tab=pv&tm=p&pl=quarter&r=5&cf=0,-1000,Buy&rf=1,30,p,8,Coupon&cf=8,1000,Back');
+  await expect(page.locator('#pRateHint')).toHaveText('= 1.250% a quarter');
+  await expect(page.locator('#pFlowRows .repeat-last')).toHaveText('· last at T+8');
+  await page.locator('#pSolve').selectOption('irr');
+  await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#pIrr')).toHaveText('12.000% p.a. = 3.000% a quarter');
+  await expect(page.locator('#pRateLine')).toContainText('(12.550881% a year with compounding)');
+  await expect(page.locator('#pRows tr')).toHaveCount(10);
+  const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#pXlsx').click()]);
+  expect(download.suggestedFilename()).toBe('present_value_quarters_10_cash_flows.xlsx');
 });

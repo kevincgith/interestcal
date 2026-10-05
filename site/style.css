@@ -372,3 +372,8 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1p
 @media (max-width: 600px) {
   .payment-row.with-label .repeat-line { grid-column: 1 / -1; grid-row: 3; }
 }
+/* Periods timing: a period number instead of the date, repeats every period, no Days column */
+#pform:not(.periods) .pay-period, #pform.periods .pay-date, #pform:not(.periods) .periods-only, #pform.periods .dates-only, #pform:not(.periods) .repeat-period, #pform.periods .repeat-every { display: none; }
+#pTable.periods .col-days { display: none; }
+.rate-hint { display: block; font-size: 0.82rem; font-weight: normal; color: var(--muted); min-height: 0; }
+.rate-hint:empty { display: none; }

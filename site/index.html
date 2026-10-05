@@ -33,7 +33,7 @@
     <nav class="tabs" role="tablist" aria-label="Calculator">
       <button type="button" role="tab" id="tab-interest" aria-controls="panel-interest" aria-selected="true">Interest</button>
       <button type="button" role="tab" id="tab-mortgage" aria-controls="panel-mortgage" aria-selected="false" tabindex="-1">Mortgage</button>
-      <button type="button" role="tab" id="tab-pv" aria-controls="panel-pv" aria-selected="false" tabindex="-1">Present value</button>
+      <button type="button" role="tab" id="tab-pv" aria-controls="panel-pv" aria-selected="false" tabindex="-1" title="Present value">PV</button>
     </nav>
 
     <section id="panel-interest" role="tabpanel" aria-labelledby="tab-interest">
@@ -531,7 +531,22 @@
 
     <section id="panel-pv" role="tabpanel" aria-labelledby="tab-pv" hidden>
       <form id="pform" class="card" novalidate>
-        <label>Valuation date
+        <label for="pTiming"><span class="label-row">Timing <button type="button" class="help" aria-expanded="false" aria-label="Dates or periods?">?</button></span>
+          <select id="pTiming">
+            <option value="dates" selected>Dates</option>
+            <option value="periods">Periods (T0, T+1, …)</option>
+          </select>
+          <span class="help-text" hidden>Dates: each cash flow on a calendar date, valued on the valuation date. Periods: each cash flow at a whole period from now, T0 = now, T+1 = one period later, and so on, as in Excel’s NPV and IRR. The rate stays % p.a. and is divided by the periods a year for you.</span>
+        </label>
+        <label id="pPeriodField" for="pPeriod" hidden>Each period is a
+          <select id="pPeriod">
+            <option value="year" selected>Year</option>
+            <option value="half-year">Half-year</option>
+            <option value="quarter">Quarter</option>
+            <option value="month">Month</option>
+          </select>
+        </label>
+        <label id="pValField">Valuation date
           <input id="pValuation" type="date" required>
           <span class="date-shortcuts">
             <button type="button" class="chip" data-date="today" data-target="pValuation" data-field="Valuation date">Today</button>
@@ -553,9 +568,10 @@
             <input id="pRate" type="text" inputmode="decimal" autocomplete="off" value="5">
             <button type="button" class="step" data-step="0.25" aria-label="Increase discount rate by 0.25%">+</button>
           </div>
+          <span id="pRateHint" class="rate-hint"></span>
           <span class="help-text" hidden>The yearly rate used to bring each future amount back to the valuation date, e.g. a loan or deposit rate, or the return you could earn elsewhere. A higher rate gives a lower present value. It can be negative.</span>
         </label>
-        <label for="pCompounding"><span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="What does compounding change?">?</button></span>
+        <label id="pCompField" for="pCompounding"><span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="What does compounding change?">?</button></span>
           <select id="pCompounding">
             <option value="yearly" selected>Yearly</option>
             <option value="half-yearly">Half-yearly</option>
@@ -567,7 +583,7 @@
           </select>
           <span class="help-text" hidden>How often the rate compounds. Yearly: amount ÷ (1 + rate)^years. Half-yearly, quarterly and monthly divide the rate by 2, 4 or 12 and compound that many times a year. Daily compounds each day at rate ÷ the year days. Continuous: amount × e^(−rate × years). None (simple): amount ÷ (1 + rate × years).</span>
         </label>
-        <label for="pBasis"><span class="label-row">Day count basis <button type="button" class="help" aria-expanded="false" aria-label="What is day count basis?">?</button></span>
+        <label id="pBasisField" for="pBasis"><span class="label-row">Day count basis <button type="button" class="help" aria-expanded="false" aria-label="What is day count basis?">?</button></span>
           <select id="pBasis">
             <option value="act/365" selected>Actual/365 Fixed</option>
             <option value="act/360">Actual/360</option>
@@ -581,7 +597,7 @@
 
         <fieldset class="payments">
           <legend>Cash flows</legend>
-          <p class="help-text pv-flows-note">Each amount on its date. Use a minus sign for money paid out (e.g. −100,000) to get a net present value. An amount dated before the valuation date is grown forward to it at the same rate. A repeating cash flow (e.g. rent each month) starts on its date and keeps that day of the month.</p>
+          <p class="help-text pv-flows-note"><span class="dates-only">Each amount on its date.</span><span class="periods-only">Each amount at its period: 0 = now (T0), 1 = T+1, and so on.</span> Use a minus sign for money paid out (e.g. −100,000) to get a net present value.<span class="dates-only"> An amount dated before the valuation date is grown forward to it at the same rate. A repeating cash flow (e.g. rent each month) starts on its date and keeps that day of the month.</span><span class="periods-only"> A repeating cash flow comes once a period from its first period.</span></p>
           <div id="pFlowRows" class="event-rows"></div>
           <div class="payments-actions">
             <button type="button" id="pAddFlow" class="secondary">+ Add cash flow</button>
@@ -603,13 +619,13 @@
           <div><dt>Present value</dt><dd id="pTotal"></dd></div>
           <div><dt>Total of amounts</dt><dd id="pFuture"></dd></div>
           <div><dt>Discount</dt><dd id="pDiscount"></dd></div>
-          <div><dt>Valuation date</dt><dd id="pValOut"></dd></div>
+          <div><dt id="pValLabel">Valuation date</dt><dd id="pValOut"></dd></div>
         </dl>
         <p id="pRateLine" class="verified"></p>
         <div class="table-wrap">
-          <table>
+          <table id="pTable">
             <thead>
-              <tr><th>Date</th><th>Description</th><th>Days</th><th>Years</th><th>Amount</th><th>Discount factor</th><th>Present value</th><th>Working</th></tr>
+              <tr><th id="pColWhen">Date</th><th>Description</th><th class="col-days">Days</th><th>Years</th><th>Amount</th><th>Discount factor</th><th>Present value</th><th>Working</th></tr>
             </thead>
             <tbody id="pRows"></tbody>
             <tfoot id="pFoot"></tfoot>

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { presentValue, yearPieces, yearFraction, pvWorking, expandFlows, solveRate, PV_COMPOUNDING, PV_BASES } from '../site/pv.js';
+import { presentValue, yearPieces, yearFraction, pvWorking, expandFlows, expandPeriodFlows, solveRate, PV_COMPOUNDING, PV_BASES } from '../site/pv.js';
 import { toDay, fromDay } from '../site/calc.js';
 
 const close = (actual, expected, eps = 1e-9) =>
@@ -232,4 +232,50 @@ test('IRR: more than one answer returns the one closest to 0%; no answer and one
     () => solveRate({ valuation: '2026-01-01', flows: [{ date: '2026-01-01', amount: -100 }, { date: '2027-01-01', amount: 0.5 }] }),
     /No rate from −99% to 1,000%/,
   );
+});
+
+// ---- Periods timing (T0, T+1, ...) ----
+
+const atPeriods = (amounts, start = 0) => amounts.map((amount, k) => ({ period: start + k, amount }));
+
+test('periods: Microsoft\'s Excel NPV example, NPV(10%, -10000, 3000, 4200, 6800) = 1,188.44', () => {
+  // Excel's NPV puts the first value at the end of period 1, i.e. T+1
+  const r = presentValue({ timing: 'periods', periodLength: 'year', rate: 10, flows: atPeriods([-10000, 3000, 4200, 6800], 1) });
+  assert.equal(r.total, 1188.44);
+  assert.deepEqual(r.rows.map((x) => x.period), [1, 2, 3, 4]);
+});
+
+test('periods: Microsoft\'s Excel IRR examples, -2.1% and 8.7%', () => {
+  const values = [-70000, 12000, 15000, 18000, 21000, 26000];
+  const four = solveRate({ timing: 'periods', periodLength: 'year', flows: atPeriods(values.slice(0, 5)) });
+  const five = solveRate({ timing: 'periods', periodLength: 'year', flows: atPeriods(values) });
+  assert.equal(Math.round(four.rate * 10) / 10, -2.1);
+  assert.equal(Math.round(five.rate * 10) / 10, 8.7);
+  // And the present value at that rate is zero
+  assert.ok(Object.is(presentValue({ timing: 'periods', periodLength: 'year', rate: five.rate, flows: atPeriods(values) }).total, 0));
+});
+
+test('periods: the rate is % p.a., used as r/m a period; IRR quoted a year as the rate a period x m', () => {
+  const r = presentValue({ timing: 'periods', periodLength: 'quarter', rate: 8, flows: [{ period: 4, amount: 1000 }] });
+  close(r.rows[0].df, 1.02 ** -4, 1e-12);
+  close(r.rows[0].t, 1);
+  assert.equal(r.periodsPerYear, 4);
+  // -1000 now, 1020 a quarter later: 2% a quarter = 8% p.a. nominal
+  const irr = solveRate({ timing: 'periods', periodLength: 'quarter', flows: [{ period: 0, amount: -1000 }, { period: 1, amount: 1020 }] });
+  close(irr.rate, 8, 1e-9);
+  const fmt = { money: (n) => n.toFixed(2), rate: (x) => `${(x * 100).toFixed(3)}%` };
+  assert.equal(pvWorking(r, r.rows[0], fmt), '1000.00 ÷ (1 + 2.000%)^4');
+  const t0 = presentValue({ timing: 'periods', periodLength: 'month', rate: 6, flows: [{ period: 0, amount: 5 }] });
+  assert.equal(pvWorking(t0, t0.rows[0], fmt), '5.00 (at T0)');
+});
+
+test('periods: repeating cash flows go one per period; errors', () => {
+  assert.deepEqual(expandPeriodFlows([{ period: 1, amount: 100, label: 'Rent', times: 3 }]).map((x) => [x.period, x.label]), [
+    [1, 'Rent (1 of 3)'], [2, 'Rent (2 of 3)'], [3, 'Rent (3 of 3)'],
+  ]);
+  const p = (flows) => presentValue({ timing: 'periods', periodLength: 'year', rate: 5, flows });
+  assert.throws(() => p([{ period: -1, amount: 1 }]), /Cash flow 1: the period must be a whole number from 0/);
+  assert.throws(() => p([{ period: 1.5, amount: 1 }]), /whole number/);
+  assert.throws(() => p([{ period: 1, amount: 1, times: 0 }]), /number of times/);
+  assert.throws(() => presentValue({ timing: 'periods', periodLength: 'week', rate: 5, flows: [{ period: 1, amount: 1 }] }), /Unknown period length/);
 });
