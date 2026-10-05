@@ -64,7 +64,7 @@ function sheetFrom(XLSX, rows, widths) {
 export function buildWorkbook(XLSX, r, ctx) {
   // ---- Sheet 1: Calculation ----
   const rows = [
-    [text('HK Interest Calculator')],
+    [text('HK Interest Calc')],
     [DISCLAIMER_WITH_TERMS],
     [],
     ['Rate basis', ctx.rateBasis],

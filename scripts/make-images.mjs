@@ -12,7 +12,7 @@ const PREVIEW = `
   background:linear-gradient(135deg,#f7f7f5 0%,#e8eef3 100%);font-family:-apple-system,'Segoe UI',system-ui,sans-serif;color:#1c1c1a">
   <img src="${icon}" style="width:240px;height:240px;flex:none;border-radius:52px;box-shadow:0 18px 40px rgba(31,95,139,.25)">
   <div>
-    <div style="font-size:68px;font-weight:800;letter-spacing:-1px;line-height:1.05">HK Interest Calculator</div>
+    <div style="font-size:68px;font-weight:800;letter-spacing:-1px;line-height:1.05">HK Interest Calc</div>
     <div style="margin-top:22px;font-size:32px;line-height:1.35;color:#3d4a55">
       Interest, mortgages, present value and inflation, with Hong Kong rates and CPI
     </div>

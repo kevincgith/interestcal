@@ -189,7 +189,7 @@ test('footer links to the terms of use, which link back to the calculator', asyn
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Terms of Use and Disclaimer');
   await expect(page.getByRole('heading', { name: '5. Limitation of liability' })).toBeVisible();
   await page.getByRole('link', { name: '← Back to the calculator' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('HK Interest Calculator');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('HK Interest Calc');
 });
 
 test('principal added later: from the form and from a shared link', async ({ page }) => {

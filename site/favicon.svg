@@ -1,13 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#1f5f8b"/>
-  <rect x="15" y="9" width="34" height="46" rx="5" fill="#fff"/>
-  <rect x="20" y="14" width="24" height="10" rx="2" fill="#1f5f8b"/>
-  <g fill="#1f5f8b">
-    <rect x="20" y="29" width="6" height="6" rx="1.5"/>
-    <rect x="29" y="29" width="6" height="6" rx="1.5"/>
-    <rect x="38" y="29" width="6" height="6" rx="1.5"/>
-    <rect x="20" y="40" width="6" height="6" rx="1.5"/>
-    <rect x="29" y="40" width="6" height="6" rx="1.5"/>
-    <rect x="38" y="40" width="6" height="10" rx="1.5" fill="#e0a526"/>
+  <!-- Glass %: frosted white slash and ring, gold glass ring; each piece has a bright top edge, a soft bottom edge and a shadow -->
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2"/></filter>
+    <clipPath id="tile"><rect width="64" height="64" rx="14.5"/></clipPath>
+    <g id="a"><path d="M45 15 19 49" stroke-width="6.5" stroke-linecap="round"/><circle cx="21" cy="21" r="7.5" fill="none" stroke-width="5.5"/></g>
+    <g id="b"><circle cx="43" cy="43" r="7.5" fill="none" stroke-width="5.5"/></g>
+    <mask id="a-fill" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><use href="#a" stroke="#fff"/></mask>
+    <mask id="a-top" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><use href="#a" stroke="#fff"/><use href="#a" stroke="#000" transform="translate(0 1.4)"/></mask>
+    <mask id="a-bottom" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><use href="#a" stroke="#fff"/><use href="#a" stroke="#000" transform="translate(0 -1.1)"/></mask>
+    <mask id="b-fill" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><use href="#b" stroke="#fff"/></mask>
+    <mask id="b-top" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><use href="#b" stroke="#fff"/><use href="#b" stroke="#000" transform="translate(0 1.4)"/></mask>
+    <mask id="b-bottom" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><use href="#b" stroke="#fff"/><use href="#b" stroke="#000" transform="translate(0 -1.1)"/></mask>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="64" height="64" fill="#1f5f8b"/>
+    <g transform="translate(0 2.4)" filter="url(#shadow)" opacity=".35" stroke="#000"><use href="#a"/><use href="#b"/></g>
+    <rect width="64" height="64" fill="#fff" fill-opacity=".32" mask="url(#a-fill)"/>
+    <rect width="64" height="64" fill="#fff" fill-opacity=".9" mask="url(#a-top)"/>
+    <rect width="64" height="64" fill="#fff" fill-opacity=".35" mask="url(#a-bottom)"/>
+    <rect width="64" height="64" fill="#e0a526" fill-opacity=".75" mask="url(#b-fill)"/>
+    <rect width="64" height="64" fill="#fff" fill-opacity=".9" mask="url(#b-top)"/>
+    <rect width="64" height="64" fill="#fff" fill-opacity=".35" mask="url(#b-bottom)"/>
+    <rect x=".6" y=".6" width="62.8" height="62.8" rx="14" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="1.2"/>
   </g>
 </svg>

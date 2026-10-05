@@ -1,7 +1,7 @@
 {
   "name": "interestcal",
   "version": "1.0.0",
-  "description": "HK Interest Calculator: Hong Kong interest, mortgage, present value and inflation calculators with rates and CPI updated daily",
+  "description": "HK Interest Calc: Hong Kong interest, mortgage, present value and inflation calculators with rates and CPI updated daily",
   "license": "MIT",
   "private": true,
   "type": "module",

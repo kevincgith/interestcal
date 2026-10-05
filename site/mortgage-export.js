@@ -41,7 +41,7 @@ export function buildMortgagePdf({ jsPDF, autoTable }, m, ctx) {
   };
 
   doc.setFont('helvetica', 'bold').setFontSize(18).setTextColor(20);
-  doc.text('HK Interest Calculator: Mortgage', MARGIN, y + 18);
+  doc.text('HK Interest Calc: Mortgage', MARGIN, y + 18);
   y += 32;
 
   table({
@@ -116,7 +116,7 @@ export function buildMortgagePdf({ jsPDF, autoTable }, m, ctx) {
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
     doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(...MUTED);
-    doc.text(pdfText(`HK Interest Calculator · generated ${ctx.generatedOn}`), MARGIN, height - 24);
+    doc.text(pdfText(`HK Interest Calc · generated ${ctx.generatedOn}`), MARGIN, height - 24);
     doc.text(`Page ${i} of ${pages}`, width - MARGIN, height - 24, { align: 'right' });
   }
   return doc;
@@ -137,7 +137,7 @@ const cell = (v) => (v && typeof v === 'object' ? v : { t: typeof v === 'number'
  *   hiborRecentSource?: string }
  */
 export function buildMortgageWorkbook(XLSX, m, ctx) {
-  const rows = [[{ t: 's', v: 'HK Interest Calculator: Mortgage' }], [DISCLAIMER_WITH_TERMS], []];
+  const rows = [[{ t: 's', v: 'HK Interest Calc: Mortgage' }], [DISCLAIMER_WITH_TERMS], []];
   for (const [k, v] of ctx.inputs) rows.push([k, v]);
   const src = [
     ctx.primeSource && ['HSBC prime rate source', { t: 's', v: ctx.primeSource, l: { Target: ctx.primeSource } }],

@@ -38,7 +38,8 @@ body {
 }
 
 main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
-h1 { margin: 0 0 8px; font-size: 1.6rem; }
+h1 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 1.6rem; }
+h1 .logo { flex: none; width: 36px; height: 36px; }
 .as-at { margin: 0 0 8px; font-size: 0.9rem; font-weight: 600; color: var(--accent); }
 .latest-rates { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: -2px 0 10px; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
 .latest-rate { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }

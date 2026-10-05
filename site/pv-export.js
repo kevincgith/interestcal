@@ -45,7 +45,7 @@ export function buildPvPdf({ jsPDF, autoTable }, res, ctx) {
   };
 
   doc.setFont('helvetica', 'bold').setFontSize(18).setTextColor(20);
-  doc.text('HK Interest Calculator: Present value', MARGIN, y + 18);
+  doc.text('HK Interest Calc: Present value', MARGIN, y + 18);
   y += 32;
 
   table({
@@ -91,7 +91,7 @@ export function buildPvPdf({ jsPDF, autoTable }, res, ctx) {
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
     doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(...MUTED);
-    doc.text(pdfText(`HK Interest Calculator · generated ${ctx.generatedOn}`), MARGIN, height - 24);
+    doc.text(pdfText(`HK Interest Calc · generated ${ctx.generatedOn}`), MARGIN, height - 24);
     doc.text(`Page ${i} of ${pages}`, width - MARGIN, height - 24, { align: 'right' });
   }
   return doc;
@@ -170,7 +170,7 @@ export const periodName = (n) => (n === 0 ? 'T0' : `T+${n}`);
  *   rateLabel?: string (e.g. "Rate (IRR, p.a.)") }
  */
 export function buildPvWorkbook(XLSX, res, ctx) {
-  const rows = [[{ t: 's', v: 'HK Interest Calculator: Present value' }], [DISCLAIMER_WITH_TERMS], []];
+  const rows = [[{ t: 's', v: 'HK Interest Calc: Present value' }], [DISCLAIMER_WITH_TERMS], []];
   const periods = res.timing === 'periods';
   const valRow = rows.length + 1; // 1-based row of the valuation date (periods: the periods a year)
   rows.push(periods

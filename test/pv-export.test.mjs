@@ -97,7 +97,7 @@ test('PDF export: title, totals, a row per cash flow with its working, disclaime
   const doc = buildPvPdf({ jsPDF, autoTable }, res, ctx(res));
   const pdf = doc.output();
   assert.ok(pdf.startsWith('%PDF-'));
-  for (const s of ['HK Interest Calculator: Present value', 'Present value', 'HK$', '120818.07', 'Paid earlier',
+  for (const s of ['HK Interest Calc: Present value', 'Present value', 'HK$', '120818.07', 'Paid earlier',
     'valuation date', '1.050000', 'Page 1 of 1', 'Disclaimer: for general information only', 'Terms of Use']) {
     assert.ok(pdf.includes(s), `PDF should contain ${s}`);
   }

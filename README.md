@@ -1,4 +1,4 @@
-# HK Interest Calculator
+# HK Interest Calc
 
 **Live:** https://app.kevinlhc.com/interestcal/
 

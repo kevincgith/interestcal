@@ -90,7 +90,7 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
   };
 
   // ---- Title and inputs ----
-  heading('HK Interest Calculator', 18);
+  heading('HK Interest Calc', 18);
   y += 2;
   table({
     body: ctx.inputs.map(([k, v]) => [pdfText(k), pdfText(v)]),
@@ -219,7 +219,7 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
     doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(...MUTED);
-    doc.text(pdfText(`HK Interest Calculator · generated ${ctx.generatedOn}`), MARGIN, height - 24);
+    doc.text(pdfText(`HK Interest Calc · generated ${ctx.generatedOn}`), MARGIN, height - 24);
     doc.text(`Page ${i} of ${pages}`, width - MARGIN, height - 24, { align: 'right' });
   }
   return doc;
