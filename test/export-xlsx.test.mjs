@@ -190,3 +190,16 @@ test('Excel: a combined row (one row per rate period) sums its pieces in one liv
   const yearCell = Object.values(sheet).find((c) => c && c.v === '365/366');
   assert.ok(yearCell, 'year days shown as 365/366');
 });
+
+test('Excel: with both dates counted, rows show the last day counted and days = end − start + 1 (live)', () => {
+  const r0 = calculateInterest({ principal: 365000, start: '2026-01-01', end: '2026-04-01', rates: [{ effective: '2000-01-01', rate: 8 }], basis: 'act/365' });
+  const dayBefore = (iso) => new Date(Date.parse(iso) - 864e5).toISOString().slice(0, 10);
+  const r = { ...r0, inclusive: true, shownEnd: '2026-03-31', periods: r0.periods.map((p) => ({ ...p, shownEnd: dayBefore(p.end) })) };
+  const { out, rows } = roundTrip(r, [], 'judgment');
+  const calc = rows('Calculation');
+  assert.ok(calc.some((x) => x[0] === 'End date (earns interest)'));
+  const sheet = out.Sheets.Calculation;
+  const days = Object.values(sheet).find((c) => c && typeof c.f === 'string' && /^B\d+-A\d+\+1$/.test(c.f));
+  assert.ok(days, 'days formula B-A+1');
+  assert.equal(days.v, 90);
+});

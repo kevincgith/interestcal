@@ -645,3 +645,37 @@ test('recent calculations can be cleared; saved ones stay', async ({ page }) => 
   await page.reload();
   await expect(page.locator('#recentCard')).toBeHidden(); // gone for good, not just hidden
 });
+
+test('days counted: both start and end dates count, on the page, in the link and in Word and Excel', async ({ page }) => {
+  // HK$365,000 at a fixed 8%: one day earns exactly HK$80.00
+  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-03-31&basis=act%2F365&incl=1');
+  await expect(page.locator('#daysCounted')).toHaveValue('incl');
+  await expect(page.locator('#advanced')).toHaveAttribute('open', '');
+  const row = page.locator('#periods tr').first().locator('td');
+  await expect(row.nth(1)).toHaveText('31-Mar-2026'); // the last day counted
+  await expect(row.nth(2)).toHaveText('90');
+  await expect(total(page)).toHaveText('7,200.00'); // 90 days x 80.00
+  // The default leaves the end date out: one day less
+  await page.locator('#daysCounted').selectOption('excl');
+  await page.locator('#form button[type="submit"]').click();
+  await expect(total(page)).toHaveText('7,120.00');
+  await expect(page).not.toHaveURL(/incl=1/);
+  // Both dates count: the same start and end date is one day, not an error
+  await page.locator('#daysCounted').selectOption('incl');
+  await page.locator('#end').fill('2026-01-01');
+  await page.locator('#form button[type="submit"]').click();
+  await expect(page.locator('#error')).toBeHidden();
+  await expect(total(page)).toHaveText('80.00');
+  await expect(page).toHaveURL(/to=2026-01-01.*incl=1|incl=1.*to=2026-01-01/);
+  // Downloads show the last day counted
+  await page.locator('#end').fill('2026-03-31');
+  await page.locator('#form button[type="submit"]').click();
+  const fs = await import('node:fs/promises');
+  const [word] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download Word' }).click()]);
+  const doc = (await fs.readFile(await word.path())).toString('utf8');
+  expect(doc).toContain('from 1 January 2026 to 31 March 2026 (90 days)');
+  expect(doc).toContain('Total amount due as at 31 March 2026');
+  expect(doc).toContain('Daily interest from 1 April 2026 until payment');
+  const [xlsx] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download Excel' }).click()]);
+  expect(xlsx.suggestedFilename()).toContain('2026-01-01_2026-03-31');
+});

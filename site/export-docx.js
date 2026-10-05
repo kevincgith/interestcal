@@ -66,7 +66,7 @@ export function documentXml(r, { money, rate, formula, currency: cur = 'HK$', in
     const amount = money(p.interest);
     rows.push(tableRow(
       para(run(`(${roman(i + 1)})\tInterest on ${sumText(p, money, cur)} at the rate of ${rate(p.rate)} per annum ` +
-        `from ${longDate(p.start)} to ${longDate(p.end)} (${days})`), { hanging: 680 }) +
+        `from ${longDate(p.start)} to ${longDate(p.shownEnd ?? p.end)} (${days})`), { hanging: 680 }) +
         para(run(`(i.e. ${formula(p)} = ${amount})`)) +
         para(''),
       para(run(amount), { align: 'right' }),
@@ -82,7 +82,7 @@ export function documentXml(r, { money, rate, formula, currency: cur = 'HK$', in
     ...(r.totalAdded > 0 ? [line('Principal added later', money(r.totalAdded))] : []),
     line('Interest (as above)', money(r.totalInterest)),
     ...(paid > 0 ? [line('Less: payments received', `(${money(paid)})`)] : []),
-    line(`Total amount due as at ${longDate(r.end)}`, money(r.totalDue), true),
+    line(`Total amount due as at ${longDate(r.shownEnd ?? r.end)}`, money(r.totalDue), true),
   ];
   const owedTimesRate = r.perDiem && `${money(r.outstandingPrincipal)} × ${rate(r.perDiem.rate)}`;
   const daily = !r.perDiem

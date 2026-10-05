@@ -142,7 +142,7 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
     head: [['Period start', 'Period end', 'Days', 'Rate', 'Formula: principal × rate × days ÷ year days', 'Interest']],
     body: r.periods.map((p, i) => [
       fmt.date(p.start),
-      fmt.date(p.end),
+      fmt.date(p.shownEnd ?? p.end),
       String(p.days),
       pdfText(fmt.rateWithSpread(p, r.spread)),
       // A note (e.g. "+HK$x interest compounded") goes under the formula, where there is room for it

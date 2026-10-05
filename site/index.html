@@ -66,7 +66,7 @@
       </label>
       <label for="end"><span class="label-row">End date <button type="button" class="help" aria-expanded="false" aria-label="Why doesn’t the end date earn interest?">?</button></span>
         <input id="end" type="date" required>
-        <span class="help-text" hidden>The end date doesn’t earn interest. Each day earns interest once. A period counts the days from its start date up to, but not including, its end date (end date minus start date, as in Excel and the original workbook), so 1 to 2 January is 1 day. Where one period ends and the next begins, that shared date is counted once, in the later period, so no day is charged twice. If the end date itself should earn interest, use the next day as the end date.</span>
+        <span class="help-text" hidden>The end date doesn’t earn interest. Each day earns interest once. A period counts the days from its start date up to, but not including, its end date (end date minus start date, as in Excel and the original workbook), so 1 to 2 January is 1 day. Where one period ends and the next begins, that shared date is counted once, in the later period, so no day is charged twice. If the end date itself should earn interest, choose “Both start and end dates count” under Advanced settings → Days counted.</span>
         <span class="date-shortcuts">
           <button type="button" class="chip" data-date="today" data-target="end">Today</button>
           <button type="button" class="chip" data-date="month" data-target="end">Month end</button>
@@ -89,7 +89,7 @@
         </div>
       </label>
       <details id="advanced" class="advanced">
-        <summary>Advanced settings <span class="muted">(currency, day count, rows, rounding, compounding, rate switch)</span></summary>
+        <summary>Advanced settings <span class="muted">(currency, day count, days counted, rows, rounding, compounding, rate switch)</span></summary>
         <div class="advanced-body">
           <label for="currency"><span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
             <select id="currency">
@@ -119,6 +119,13 @@
               <option value="act/360">Actual/360</option>
             </select>
             <span class="help-text" hidden>How many days a year has. Actual/Actual (used by the HK courts): 366 in a leap year, 365 otherwise, splitting the period at 1 January when that changes. Actual/365 Fixed: always 365. Actual/360: always 360, used for some US dollar loans.</span>
+          </label>
+          <label for="daysCounted"><span class="label-row">Days counted <button type="button" class="help" aria-expanded="false" aria-label="What is days counted?">?</button></span>
+            <select id="daysCounted">
+              <option value="excl" selected>Start date counts, end date doesn’t</option>
+              <option value="incl">Both start and end dates count</option>
+            </select>
+            <span class="help-text" hidden>Start date counts, end date doesn’t (the default, as in Excel and the original workbook): 1 to 2 January is 1 day, and where one period ends and the next begins the shared date is counted once. Both dates count: the end date earns interest too, so 1 to 2 January is 2 days and 1 January to 31 March is 90 days; each period then shows its last day counted. Use it where a contract or court order counts both days.</span>
           </label>
           <label for="rows"><span class="label-row">Calculation rows <button type="button" class="help" aria-expanded="false" aria-label="What is calculation rows?">?</button></span>
             <select id="rows">
@@ -876,7 +883,7 @@
         the US prime rate from the Federal Reserve’s
         <a href="https://www.federalreserve.gov/releases/h15/" target="_blank" rel="noopener">H.15 release</a>,
         or a fixed rate, with optional principal added later and partial payments.
-        The start date earns interest and the end date does not: each day earns interest once. A period counts the days from its start date up to, but not including, its end date (end date minus start date, as in Excel and the original workbook), so 1 to 2 January is 1 day. Where one period ends and the next begins, that shared date is counted once, in the later period, so no day is charged twice. If the end date itself should earn interest, use the next day as the end date.
+        The start date earns interest and the end date does not: each day earns interest once. A period counts the days from its start date up to, but not including, its end date (end date minus start date, as in Excel and the original workbook), so 1 to 2 January is 1 day. Where one period ends and the next begins, that shared date is counted once, in the later period, so no day is charged twice. If the end date itself should earn interest, choose “Both start and end dates count” under Advanced settings → Days counted.
         Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.</p>
       <p><strong>Mortgage:</strong> equal monthly instalments (interest = balance × rate × days ÷ 365) at a prime-based,
         HIBOR-based (1-month or 3-month HIBOR, set by

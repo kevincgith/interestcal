@@ -79,7 +79,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   const P = `$B$${principalRow + 1}`;
   rows.push([`Principal (${ctx.currency ?? 'HK$'})`, num(r.principal, MONEY)]);
   rows.push(['Start date', date(r.start)]);
-  rows.push(['End date (does not earn interest)', date(r.end)]);
+  rows.push([r.inclusive ? 'End date (earns interest)' : 'End date (does not earn interest)', date(r.shownEnd ?? r.end)]);
 
   const payments = r.payments ?? [];
   const additions = r.additions ?? [];
@@ -151,8 +151,8 @@ export function buildWorkbook(XLSX, r, ctx) {
           : `${base}*${RATE}${n}*${DAYS}${n}/${YEAR}${n}`;
     rows.push([
       date(p.start),
-      date(p.end),
-      formula(`B${n}-A${n}`, p.days),
+      date(p.shownEnd ?? p.end), // with both dates counted: the last day counted
+      formula(r.inclusive ? `B${n}-A${n}+1` : `B${n}-A${n}`, p.days),
       ...(withEvents ? [num(p.principal, MONEY)] : []),
       ...rate,
       typeof p.yearDays === 'number' ? num(p.yearDays) : text(p.yearDays), // e.g. "365/366" on a combined row
@@ -236,7 +236,7 @@ export function buildWorkbook(XLSX, r, ctx) {
       : ctx.sourceUrl
         ? [['Source', hyperlink(ctx.sourceUrl)], ['Rates as at', date(ctx.updatedAt)]]
         : [['Rate', `${ctx.rateBasis} (no published rate source)`]]),
-    ['Calculation period', `${fmtDate(r.start)} to ${fmtDate(r.end)} (end date excluded)`],
+    ['Calculation period', `${fmtDate(r.start)} to ${fmtDate(r.shownEnd ?? r.end)} (${r.inclusive ? 'both dates included' : 'end date excluded'})`],
   ];
   if (ctx.crossCheck) {
     rateRows.push(['Cross-check', ctx.crossCheck.summary], ['', hyperlink(ctx.crossCheck.source)]);

@@ -198,7 +198,7 @@ function renderRateTable() {
     btn.closest('th').setAttribute('aria-sort', active ? (rateSort.dir === 'asc' ? 'ascending' : 'descending') : 'none');
   });
   $('rateMeta').textContent = filtered
-    ? `(${shown.length} of ${data.rates.length} rates, used from ${fmtDate(lastResult.start)} to ${fmtDate(lastResult.end)})`
+    ? `(${shown.length} of ${data.rates.length} rates, used from ${fmtDate(lastResult.start)} to ${fmtDate(lastResult.shownEnd ?? lastResult.end)})`
     : `(${data.rates.length} rates, latest effective ${fmtDate(data.rates[0].effective)}, as at ${fmtDate(asAt(key))})`;
   $('rates').replaceChildren(
     ...shown.map((r) => row([fmtDate(r.effective) + (r.source ? ` (${r.source})` : ''), r.rate.toFixed(3)], ['', 'num'])),
@@ -249,7 +249,7 @@ const printInputItems = (r) => [
   ['Interest rate', rateBasisLabel(r)],
   [`Principal (${r.currency})`, money.format(r.principal)],
   ['Start date', fmtDate(r.start)],
-  ['End date (does not earn interest)', fmtDate(r.end)],
+  [r.inclusive ? 'End date (earns interest)' : 'End date (does not earn interest)', fmtDate(r.shownEnd ?? r.end)],
   ['Day count basis', BASES[r.basis]],
   ['Rounding', ROUNDINGS[r.rounding]],
   ...(r.rows === 'rate' ? [['Calculation rows', 'Combined (per rate period)']] : []),
@@ -370,7 +370,7 @@ function render(r) {
   $('periods').replaceChildren(
     ...r.periods.map((p, i) => {
       const tr = row(
-        [fmtDate(p.start), fmtDate(p.end), p.days, fmtRateWithSpread(p), formula(p), money.format(p.interest)],
+        [fmtDate(p.start), fmtDate(p.shownEnd ?? p.end), p.days, fmtRateWithSpread(p), formula(p), money.format(p.interest)],
         ['', '', 'num', 'num', 'formula', 'num'],
       );
       const note = periodNote(r, p, i);
@@ -391,10 +391,11 @@ function render(r) {
 // ---- Shareable links: the inputs live in the URL, e.g. ?src=prime&p=1000000&from=2026-01-01&to=2026-09-30&spread=1 ----
 
 function writeQuery(r) {
-  const q = new URLSearchParams({ src: r.source, p: String(r.principal), from: r.start, to: r.end, basis: r.basis, round: r.rounding });
+  const q = new URLSearchParams({ src: r.source, p: String(r.principal), from: r.start, to: r.shownEnd ?? r.end, basis: r.basis, round: r.rounding });
   if (hasSpread(r.source)) q.set('spread', String(r.spreadA ?? r.spread));
   if (isFixed(r)) q.set('rate', String(r.fixedRate));
   if (r.rows === 'rate') q.set('rows', 'rate');
+  if (r.inclusive) q.set('incl', '1');
   // Only when it differs from the rate's default, so ordinary links stay short
   const code = $('currency').value;
   if (code === 'other') q.set('cur', `other:${r.currency}`);
@@ -434,6 +435,7 @@ function readQuery() {
   if (q.get('basis') in BASES) $('basis').value = q.get('basis');
   if (q.get('round') in ROUNDINGS) $('rounding').value = q.get('round');
   if (q.get('rows') === 'rate') $('rows').value = 'rate';
+  if (q.get('incl') === '1') $('daysCounted').value = 'incl';
   const cur = q.get('cur') ?? '';
   if (cur.startsWith('other:') && cur.length > 6) {
     $('currency').value = 'other';
@@ -475,6 +477,7 @@ function readQuery() {
     (q.get('basis') && q.get('basis') !== 'act/act') ||
     (q.get('round') && q.get('round') !== 'total') ||
     q.get('rows') === 'rate' ||
+    q.get('incl') === '1' ||
     currencyChosen;
   if (nonDefault) $('advanced').open = true;
   const rate = Number(q.get('rate'));
@@ -497,6 +500,9 @@ function showSourceFields() {
   document.querySelectorAll('#form .cur').forEach((el) => (el.textContent = cur));
   document.querySelectorAll('#form .pay-amount').forEach((el) => (el.placeholder = `Amount (${cur})`));
 }
+
+const nextDay = (iso) => new Date(Date.parse(iso) + 864e5).toISOString().slice(0, 10);
+const dayBefore = (iso) => new Date(Date.parse(iso) - 864e5).toISOString().slice(0, 10);
 
 // Start and end date shortcuts: today, the last day of last month, of last quarter (Mar, Jun, Sep or Dec) or of last
 // year. As when typed, the start date earns interest and the end date doesn't.
@@ -543,7 +549,7 @@ const SHORT_NAMES = { judgment: 'Judgment debt rate', prime: 'HSBC prime', uspri
 // A calculation's name in the saved and recent lists, e.g. "HSBC prime · HK$250,000.00 · 01-Jan-2025 to 01-Jan-2026"
 const titleFor = (r) =>
   `${isFixed(r) ? `Fixed ${fmtPct(r.fixedRate)}` : SHORT_NAMES[r.source]} · ${r.currency}${money.format(r.principal)} · ` +
-  `${fmtDate(r.start)} to ${fmtDate(r.end)}`;
+  `${fmtDate(r.start)} to ${fmtDate(r.shownEnd ?? r.end)}`;
 $('save').addEventListener('click', () => {
   if (!lastResult || !lastQuery) return;
   const ok = saveCalculation({ tab: 'interest', query: lastQuery, title: titleFor(lastResult) });
@@ -635,7 +641,8 @@ $('form').addEventListener('submit', (e) => {
   const compounding = $('compounding').value;
   const compoundDates = $('compoundDates').value;
   // The end date doesn't earn interest, so the same start and end date would cover no days at all
-  if (start && start === end) {
+  const inclusive = $('daysCounted').value === 'incl';
+  if (start && start === end && !inclusive) {
     clearResults();
     return showError('The end date is the same as the start date, so there is no period to charge interest on. ' +
       'Choose a later end date (the end date itself doesn’t earn interest).');
@@ -681,7 +688,8 @@ $('form').addEventListener('submit', (e) => {
     : null;
   const rates = rateTable ?? (source === 'fixed' ? [{ effective: FIXED_FROM, rate: fixedRate }] : rateData[source].rates);
   const calcInput = {
-    principal, start, end, basis, rounding, rates, payments, additions, allocation,
+    // Both dates counted = the calculator's usual method up to the day after the end date
+    principal, start, end: inclusive && isIsoDate(end) ? nextDay(end) : end, basis, rounding, rates, payments, additions, allocation,
     spread: switchTo ? 0 : spread,
   };
 
@@ -697,7 +705,11 @@ $('form').addEventListener('submit', (e) => {
     lastResult = {
       ...result,
       // "Combined (per rate period)": everything (table and downloads) shows the combined rows; totals are the same
-      periods: rows === 'rate' ? mergeRatePeriods(result.periods) : result.periods,
+      // With both dates counted, each period (and the whole) shows its last day counted
+      periods: (rows === 'rate' ? mergeRatePeriods(result.periods) : result.periods)
+        .map((p) => (inclusive ? { ...p, shownEnd: dayBefore(p.end) } : p)),
+      inclusive,
+      shownEnd: inclusive ? end : undefined,
       rows,
       // For the comparison line: the same calculation as simple interest
       simpleInterest: compounding === 'none' ? null : calculateInterest({ ...calcInput, compounding: 'none' }).totalInterest,

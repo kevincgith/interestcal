@@ -10,7 +10,7 @@ import {
   HSBC_PAGE, crossCheckTick, isFixed, rateBasisLabel, perDiemText,
 } from './interest-text.js?v=__BUILD__';
 
-const exportName = (r, ext) => `interest_${r.source}_${r.basis.replace('/', '')}_${r.start}_${r.end}.${ext}`;
+const exportName = (r, ext) => `interest_${r.source}_${r.basis.replace('/', '')}_${r.start}_${r.shownEnd ?? r.end}.${ext}`;
 
 /**
  * @param {object} deps { getResult, rateData, publishedKinds, usedRatesFor, sortRates, asAt, latestRateLine,
@@ -89,7 +89,7 @@ export function setupInterestExports({
           : {
               ratesHeading: r.switch
                 ? `Rates used (${used.length}, switching on ${fmtDate(r.switch.date)})`
-                : `${SOURCES[r.source].title} (${used.length} of ${rateData[r.source].rates.length} rates, used from ${fmtDate(r.start)} to ${fmtDate(r.end)})`,
+                : `${SOURCES[r.source].title} (${used.length} of ${rateData[r.source].rates.length} rates, used from ${fmtDate(r.start)} to ${fmtDate(r.shownEnd ?? r.end)})`,
               source: { name: SOURCES[kinds[0]].sourceName, url: rateData[kinds[0]].source },
               extraSources: kinds.slice(1).map((k) => ({ name: SOURCES[k].sourceName, url: rateData[k].source })),
               rates: sortRates(used),
@@ -122,7 +122,8 @@ export function setupInterestExports({
         : []),
       ['Principal', money.format(r.principal)],
       ['Start Date', r.start],
-      ['End Date', r.end],
+      ['End Date', r.shownEnd ?? r.end],
+      ...(r.inclusive ? [['Days Counted', 'Both start and end dates']] : []),
       ['Total Interest', money.format(r.totalInterest)],
       ...(r.additions.length ? [['Principal Added', money.format(r.totalAdded)]] : []),
       ...(r.payments.length
@@ -149,7 +150,7 @@ export function setupInterestExports({
         ...(hasNotes ? ['Note'] : []),
       ],
       ...r.periods.map((p, i) => [
-        p.start, p.end, p.days,
+        p.start, p.shownEnd ?? p.end, p.days,
         ...(r.payments.length || r.additions.length || r.compounding !== 'none' ? [money.format(p.principal)] : []),
         ...(r.periods.some((x) => x.spread) ? [fmtRate(p.baseRate), fmtRate(p.spread / 100)] : []),
         fmtRate(p.rate), p.yearDays, formula(p), money.format(p.interest),
