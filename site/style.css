@@ -408,5 +408,7 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1p
 /* Inflation tab: "In" and "Worth in" are each a year and a month side by side ("Now" has no month) */
 .i-pick { display: flex; gap: 8px; min-width: 0; }
 .i-pick select { flex: 1; min-width: 0; }
+.i-shortcuts { display: flex; flex-wrap: wrap; gap: 6px; }
+.i-shortcuts .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .i-rebase { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .i-rebase select { width: auto; }

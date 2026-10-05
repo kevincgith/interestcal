@@ -76,10 +76,37 @@ function fillPickers() {
   }
 }
 
+// ---- Shortcuts: 1, 5, 10, 20 or 30 years ago, the same month that many years before the latest, worth now ----
+
+const yearsAgo = (n) => {
+  const latest = cpi.monthly.at(-1).month;
+  return `${Number(latest.slice(0, 4)) - n}${latest.slice(4)}`;
+};
+document.querySelectorAll('[data-ago]').forEach((b) =>
+  b.addEventListener('click', (e) => {
+    e.preventDefault(); // inside the "In" label: don't open the year list
+    if (!cpi) return;
+    setValue('In', yearsAgo(Number(b.dataset.ago)));
+    setValue('Worth', 'now');
+    calculate({ record: true });
+  }),
+);
+// Which shortcut (if any) matches the current choice; each says its month on hover
+function markShortcuts() {
+  for (const b of document.querySelectorAll('[data-ago]')) {
+    const m = yearsAgo(Number(b.dataset.ago));
+    b.title = `${monthName(m)} to now`;
+    b.setAttribute('aria-label', `In ${monthName(m)}, worth now (${b.textContent})`);
+    b.setAttribute('aria-pressed', String(valueOf('In') === m && valueOf('Worth') === 'now'));
+    b.disabled = !exists(m);
+  }
+}
+
 // ---- Calculate as you type ----
 
 function calculate({ record = false } = {}) {
   showError('');
+  markShortcuts();
   const amount = parseNumber($('iAmount').value);
   try {
     if (!$('iAmount').value.trim() || !Number.isFinite(amount)) throw new Error('Enter an amount, e.g. 100.');
@@ -140,11 +167,11 @@ function render(r) {
   $('iValue').textContent = `HK$${money.format(r.value)}`;
   $('iChange').textContent = pct(r.change);
   $('iAnnual').textContent = `${pct(r.annual, 2)} a year`;
-  $('iIndex').textContent = `${r.fromIndex} → ${r.toIndex}`;
+  $('iIndex').textContent = `${r.fromIndex.toFixed(1)} → ${r.toIndex.toFixed(1)}`;
   $('iSentence').textContent =
     `HK$${money.format(r.amount)} ${amountAt} had the same buying power as HK$${money.format(r.value)} ${answerAt}. ` +
     `Prices ${r.change >= 0 ? 'rose' : 'fell'} ${Math.abs(r.change * 100).toFixed(1)}% ${spanText(r)}, about ` +
-    `${Math.abs(r.annual * 100).toFixed(1)}% a year over ${yearsText(r.years)} (Composite CPI ${r.fromIndex} and ${r.toIndex}, ` +
+    `${Math.abs(r.annual * 100).toFixed(1)}% a year over ${yearsText(r.years)} (Composite CPI ${r.fromIndex.toFixed(1)} and ${r.toIndex.toFixed(1)}, ` +
     `${cpi.base}; a full year is C&SD’s average for the year, counted from its middle).`;
   $('iResults').hidden = false;
 }

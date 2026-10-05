@@ -130,3 +130,22 @@ test('switching tabs never moves the tab bar, though each tab shows different ra
     expect(await top()).toBeCloseTo(first, 1);
   }
 });
+
+test('inflation shortcuts: 1, 5, 10, 20, 30 years ago, the same month, worth now', async ({ page }) => {
+  await page.goto('?tab=inflation&a=100&in=now&w=2000');
+  const ago = (n) => `${Number(latest.month.slice(0, 4)) - n}${latest.month.slice(4)}`;
+  await page.getByRole('button', { name: /\(10 years ago\)/ }).click();
+  await expect(page.locator('#iInYear')).toHaveValue(ago(10).slice(0, 4));
+  await expect(page.locator('#iInMonth')).toHaveValue(ago(10).slice(5));
+  await expect(page.locator('#iWorthYear')).toHaveValue('now');
+  await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * latest.index) / monthIndex(ago(10)))}`);
+  await expect(page.getByRole('button', { name: /\(10 years ago\)/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page).toHaveURL(new RegExp(`in=${ago(10)}&w=now`));
+  // 1 year ago: the change matches C&SD's published year-on-year rate (to the rounding of the index)
+  await page.getByRole('button', { name: /\(1 year ago\)/ }).click();
+  const change = Number((await page.locator('#iChange').textContent()).replace(/[+%−]/g, ''));
+  expect(Math.abs(change - latest.yoy)).toBeLessThan(0.15);
+  // Changing a field un-highlights the shortcut
+  await page.locator('#iWorthYear').selectOption('2025');
+  await expect(page.getByRole('button', { name: /\(1 year ago\)/ })).toHaveAttribute('aria-pressed', 'false');
+});
