@@ -413,11 +413,10 @@ test('saved calculations: save from either tab, rename, open and delete; kept af
 
 test('header shows the refresh time in HKT when the rate files have one', async ({ page }) => {
   for (const file of ['rates.json', 'prime-rates.json', 'us-prime-rates.json']) {
-    await page.route(`**/${file}*`, async (route) => {
-      const res = await route.fetch();
-      const json = await res.json();
-      await route.fulfill({ json: { ...json, checkedAt: '2026-10-04', checkedTime: file === 'rates.json' ? '17:44' : '17:43' } });
-    });
+    // Read the real file from disk (not through the test server, which can lag when every test runs at once)
+    const json = JSON.parse(await (await import('node:fs/promises')).readFile(new URL(`../site/${file}`, import.meta.url), 'utf8'));
+    await page.route(`**/${file}*`, (route) =>
+      route.fulfill({ json: { ...json, checkedAt: '2026-10-04', checkedTime: file === 'rates.json' ? '17:44' : '17:43' } }));
   }
   await page.goto('./');
   await expect(page.locator('#asAt')).toHaveText('Rates updated as at 04-Oct-2026 17:44 HKT');
