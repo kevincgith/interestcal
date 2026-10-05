@@ -47,6 +47,7 @@ You can choose one of three rates:
     Results compare the compounded interest with the same calculation as simple interest. On a compounding date, interest is added to principal first, then principal added later, then payments.
   - **Switch to a different rate from a date:** e.g. prime + 1% before judgment, then the judgment rate after. The new rate (judgment, prime + spread, or fixed) applies from the switch date. Rows show each period's own rate, and the rates-used list labels each rate with its kind.
 
+- **Cash flows:** principal added later and payments received sit together in a collapsible **Cash flows** pane, which shows a count (e.g. "1 principal added, 2 payments") while closed and opens by itself for a link that has any.
 - **Principal added later:** further principal such as costs, each with a date, an amount and an optional description. From its date, each amount joins the principal and earns interest at the same rate. On a day with both, the principal is added before any payment, so the payment can clear it. Amounts dated outside the calculation period are ignored with a warning.
 - **Icon and link preview:** a calculator icon for browser tabs and the iPhone home screen, plus a preview card (title, description, image) when the link is shared. After changing `site/favicon.svg` or the preview wording, run `npm run images`.
 

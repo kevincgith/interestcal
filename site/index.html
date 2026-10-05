@@ -134,26 +134,31 @@
           </div>
         </div>
       </details>
-      <fieldset class="payments">
-        <legend>Principal added later <span class="muted">(optional, e.g. costs)</span></legend>
-        <div id="additionRows" class="event-rows"></div>
-        <div class="payments-actions">
-          <button type="button" id="addSum" class="secondary">+ Add principal</button>
+      <details id="cashFlows" class="advanced">
+        <summary>Cash flows <span id="cashFlowsSummary" class="muted">(principal added later, payments received)</span></summary>
+        <div class="cash-flows-body">
+          <fieldset class="payments">
+            <legend>Principal added later <span class="muted">(optional, e.g. costs)</span></legend>
+            <div id="additionRows" class="event-rows"></div>
+            <div class="payments-actions">
+              <button type="button" id="addSum" class="secondary">+ Add principal</button>
+            </div>
+          </fieldset>
+          <fieldset class="payments">
+            <legend>Payments received <span class="muted">(optional)</span></legend>
+            <div id="paymentRows" class="event-rows"></div>
+            <div class="payments-actions">
+              <button type="button" id="addPayment" class="secondary">+ Add payment</button>
+              <label id="allocationField" class="inline" hidden>Apply payments to
+                <select id="allocation">
+                  <option value="interest" selected>Interest first, then principal</option>
+                  <option value="principal">Principal first, then interest</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
         </div>
-      </fieldset>
-      <fieldset class="payments">
-        <legend>Payments received <span class="muted">(optional)</span></legend>
-        <div id="paymentRows" class="event-rows"></div>
-        <div class="payments-actions">
-          <button type="button" id="addPayment" class="secondary">+ Add payment</button>
-          <label id="allocationField" class="inline" hidden>Apply payments to
-            <select id="allocation">
-              <option value="interest" selected>Interest first, then principal</option>
-              <option value="principal">Principal first, then interest</option>
-            </select>
-          </label>
-        </div>
-      </fieldset>
+      </details>
       <div class="actions">
         <button type="submit">Calculate</button>
         <button type="button" id="clear" class="secondary">Reset</button>

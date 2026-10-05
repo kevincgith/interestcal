@@ -548,6 +548,7 @@ function readQuery() {
     if (isIsoDate(date) && Number(amount) > 0) addEventRow('addition', date, Number(amount), decodeURIComponent(label));
   }
   if (q.get('alloc') in ALLOCATIONS) $('allocation').value = q.get('alloc');
+  if ($('paymentRows').children.length || $('additionRows').children.length) $('cashFlows').open = true;
   // Advanced settings: open the section if the link uses them
   if (q.get('comp') in COMPOUNDINGS) $('compounding').value = q.get('comp');
   if (q.get('cdates') === 'calendar') $('compoundDates').value = 'calendar';
@@ -679,7 +680,15 @@ function addEventRow(kind, date = '', amount = '', label = '') {
 const addPaymentRow = (date, amount) => addEventRow('payment', date, amount);
 
 function updatePaymentFields() {
-  $('allocationField').hidden = !$('paymentRows').children.length;
+  const payments = $('paymentRows').children.length;
+  const added = $('additionRows').children.length;
+  $('allocationField').hidden = !payments;
+  // Cash flows heading: what's inside while it's collapsed, e.g. "(1 principal added, 2 payments)"
+  const parts = [
+    added && `${added} principal added`,
+    payments && `${payments} ${payments === 1 ? 'payment' : 'payments'}`,
+  ].filter(Boolean);
+  $('cashFlowsSummary').textContent = `(${parts.length ? parts.join(', ') : 'principal added later, payments received'})`;
 }
 
 /** Reads payment or added-sum rows. Throws a user-facing message for half-filled rows; empty rows are ignored. */
@@ -849,6 +858,7 @@ $('clear').addEventListener('click', () => {
   $('paymentRows').replaceChildren();
   $('additionRows').replaceChildren();
   $('advanced').open = false;
+  $('cashFlows').open = false;
   updatePaymentFields();
   showSourceFields();
   clearResults();

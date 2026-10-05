@@ -128,6 +128,7 @@ test('payments can be added and removed in the form; nothing recalculates until 
   await expect(total(page)).toHaveText('7,978.08');
   await expect(page.locator('#allocationField')).toBeHidden();
 
+  await page.locator('#cashFlows summary').click(); // the add buttons are in the collapsed Cash flows pane
   await page.getByRole('button', { name: '+ Add payment' }).click();
   await page.getByLabel('Payment date').fill('2026-07-01');
   await page.getByLabel('Payment amount').fill('10000');
@@ -148,6 +149,7 @@ test('payments can be added and removed in the form; nothing recalculates until 
 
 test('a half-filled payment row shows an error instead of calculating', async ({ page }) => {
   await page.goto('./');
+  await page.locator('#cashFlows summary').click(); // the add buttons are in the collapsed Cash flows pane
   await page.getByRole('button', { name: '+ Add payment' }).click();
   await page.getByLabel('Payment amount').fill('5000');
   await page.getByRole('button', { name: 'Calculate' }).click();
@@ -181,6 +183,7 @@ test('footer shows the licence and links to the GitHub repo', async ({ page }) =
 
 test('principal added later: from the form and from a shared link', async ({ page }) => {
   await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-12-31');
+  await page.locator('#cashFlows summary').click(); // the add buttons are in the collapsed Cash flows pane
   await page.getByRole('button', { name: '+ Add principal' }).click();
   await page.getByLabel('Added principal date').fill('2026-07-01');
   await page.getByLabel('Added principal amount').fill('20000');
@@ -414,4 +417,21 @@ test('Combined rows: quarters at the same republished judgment rate become one r
   await expect(page.locator('#periods tr')).toHaveCount(1);
   await expect(page.locator('#periods tr').first()).toContainText('3 rows combined: same rate republished');
   await expect(page.locator('#periods tr').first()).toContainText('100,000.00 × 8.000% × 187 ÷ 365');
+});
+
+test('cash flows: collapsed by default, counts what is inside, and opens for a link with cash flows', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.locator('#cashFlows')).not.toHaveAttribute('open', '');
+  await expect(page.locator('#cashFlowsSummary')).toHaveText('(principal added later, payments received)');
+  await page.locator('#cashFlows summary').click();
+  await page.getByRole('button', { name: '+ Add payment' }).click();
+  await page.getByRole('button', { name: '+ Add payment' }).click();
+  await page.getByRole('button', { name: '+ Add principal' }).click();
+  await expect(page.locator('#cashFlowsSummary')).toHaveText('(1 principal added, 2 payments)');
+
+  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-07-01&pay=2026-04-01:30000');
+  await expect(page.locator('#cashFlows')).toHaveAttribute('open', '');
+  await expect(page.locator('#cashFlowsSummary')).toHaveText('(1 payment)');
+  await page.locator('#clear').click();
+  await expect(page.locator('#cashFlows')).not.toHaveAttribute('open', '');
 });
