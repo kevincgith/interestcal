@@ -92,7 +92,7 @@ You can choose one of three rates:
 
 | Path | Purpose |
 |---|---|
-| `site/calc.js` | The calculation, a pure function ported from the VBA macro |
+| `site/calc.js` | The calculation, a pure function ported from the VBA macro. `test/excel-parity.test.mjs` checks it against a line-by-line port of the workbook's macro: the workbook's last saved result, its 104 judgment rates (all on the site, unchanged), and 6,000+ random and edge cases (leap years, year ends, rate changes, HK$0.01 to about HK$1bn), which must agree to the cent |
 | `site/index.html`, `app.js`, `style.css` | Static web UI. Amounts are shown as `xxx,xxx.xx`, and a spread is shown as `base + spread = rate`. |
 | `site/interest-text.js` | Interest tab wording: rate and setting names, each period's working and note, the daily interest text (no page access, so it's unit-tested) |
 | `site/cash-flows.js` | Interest tab cash flows: payment and principal-added rows |
