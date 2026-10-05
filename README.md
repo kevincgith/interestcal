@@ -36,7 +36,7 @@ You can choose one of three rates:
 
 - **Advanced settings** (collapsed by default, so the basic form stays simple):
   - **Day count basis** (Actual/Actual by default) and **rounding** (round the total only, by default).
-  - **Calculation rows:** split at every change (default), or **one row per rate period**. The second combines rows that were split only by a new year (Actual/Actual), a payment, principal added or compounding, and shows the working as one sum, e.g. `100,000.00 × 8.000% × (184 ÷ 365 + 182 ÷ 366)`. Totals don't change. The downloads follow the same choice; in Excel a combined row is one live formula summing its pieces.
+  - **Calculation rows:** **Detailed (each published rate)**, the default, with a row for each published rate (even when a quarter repeats the same rate), payment and new year; or **Combined (per rate period)**, which combines consecutive rows at the same rate, including rows split only by a republished rate, a new year (Actual/Actual), a payment, principal added or compounding, and shows the working as one sum, e.g. `100,000.00 × 8.000% × (184 ÷ 365 + 182 ÷ 366)`. Totals don't change. The downloads follow the same choice; in Excel a combined row is one live formula summing its pieces.
   - **Compounding:** None (simple interest, the default), monthly, quarterly, yearly, daily or continuous.
     - **Monthly / quarterly / yearly:** unpaid interest is added to principal on each compounding date. **Compounding dates** can be:
       - **From the start date** (default): anniversaries of the start date. For a start on 31 Jan, monthly dates are 28/29 Feb, 31 Mar, and so on.

@@ -349,7 +349,7 @@ const printInputItems = (r) => [
   ['End date (does not earn interest)', fmtDate(r.end)],
   ['Day count basis', BASES[r.basis]],
   ['Rounding', ROUNDINGS[r.rounding]],
-  ...(r.rows === 'rate' ? [['Calculation rows', 'One row per rate period']] : []),
+  ...(r.rows === 'rate' ? [['Calculation rows', 'Combined (per rate period)']] : []),
   ...(r.compounding !== 'none' ? [['Compounding', compoundingLabel(r)]] : []),
   ...(r.additions.length || r.ignoredAdditions.length
     ? [['Principal added later', String(r.additions.length + r.ignoredAdditions.length)]]
@@ -793,7 +793,7 @@ $('form').addEventListener('submit', (e) => {
     const rows = $('rows').value;
     lastResult = {
       ...result,
-      // "One row per rate period": everything (table and downloads) shows the combined rows; totals are the same
+      // "Combined (per rate period)": everything (table and downloads) shows the combined rows; totals are the same
       periods: rows === 'rate' ? mergeRatePeriods(result.periods) : result.periods,
       rows,
       // For the comparison line: the same calculation as simple interest
@@ -929,7 +929,7 @@ $('csv').addEventListener('click', () => {
     ['Rate Basis', rateBasisLabel(r)],
     ['Day Count Basis', BASES[r.basis]],
     ['Rounding', ROUNDINGS[r.rounding]],
-    ...(r.rows === 'rate' ? [['Calculation rows', 'One row per rate period']] : []),
+    ...(r.rows === 'rate' ? [['Calculation rows', 'Combined (per rate period)']] : []),
     ...(r.compounding !== 'none'
       ? [
           ['Compounding', compoundingLabel(r)],
