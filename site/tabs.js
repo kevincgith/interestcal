@@ -16,7 +16,10 @@ export function registerQuery(name, fn) {
 
 function show(name) {
   current = name;
-  $rates.dataset.tab = name; // the header shows only the rates this tab uses (style.css)
+  // The rates strip ("Rates updated as at ...", today's rates) sits at the top of the open tab's panel, joined to its
+  // first card, and shows only the rates this tab uses (style.css); PV uses none
+  $rates.dataset.tab = name;
+  document.getElementById(`panel-${name}`).prepend($rates);
   for (const t of TABS) {
     const selected = t === name;
     document.getElementById(`tab-${t}`).setAttribute('aria-selected', String(selected));
@@ -44,31 +47,3 @@ for (const t of TABS) {
 }
 show(current);
 
-// The header's rates differ by tab (3 lines on Interest, none on PV...), so the area keeps the height of the
-// tallest tab's rates at the current width: switching tabs never moves the tabs. Measured on an invisible copy
-// set to each tab in turn, again whenever the rates load or change and when the width changes.
-// Several changes at once (e.g. all the rates arriving) are measured once, straight after them and before the next
-// paint (a microtask, not requestAnimationFrame, which stops while the page isn't visible).
-let pending = false;
-function steadyHeader() {
-  if (pending) return;
-  pending = true;
-  queueMicrotask(() => {
-    pending = false;
-    const copy = $rates.cloneNode(true);
-    copy.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
-    copy.removeAttribute('id');
-    Object.assign(copy.style, { position: 'absolute', visibility: 'hidden', left: '0', top: '0', width: `${$rates.clientWidth}px`, minHeight: '0' });
-    copy.setAttribute('aria-hidden', 'true');
-    $rates.parentElement.append(copy);
-    const tallest = Math.max(...TABS.map((t) => {
-      copy.dataset.tab = t;
-      return copy.getBoundingClientRect().height; // fractional: whole pixels would still leave a 1px jump
-    }));
-    copy.remove();
-    $rates.style.minHeight = `${tallest}px`;
-  });
-}
-new MutationObserver(steadyHeader).observe($rates, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
-new ResizeObserver(steadyHeader).observe($rates.parentElement);
-steadyHeader();

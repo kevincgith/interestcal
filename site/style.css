@@ -45,15 +45,19 @@ h1 .logo { flex: none; width: 36px; height: 36px; }
 .latest-rate { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
 .latest-rate .latest-name, .latest-rate .latest-date { color: var(--muted); }
 .latest-rate .latest-date { font-size: 0.8rem; }
-/* Only the rates the open tab uses: Interest (judgment, HSBC and US prime), Mortgage (HSBC prime, HIBOR),
-   Inflation (HK inflation); PV uses none. data-tab is on .header-rates (tabs.js), whose height stays that of the
-   tallest tab's rates, so the tabs below never jump when switching. Classes, not ids: tabs.js measures copies. */
-.header-rates { display: flow-root; }
+/* The rates strip at the top of the open tab's panel (tabs.js moves it there), showing only the rates that tab uses:
+   Interest (judgment, HSBC and US prime), Mortgage (HSBC prime, HIBOR), Inflation (HK inflation); PV uses none.
+   It reads as the top of the panel's first card: same surface and border, attached to the tab bar. */
+.tagline { margin: 0 0 4px; max-width: 70ch; font-size: 0.95rem; color: var(--muted); }
+.header-rates { display: flow-root; background: var(--surface); border: 1px solid var(--border); border-bottom: 0;
+  border-radius: 0 10px 0 0; padding: 14px 20px 0; }
+.header-rates:not([data-tab="pv"]) + .card { margin-top: 0; border-top: 0; border-radius: 0 0 10px 10px; }
+.header-rates[data-tab="pv"] { display: none; }
 .header-rates[data-tab="interest"] .latest-rate[data-tabs]:not([data-tabs~="interest"]),
 .header-rates[data-tab="mortgage"] .latest-rate[data-tabs]:not([data-tabs~="mortgage"]) { display: none; }
-.header-rates[data-tab="pv"] :is(.as-at, .latest-rates),
 .header-rates[data-tab="inflation"] :is(.as-at, .latest-rates:not(.latest-cpi)),
 .header-rates:not([data-tab="inflation"]) .latest-cpi { display: none; }
+.header-rates .latest-rates { margin-bottom: 4px; }
 a { color: var(--accent); }
 .muted { color: var(--muted); font-size: 0.9rem; font-weight: normal; }
 
@@ -267,7 +271,8 @@ details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
   @page { margin: 14mm; }
   body { font-size: 11pt; background: #fff; }
   main { max-width: none; padding: 0; }
-  header p:not(.as-at), .about, form, .exports, label.filter, .stale-note, details summary::marker { display: none; }
+  .tagline, .header-rates .latest-rates, .about, form, .exports, label.filter, .stale-note, details summary::marker { display: none; }
+  .header-rates { border: 0; padding: 0; background: none; }
   .print-only { display: grid; }
   .inputs-list {
     grid-template-columns: max-content 1fr;
