@@ -114,3 +114,15 @@ test('the header shows only the rates the open tab uses', async ({ page }) => {
   await expect(page.locator('#latestCpi')).toBeVisible();
   await expect(page.locator('#latestRates')).toBeHidden();
 });
+
+test('switching tabs never moves the tab bar, though each tab shows different rates', async ({ page }) => {
+  await page.goto('?');
+  await expect(page.locator('#latestRates')).toBeVisible(); // the rates have loaded
+  await expect(page.locator('#latestCpi')).not.toHaveText(''); // and the CPI line (shown on Inflation)
+  const top = () => page.locator('.tabs').evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+  const first = await top();
+  for (const name of ['Mortgage', 'PV', 'Inflation', 'Interest']) {
+    await page.getByRole('tab', { name, exact: true }).click();
+    expect(await top()).toBeCloseTo(first, 1);
+  }
+});
