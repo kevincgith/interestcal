@@ -519,7 +519,7 @@ document.querySelectorAll('[data-date]').forEach((btn) => {
 });
 
 // "?" help: each button shows or hides the explanation next to it (the help-text in the same label, or right after it)
-document.querySelectorAll('#form .help').forEach((btn) => {
+document.querySelectorAll('form .help').forEach((btn) => { // both tabs' forms
   const label = btn.closest('label');
   const text = label.querySelector('.help-text') ?? label.nextElementSibling;
   btn.addEventListener('click', (e) => {

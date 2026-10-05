@@ -307,6 +307,21 @@
         </label>
         <p id="mLoanLine" class="loan-line"></p>
 
+        <label id="mPrimeField" for="mPrimeKind"><span class="label-row">Prime (P) <button type="button" class="help" aria-expanded="false" aria-label="What is small P and big P?">?</button></span>
+          <select id="mPrimeKind">
+            <option value="small" selected>Small P (HSBC)</option>
+            <option value="big">Big P (small P + 0.25%)</option>
+            <option value="other">Another bank’s P…</option>
+          </select>
+          <span class="help-text" hidden>Small P is HSBC’s prime (also Hang Seng’s), from the daily data. Big P is the higher prime of banks such as BOCHK and Standard Chartered, 0.25% above small P; some banks’ P is higher still. Banks move their P together, so big P and other banks’ P are worked out as small P plus that gap, including for past dates, which makes past figures an estimate if a bank ever moved on a different day. The discount and the HIBOR cap then apply to the P chosen here.</span>
+        </label>
+        <label id="mPrimeExtraField" for="mPrimeExtra" hidden>Bank’s P above small P (% p.a.)
+          <div class="stepper">
+            <button type="button" class="step" data-step="-0.125" aria-label="Decrease the bank’s P by 0.125%">−</button>
+            <input id="mPrimeExtra" type="text" inputmode="decimal" autocomplete="off" value="0.5" data-min="0">
+            <button type="button" class="step" data-step="0.125" aria-label="Increase the bank’s P by 0.125%">+</button>
+          </div>
+        </label>
         <label id="mDiscountField" for="mDiscount" hidden>Discount below prime (% p.a.)
           <div class="stepper">
             <button type="button" class="step" data-step="-0.25" aria-label="Decrease discount below prime by 0.25%">−</button>

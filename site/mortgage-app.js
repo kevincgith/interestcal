@@ -11,6 +11,19 @@ import { saveCalculation, recordRecent } from './saved.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 
 const TYPES = { prime: 'Prime-based', hibor: 'HIBOR-based', fixed: 'Fixed rate' };
+// Which prime (P) prime-based plans and the HIBOR cap use: HSBC's "small P", "big P" (small P + 0.25%, e.g. BOCHK,
+// Standard Chartered) or another bank's P (small P + an amount). Banks move their P together, so another bank's past
+// P is estimated from HSBC's history plus that gap.
+function primeChoice() {
+  const kind = $('mPrimeKind').value;
+  if (kind === 'big') return { kind, premium: 0.25, name: 'Big P' };
+  if (kind === 'other') {
+    const premium = parseNumber($('mPrimeExtra').value);
+    return { kind, premium, name: `P (small P + ${Number.isFinite(premium) ? premium : '?'}%)` };
+  }
+  return { kind: 'small', premium: 0, name: 'Small P' };
+}
+const primeWithPremium = (rates, premium) => (premium ? rates.map((r) => ({ ...r, rate: r.rate + premium })) : rates);
 // Mortgage rates to 3 decimals (HIBOR fixings have 5; the extra precision is just noise here). r is a fraction.
 const rate3 = (r) => `${(r * 100).toFixed(3)}%`;
 const pct = (n) => `${Number(n.toFixed(4)).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}%`;
@@ -64,6 +77,8 @@ function readLoan() {
 function updateHints() {
   const type = currentType();
   $('mDiscountField').hidden = type !== 'prime';
+  $('mPrimeField').hidden = type === 'fixed';
+  $('mPrimeExtraField').hidden = type === 'fixed' || $('mPrimeKind').value !== 'other';
   $('mHiborField').hidden = type !== 'hibor';
   $('mTenorField').hidden = type !== 'hibor';
   $('mMarginField').hidden = type !== 'hibor';
@@ -79,17 +94,19 @@ function updateHints() {
       ? `Loan amount HK$${money.format(loan)} · Down payment HK$${money.format(price - loan)}`
       : '';
 
-  const p = prime?.rates?.[0];
+  const pc = primeChoice();
+  const small = prime?.rates?.[0];
+  const p = small && Number.isFinite(pc.premium) ? { ...small, rate: small.rate + pc.premium } : null;
   let hint = '';
   if (type === 'prime' && p) {
     const d = parseNumber($('mDiscount').value);
-    if (Number.isFinite(d)) hint = `Now: HSBC prime ${pct(p.rate)} − ${pct(d)} = ${pct(p.rate - d)} p.a.`;
+    if (Number.isFinite(d)) hint = `Now: ${pc.name} ${pct(p.rate)} − ${pct(d)} = ${pct(p.rate - d)} p.a.`;
   } else if (type === 'hibor' && p) {
     const [h, m, c] = ['mHibor', 'mMargin', 'mCap'].map((id) => parseNumber($(id).value));
     if ([h, m, c].every(Number.isFinite)) {
       const name = TENOR_NAME[currentTenor()];
       const hist = hibor[currentTenor()]?.rates;
-      hint = `Rate = the lower of ${name} HIBOR + ${pct(m)} and prime − ${pct(c)} (now ${pct(p.rate - c)}), ` +
+      hint = `Rate = the lower of ${name} HIBOR + ${pct(m)} and ${pc.name} − ${pct(c)} (now ${pct(p.rate - c)}), ` +
         'reset at every monthly due date. ' +
         (hist?.length
           ? `Past resets use actual ${name} HIBOR fixings (HKMA, ${fmtDate(hist.at(-1).effective)} to ${fmtDate(hist[0].effective)}); later ones use ${pct(h)}.`
@@ -185,6 +202,11 @@ function planParams(type) {
       throw new Error(k === 'hibor' ? 'Please enter the current HIBOR.' : `Please enter a valid rate for the ${TYPES[type].toLowerCase()} plan.`);
     }
   }
+  if (type !== 'fixed') {
+    const pc = primeChoice();
+    if (!Number.isFinite(pc.premium)) throw new Error('Please enter how far the bank’s P is above small P.');
+    Object.assign(params, { primeKind: pc.kind, primePremium: pc.premium, primeName: pc.name });
+  }
   params.rebatePct = parseNumber($(REBATE_FIELD[type]).value || '0');
   if (!(params.rebatePct >= 0 && params.rebatePct < 20)) throw new Error('Cash rebate must be between 0 and 20% of the loan.');
   if (type !== 'fixed' && !prime) throw new Error('Prime rates have not loaded yet.');
@@ -225,7 +247,8 @@ async function ratesFor(params, inputs) {
   const extra = params.type === 'hibor'
     ? { hiborHistory: (await loadHibor(params.tenor))?.rates ?? [], start: inputs.start, years: inputs.years }
     : {};
-  return { rates: mortgageRates({ ...params, ...extra, prime: prime?.rates ?? [] }), hiborHistory: extra.hiborHistory };
+  const primeRates = primeWithPremium(prime?.rates ?? [], params.primePremium ?? 0);
+  return { rates: mortgageRates({ ...params, ...extra, prime: primeRates }), hiborHistory: extra.hiborHistory };
 }
 
 $('mform').addEventListener('submit', async (e) => {
@@ -266,11 +289,12 @@ $('mform').addEventListener('submit', async (e) => {
   setStale(false);
 });
 
-// "1-month HIBOR + 1.30%, capped at prime − 1.75%; current HIBOR 2.85%"
+// "1-month HIBOR + 1.30%, capped at Small P − 1.75%; current HIBOR 2.85%"; "Big P − 2.00%"
 const planLabel = (p) => {
-  if (p.type === 'prime') return `HSBC prime − ${pct(p.discount)}`;
+  const P = p.primeName ?? 'Small P';
+  if (p.type === 'prime') return `${P} − ${pct(p.discount)}`;
   if (p.type === 'hibor') {
-    return `${TENOR_NAME[p.tenor]} HIBOR + ${pct(p.margin)}, capped at prime − ${pct(p.capDiscount)}; current HIBOR ${pct(p.hibor)}`;
+    return `${TENOR_NAME[p.tenor]} HIBOR + ${pct(p.margin)}, capped at ${P} − ${pct(p.capDiscount)}; current HIBOR ${pct(p.hibor)}`;
   }
   return `Fixed ${pct(p.fixedRate)}`;
 };
@@ -566,6 +590,7 @@ function writeQuery(m) {
   // Every plan's settings, so the comparison reopens the same
   for (const p of i.plans) {
     if (p.type === 'prime') q.set('disc', String(p.discount));
+    if (p.primeKind && p.primeKind !== 'small') q.set('pk', p.primeKind === 'big' ? 'big' : `other:${p.primePremium}`);
     if (p.type === 'hibor') {
       if (hiborEdited) q.set('h', String(p.hibor)); // otherwise the link keeps following the latest fixing
       q.set('mg', String(p.margin));
@@ -597,6 +622,12 @@ function readQuery() {
   setNum('yrs', 'mYears');
   if (isIsoDate(q.get('from'))) $('mStart').value = q.get('from');
   setNum('disc', 'mDiscount');
+  const pk = q.get('pk') ?? '';
+  if (pk === 'big') $('mPrimeKind').value = 'big';
+  else if (pk.startsWith('other:') && Number.isFinite(Number(pk.slice(6)))) {
+    $('mPrimeKind').value = 'other';
+    $('mPrimeExtra').value = pk.slice(6);
+  }
   setNum('h', 'mHibor');
   setNum('mg', 'mMargin');
   setNum('cap', 'mCap');
@@ -615,6 +646,9 @@ function readQuery() {
   }
   if (q.get('stress') === '3' || q.has('inc') || q.get('meth') === 'monthly') $('mAdvanced').open = true;
 }
+
+$('mPrimeKind').addEventListener('change', updateHints);
+$('mPrimeExtra').addEventListener('input', updateHints);
 
 $('mReset').addEventListener('click', () => {
   $('mform').reset();

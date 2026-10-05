@@ -306,3 +306,42 @@ test('rate history: own date range, and presets fill in the dates', async ({ pag
   await page.locator('#hiborCard [data-range="all"]').click();
   await expect(page.locator('#rhFrom')).toHaveValue('1996-07-01');
 });
+
+test('Prime (P): big P and another bank’s P sit above small P; the discount and HIBOR cap apply to the chosen P', async ({ page }) => {
+  const firstRate = async () => parseFloat(await page.locator('#mSchedule tr').first().locator('td').nth(2).textContent());
+  const base = '?tab=mortgage&mt=prime&disc=1.75&price=5000000&ltv=60&yrs=20&from=2026-01-15';
+  await page.goto(base);
+  await expect(page.locator('#mPrimeKind')).toHaveValue('small');
+  await expect(page.locator('#mSchedule tr').first()).toBeVisible();
+  const small = await firstRate();
+  await expect(page.locator('#mRateHint')).toContainText('Small P');
+
+  await page.locator('#mPrimeKind').selectOption('big');
+  await expect(page.locator('#mPrimeExtraField')).toBeHidden();
+  await expect(page.locator('#mRateHint')).toContainText('Big P');
+  await page.locator('#mform button[type="submit"]').click();
+  await expect(page).toHaveURL(/pk=big/);
+  await expect.poll(firstRate).toBeCloseTo(small + 0.25, 6);
+  await expect(page.locator('#mRateLine')).toContainText('Big P − 1.75%');
+
+  await page.locator('#mPrimeKind').selectOption('other');
+  await expect(page.locator('#mPrimeExtraField')).toBeVisible();
+  await page.locator('#mPrimeExtra').fill('0.5');
+  await page.locator('#mform button[type="submit"]').click();
+  await expect(page).toHaveURL(/pk=other%3A0\.5/);
+  await expect.poll(firstRate).toBeCloseTo(small + 0.5, 6);
+
+  // The link reopens with the choice
+  await page.reload();
+  await expect(page.locator('#mPrimeKind')).toHaveValue('other');
+  await expect(page.locator('#mPrimeExtra')).toHaveValue('0.5');
+
+  // HIBOR plan: the cap uses big P (a high HIBOR, so the cap applies)
+  await page.goto('?tab=mortgage&mt=hibor&h=9&mg=1.3&cap=1.75&price=5000000&ltv=60&yrs=20&from=2035-01-15&pk=big');
+  await expect(page.locator('#mSchedule tr').first()).toBeVisible();
+  await expect(page.locator('#mRateHint')).toContainText('Big P − 1.75%');
+  const capBig = await firstRate();
+  await page.goto('?tab=mortgage&mt=hibor&h=9&mg=1.3&cap=1.75&price=5000000&ltv=60&yrs=20&from=2035-01-15');
+  await expect(page.locator('#mSchedule tr').first()).toBeVisible();
+  await expect.poll(firstRate).toBeCloseTo(capBig - 0.25, 6);
+});
