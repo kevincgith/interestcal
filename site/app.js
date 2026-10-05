@@ -15,7 +15,8 @@ const fmtRateWithSpread = (p) => {
   const sign = spread < 0 ? '−' : '+';
   return `${fmtRate(p.baseRate)} ${sign} ${fmtRate(Math.abs(spread) / 100)} = ${fmtRate(p.rate)}`;
 };
-// What a combined row covers, e.g. "3 rows combined: new year, principal changed"
+// What a combined row covers, e.g. "3 rows combined: new year, principal changed" or "3 rows combined: same rate
+// republished"
 function mergedNote(r, p) {
   const why = new Set();
   p.parts.forEach((x, k) => {
@@ -24,6 +25,7 @@ function mergedNote(r, p) {
     if (x.capitalised > 0) why.add('interest compounded');
     else if (x.principal !== prev.principal) why.add('principal changed');
     else if (x.yearDays !== prev.yearDays) why.add('new year');
+    else why.add('same rate republished'); // e.g. the judgment rate published again for a new quarter
   });
   const start = p.capitalised > 0 ? `+${r.currency}${money.format(p.capitalised)} interest compounded; ` : '';
   return `${start}${p.parts.length} rows combined${why.size ? `: ${[...why].join(', ')}` : ''}`;

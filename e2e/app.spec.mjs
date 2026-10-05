@@ -403,3 +403,11 @@ test('header shows the refresh time in HKT when the rate files have one', async 
   await page.goto('./');
   await expect(page.locator('#asAt')).toHaveText('Rates updated as at 04-Oct-2026 17:44 HKT');
 });
+
+test('Combined rows: quarters at the same republished judgment rate become one row, with the reason', async ({ page }) => {
+  // The judgment rate was 8% from 1 April, 1 July and 1 October 2026 (republished each quarter)
+  await page.goto('?src=judgment&p=100000&from=2026-04-01&to=2026-10-05&rows=rate');
+  await expect(page.locator('#periods tr')).toHaveCount(1);
+  await expect(page.locator('#periods tr').first()).toContainText('3 rows combined: same rate republished');
+  await expect(page.locator('#periods tr').first()).toContainText('100,000.00 × 8.000% × 187 ÷ 365');
+});
