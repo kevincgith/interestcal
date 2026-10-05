@@ -345,3 +345,14 @@ test('Prime (P): big P and another bank’s P sit above small P; the discount an
   await expect(page.locator('#mSchedule tr').first()).toBeVisible();
   await expect.poll(firstRate).toBeCloseTo(capBig - 0.25, 6);
 });
+
+test('mortgage: changed inputs turn off the downloads and Save until Calculate is pressed', async ({ page }) => {
+  await page.goto('?tab=mortgage');
+  await expect(page.locator('#mPayment')).not.toHaveText('');
+  const ids = ['#mPdf', '#mXlsx', '#mCsv', '#mSave'];
+  for (const id of ids) await expect(page.locator(id)).toBeEnabled();
+  await page.locator('#mPrice').fill('6000000');
+  for (const id of ids) await expect(page.locator(id)).toBeDisabled();
+  await page.locator('#mform button[type="submit"]').click();
+  for (const id of ids) await expect(page.locator(id)).toBeEnabled();
+});

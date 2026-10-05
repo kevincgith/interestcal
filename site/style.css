@@ -167,6 +167,7 @@ th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: 
 th { font-size: 0.85rem; color: var(--muted); }
 .exports { display: flex; flex-wrap: wrap; gap: 12px; }
 button:disabled { opacity: 0.6; cursor: progress; }
+button:disabled[title] { cursor: not-allowed; } /* out-of-date results: press Calculate first */
 .row-note { display: block; font-size: 0.78rem; color: var(--accent); white-space: nowrap; }
 td.formula { color: var(--muted); font-size: 0.9rem; white-space: normal; min-width: 170px; }
 .num { text-align: right; }

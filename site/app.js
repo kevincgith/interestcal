@@ -582,6 +582,11 @@ $('compounding').addEventListener('change', showSourceFields);
 function setStale(stale) {
   $('results').classList.toggle('stale', stale);
   $('staleNote').hidden = !stale;
+  // Downloads and Save would use the old results: off until Calculate is pressed again
+  for (const id of ['docx', 'pdf', 'xlsx', 'csv', 'save']) {
+    $(id).disabled = stale;
+    $(id).title = stale ? 'Inputs changed: press Calculate first' : '';
+  }
 }
 const markStale = () => {
   if (lastResult) setStale(true);
