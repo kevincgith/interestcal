@@ -94,6 +94,9 @@ You can choose one of three rates:
 |---|---|
 | `site/calc.js` | The calculation, a pure function ported from the VBA macro |
 | `site/index.html`, `app.js`, `style.css` | Static web UI. Amounts are shown as `xxx,xxx.xx`, and a spread is shown as `base + spread = rate`. |
+| `site/interest-text.js` | Interest tab wording: rate and setting names, each period's working and note, the daily interest text (no page access, so it's unit-tested) |
+| `site/cash-flows.js` | Interest tab cash flows: payment and principal-added rows |
+| `site/interest-exports.js` | Interest tab downloads: Word, PDF, Excel and CSV |
 | `site/export-xlsx.js` | Excel export. The **Calculation** sheet has live formulas (days, base + spread, `principal × rate × days ÷ year days`, totals). The **Rates** sheet has the source URL and the rates used. A CSV export is also available. |
 | `site/vendor/xlsx.mini.min.js` | SheetJS 0.20.3 mini build (Apache-2.0), loaded only when you click Download Excel. It's copied from `node_modules/xlsx/dist/`. |
 | `site/saved.js` | Saved calculations (browser storage) |
