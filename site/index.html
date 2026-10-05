@@ -28,12 +28,14 @@
       <h1>HK Interest Calculator</h1>
       <p id="asAt" class="as-at"></p>
       <p id="latestRates" class="latest-rates" hidden></p>
+      <p id="latestCpi" class="latest-rates" hidden></p>
     </header>
 
     <nav class="tabs" role="tablist" aria-label="Calculator">
       <button type="button" role="tab" id="tab-interest" aria-controls="panel-interest" aria-selected="true">Interest</button>
       <button type="button" role="tab" id="tab-mortgage" aria-controls="panel-mortgage" aria-selected="false" tabindex="-1">Mortgage</button>
       <button type="button" role="tab" id="tab-pv" aria-controls="panel-pv" aria-selected="false" tabindex="-1" title="Present value">PV</button>
+      <button type="button" role="tab" id="tab-inflation" aria-controls="panel-inflation" aria-selected="false" tabindex="-1">Inflation</button>
     </nav>
 
     <section id="panel-interest" role="tabpanel" aria-labelledby="tab-interest">
@@ -533,7 +535,7 @@
       <form id="pform" class="card" novalidate>
         <div class="pv-mode view-toggle" role="group" aria-label="What to calculate">
           <button type="button" class="secondary" data-mode="flows" aria-pressed="true">Cash flows</button>
-          <button type="button" class="secondary" data-mode="tvm" aria-pressed="false">N, I/Y, PV, PMT, FV</button>
+          <button type="button" class="secondary" data-mode="tvm" aria-pressed="false">Time Value of Money</button>
         </div>
         <label for="pTiming"><span class="label-row">Timing <button type="button" class="help" aria-expanded="false" aria-label="Dates or periods?">?</button></span>
           <select id="pTiming">
@@ -647,7 +649,7 @@
       <form id="tform" class="card" novalidate hidden>
         <div class="pv-mode view-toggle" role="group" aria-label="What to calculate">
           <button type="button" class="secondary" data-mode="flows" aria-pressed="false">Cash flows</button>
-          <button type="button" class="secondary" data-mode="tvm" aria-pressed="true">N, I/Y, PV, PMT, FV</button>
+          <button type="button" class="secondary" data-mode="tvm" aria-pressed="true">Time Value of Money</button>
         </div>
         <div class="tvm-examples">
           <span class="muted">Try:</span>
@@ -753,6 +755,88 @@
       </section>
     </section>
 
+    <section id="panel-inflation" role="tabpanel" aria-labelledby="tab-inflation" hidden>
+      <form id="iform" class="card" novalidate>
+        <label for="iAmount"><span>Amount (HK$)</span>
+          <input id="iAmount" type="text" inputmode="decimal" autocomplete="off" value="100.00">
+        </label>
+        <label for="iBy"><span class="label-row">Compare <button type="button" class="help" aria-expanded="false" aria-label="Years or months?">?</button></span>
+          <select id="iBy">
+            <option value="year" selected>Years (yearly average CPI)</option>
+            <option value="month">Months (monthly CPI)</option>
+          </select>
+          <span class="help-text" hidden>Years use C&amp;SD’s average Composite CPI for each calendar year, the usual figure for “inflation in 2024”. Months use the index for each month, for a date-to-date comparison. The latest year is the last full year.</span>
+        </label>
+        <label for="iFromYear" class="i-year">From
+          <select id="iFromYear"></select>
+        </label>
+        <label for="iToYear" class="i-year">To
+          <select id="iToYear"></select>
+        </label>
+        <label for="iFromMonth" class="i-month" hidden>From
+          <input id="iFromMonth" type="month">
+        </label>
+        <label for="iToMonth" class="i-month" hidden>To
+          <input id="iToMonth" type="month">
+        </label>
+        <div class="actions">
+          <button type="submit">Calculate</button>
+          <button type="button" id="iReset" class="secondary">Reset</button>
+        </div>
+        <p id="iError" class="error" role="alert" hidden></p>
+      </form>
+
+      <section id="iResults" hidden>
+        <p id="iStale" class="stale-note" role="status" hidden>Inputs changed. Press <strong>Calculate</strong> to recalculate.</p>
+        <dl class="summary">
+          <div class="answer"><dt id="iValueLabel"></dt><dd id="iValue"></dd></div>
+          <div><dt>Prices changed by</dt><dd id="iChange"></dd></div>
+          <div><dt>Average a year</dt><dd id="iAnnual"></dd></div>
+          <div><dt>Composite CPI</dt><dd id="iIndex"></dd></div>
+        </dl>
+        <p id="iSentence" class="verified"></p>
+        <div class="exports">
+          <button type="button" id="iShare" class="secondary">Copy link</button>
+          <button type="button" id="iSave" class="secondary">Save</button>
+          <span id="iShareStatus" class="muted" role="status"></span>
+        </div>
+      </section>
+
+      <details id="iChartCard" class="card chart-card" open>
+        <summary>HK inflation history <span class="muted">year-on-year change in the Composite CPI, each month</span></summary>
+        <div class="range-row">
+          <div class="view-toggle" role="group" aria-label="Chart range">
+            <button type="button" class="secondary" data-irange="5y" aria-pressed="false">5Y</button>
+            <button type="button" class="secondary" data-irange="10y" aria-pressed="true">10Y</button>
+            <button type="button" class="secondary" data-irange="20y" aria-pressed="false">20Y</button>
+            <button type="button" class="secondary" data-irange="all" aria-pressed="false">All</button>
+          </div>
+        </div>
+        <div id="iChart" class="chart" role="img" aria-label="HK inflation history"></div>
+      </details>
+
+      <details id="iYearCard" class="card">
+        <summary>Yearly inflation <span id="iYearMeta" class="muted"></span></summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Year</th><th>Composite CPI (average)</th><th>Inflation</th></tr></thead>
+            <tbody id="iYears"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <details id="iMonthCard" class="card">
+        <summary>Monthly inflation <span id="iMonthMeta" class="muted"></span></summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Month</th><th>Composite CPI</th><th>Year-on-year</th><th>Month-to-month</th></tr></thead>
+            <tbody id="iMonths"></tbody>
+          </table>
+        </div>
+      </details>
+      <p id="iSource" class="muted m-note"></p>
+    </section>
+
     <details id="recentCard" class="card saved-card" hidden>
       <summary>Recent calculations <span class="muted">(last 5)</span></summary>
       <p class="muted m-note">The last calculations you ran, on any tab, kept in this browser only. Save one to keep it.</p>
@@ -798,5 +882,6 @@
   <script type="module" src="app.js?v=__BUILD__"></script>
   <script type="module" src="mortgage-app.js?v=__BUILD__"></script>
   <script type="module" src="pv-app.js?v=__BUILD__"></script>
+  <script type="module" src="inflation-app.js?v=__BUILD__"></script>
 </body>
 </html>

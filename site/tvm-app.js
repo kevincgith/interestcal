@@ -1,6 +1,6 @@
 // PV tab, calculator mode: N, I/Y, PV, PMT and FV as on a financial calculator, any one solved from the other four.
 // The term can be years or payments and the rate is % p.a., so nobody multiplies or divides by 12 by hand.
-// Also owns the PV tab's mode switch (Cash flows | N, I/Y, PV, PMT, FV).
+// Also owns the PV tab's mode switch (Cash flows | Time Value of Money).
 import { solveTvm, tvmSchedule, periodRate, PAYMENT_FREQUENCIES } from './tvm.js?v=__BUILD__';
 import { CURRENCIES } from './interest-text.js?v=__BUILD__';
 import { $, money, fmtRate, row, copyLink, flash, autoFitText } from './shared.js?v=__BUILD__';

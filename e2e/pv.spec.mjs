@@ -34,8 +34,10 @@ test('tabs: the PV tab keeps its own link and opens with a default cash flow', a
 
   await page.getByRole('tab', { name: 'Interest' }).click();
   await expect(page).toHaveURL(/src=judgment&p=135436\.48/);
-  // Arrow keys move between all three tabs
+  // Arrow keys move between the tabs, wrapping round: left of Interest is the last tab, Inflation; then PV
   await page.getByRole('tab', { name: 'Interest' }).press('ArrowLeft');
+  await expect(page.getByRole('tab', { name: 'Inflation' })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('tab', { name: 'Inflation' }).press('ArrowLeft');
   await expect(page.getByRole('tab', { name: 'PV', exact: true })).toHaveAttribute('aria-selected', 'true');
 });
 

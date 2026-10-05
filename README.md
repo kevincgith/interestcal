@@ -47,12 +47,19 @@ You can choose one of three rates:
   - **Downloads:** PDF, Excel and CSV, each with the inputs, totals, every row and its working, and the disclaimer. In Excel the valuation date and the rate are cells at the top, and each row's days, years, discount factor and present value are live formulas that use them (Actual/Actual writes its 1 January splits as `DATE(...)`), with the totals as `SUM`s.
   - **Also:** a shareable link (`?tab=pv&v=...&r=...&cf=date,amount,description`; a repeating one is `rf=date,amount,every,times,description`, and `s=irr` solves for the rate), and Recent and Saved like the other tabs.
 
-- **N, I/Y, PV, PMT, FV calculator** (PV tab, switch at the top): the financial-calculator equation, as on a BA II Plus or HP 12C. Choose what to solve for and fill in the other four.
+- **Time Value of Money calculator** (PV tab, switch at the top: Cash flows | Time Value of Money; N, I/Y, PV, PMT, FV): the financial-calculator equation, as on a BA II Plus or HP 12C. Choose what to solve for and fill in the other four.
   - **No ×12 or ÷12:** choose how often payments are made (monthly, quarterly, half-yearly, yearly); enter the term in years or as a number of payments and the rate as % p.a. The form shows the conversions as you type (e.g. "= 360 monthly payments", "= 0.416667% a month").
   - **Signs:** + for money received, − for money paid (a loan you receive is PV +, its payments PMT −). Wrong signs get a message saying so.
   - **Equation:** `PV (1+i)^N + PMT (1 + i·due) ((1+i)^N − 1) ÷ i + FV = 0`, where i = (1 + rate ÷ C/Y)^(C/Y ÷ P/Y) − 1, so compounding can differ from payments (e.g. half-yearly compounding, monthly payments); payments can be at the start of each period. N comes from logs; I/Y is found numerically and closest to 0%.
   - **Examples:** one click fills and works out a loan payment, a savings goal, how long to repay, what rate, and a future sum's value today.
   - **Results:** the answer (also filled into its box), total of payments, interest earned or paid, the rate with compounding, and a year-by-year table of payments, interest and balance. A term that isn't a whole number of payments ends with a smaller last payment. Shareable link (`?tab=pv&m=tvm&ts=pmt&py=12&n=30&r=5&pv=1000000&fv=0`), Recent and Saved.
+
+- **Inflation tab:** what an amount at one time is worth at another by the Hong Kong Composite Consumer Price Index from the [Census and Statistics Department, table 510-60001](https://www.censtatd.gov.hk/en/web_table.html?id=510-60001), through its open data API.
+  - **Calculator:** an amount, and a from and to year (C&SD's yearly average index) or month (the monthly index). Value = amount × CPI(to) ÷ CPI(from), with the total change in prices and the average a year, `(CPI(to) ÷ CPI(from))^(1 ÷ years) − 1`. Going back in time works too.
+  - **History, back-filled in full:** monthly from October 1980 (index, year-on-year and month-to-month) and yearly from 1981, as tables and a chart of year-on-year inflation each month (5, 10, 20 years or all). The rates of change are C&SD's published figures; before October 2020 C&SD worked them out on the index base in use at the time, so they can differ slightly from changes in today's rebased index (published to 1 decimal place).
+  - **Header:** the latest year-on-year inflation, e.g. "HK inflation 1.7% Aug 2026".
+  - **Daily update:** `scripts/update-cpi.mjs` (run by `npm run fetch-rates`, or on its own) downloads the whole series, checks it (500+ months, no gaps, plausible figures, each full year's average of the months matching C&SD's yearly index, latest month no more than 4 months old) and rewrites `site/cpi.json` when it changes. The page only uses it on this tab, so an outage is a warning and the saved figures stay.
+  - **Also:** a shareable link (`?tab=inflation&a=100&f=2000&t=2025`, or months `f=2000-01&t=2026-08`), Recent and Saved.
 
 - **Advanced settings** (collapsed by default, so the basic form stays simple):
   - **Currency:** HKD by default, USD by default for the US prime rate; or RMB, the other G10 currencies (EUR, JPY, GBP, CHF, CAD, AUD, NZD, SEK, NOK) or any symbol you type. Amounts on the page and in every download use its symbol (HK$, US$, CN¥, €, JP¥, £, C$, A$, NZ$; codes for CHF, SEK and NOK). Once chosen, it doesn't change with the rate.
@@ -128,7 +135,9 @@ You can choose one of three rates:
 | `site/rates.json` | Judgment debt rates scraped from the Judiciary site |
 | `site/hibor.json`, `hibor-3m.json` | 1-month and 3-month HIBOR fixings since 1996: history from the HKMA API, and the recent days HKMA hasn't republished yet from [HKAB](https://www.hkab.org.hk/en/rates/hibor), which sets them each business day at 11:15 HKT (a few days overlap, as a cross-check). `scripts/backfill-hibor.mjs` fills in older history in small batches, saving after each one (rerun it to carry on). The daily update merges in recent fixings and fetches a few older pages per run until the history reaches 1996. Every download has a time limit, and the job is capped at 20 minutes. These are optional sources: an outage only logs a warning. |
 | `site/mortgage.js`, `mortgage-app.js`, `mortgage-export.js` | Mortgage calculation, tab and exports |
-| `site/tvm.js`, `tvm-app.js` | N, I/Y, PV, PMT, FV calculator (PV tab) |
+| `site/tvm.js`, `tvm-app.js` | Time Value of Money calculator: N, I/Y, PV, PMT, FV (PV tab) |
+| `site/inflation.js`, `inflation-app.js`, `cpi.json` | Inflation tab and the HK Composite CPI history (C&SD) |
+| `scripts/parse-cpi.mjs`, `update-cpi.mjs` | CPI download, checks and `site/cpi.json` writer, run by the daily update |
 | `site/pv.js`, `pv-app.js`, `pv-export.js` | Present value calculation, tab and downloads. `test/pv-export.test.mjs` runs the Excel formulas for every compounding and day count basis and checks they give the page's figures |
 | `site/shared.js`, `tabs.js` | Helpers shared by the tabs; tab switching |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |

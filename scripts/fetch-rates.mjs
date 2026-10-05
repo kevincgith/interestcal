@@ -9,6 +9,7 @@ import { H15_URL, parseH15Html, mergeUsPrime } from './parse-usprime.mjs';
 import {
   HIBOR_URL, HIBOR_TENORS, HIBOR_HISTORY_START, HKAB_PAGE, hkabUrl, parseHiborJson, parseHkabJson, mergeHibor,
 } from './parse-hibor.mjs';
+import { updateCpi } from './update-cpi.mjs';
 
 // Older HIBOR pages (newest first, 100 per page), shared by both tenors within a run
 const hiborPages = new Map();
@@ -210,4 +211,12 @@ for (const source of SOURCES) {
       process.exitCode = 1;
     }
   }
+}
+
+// HK inflation (Composite CPI, the full history from C&SD): only used by the Inflation tab, so an outage is a warning
+// and the saved figures stay
+try {
+  await updateCpi();
+} catch (err) {
+  console.log(`::warning::HK CPI: not updated - ${err.message}`);
 }

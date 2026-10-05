@@ -4,7 +4,7 @@ const calc = (page) => page.locator('#tform').getByRole('button', { name: 'Calcu
 
 test('calculator: opens from the PV tab with the loan example worked out; switching keeps each link', async ({ page }) => {
   await page.goto('?tab=pv');
-  await page.locator('#pform').getByRole('button', { name: 'N, I/Y, PV, PMT, FV' }).click();
+  await page.locator('#pform').getByRole('button', { name: 'Time Value of Money' }).click();
   await expect(page.locator('#tform')).toBeVisible();
   await expect(page.locator('#pform')).toBeHidden();
   await expect(page.locator('#pResults')).toBeHidden();

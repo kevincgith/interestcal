@@ -1,7 +1,7 @@
-// Interest / Mortgage / Present value tabs. Each tab keeps its own shareable link (?...); the Mortgage and Present
-// value tabs' links carry tab=mortgage and tab=pv.
+// Interest / Mortgage / PV / Inflation tabs. Each tab keeps its own shareable link (?...); the other tabs' links
+// carry tab=mortgage, tab=pv and tab=inflation.
 
-const TABS = ['interest', 'mortgage', 'pv'];
+const TABS = ['interest', 'mortgage', 'pv', 'inflation'];
 const queries = {};
 const asked = new URLSearchParams(location.search).get('tab');
 let current = TABS.includes(asked) ? asked : 'interest';

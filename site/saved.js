@@ -7,7 +7,7 @@ const KEY = 'interestcal.saved';
 const MAX = 50;
 const RECENT_KEY = 'interestcal.recent';
 const RECENT_MAX = 5;
-const TAB_NAMES = { interest: 'Interest', mortgage: 'Mortgage', pv: 'Present value' };
+const TAB_NAMES = { interest: 'Interest', mortgage: 'Mortgage', pv: 'Present value', inflation: 'Inflation' };
 const tabName = (tab) => TAB_NAMES[tab] ?? 'Interest';
 
 function load(key = KEY) {
@@ -37,7 +37,7 @@ export function recordRecent({ tab, query, title }) {
 
 /**
  * Save a calculation. The same link saved again moves to the top and keeps its name.
- * @param {{ tab: 'interest' | 'mortgage' | 'pv', query: string, title: string }} item  query is the link's "?..." part
+ * @param {{ tab: 'interest' | 'mortgage' | 'pv' | 'inflation', query: string, title: string }} item  query is the link's "?..." part
  * @returns {boolean} false when the browser won't store it
  */
 export function saveCalculation({ tab, query, title }) {
