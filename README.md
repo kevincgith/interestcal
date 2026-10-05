@@ -41,6 +41,7 @@ You can choose one of three rates:
   - **Discount factor:** `(1 + rate ÷ m)^(−m × years)` for m compounding periods a year; daily `(1 + rate ÷ year days)^(−days)`; continuous `e^(−rate × years)`; none `1 ÷ (1 + rate × years)`. Years = days ÷ 365 (or 360); under Actual/Actual, the days in each calendar year ÷ 365 or 366, added up.
   - **Results:** the present value, the total of the amounts and the discount, plus a row per cash flow with its days, years, discount factor, present value and the working, e.g. `100,000.00 ÷ (1 + 5.000%)^(731 ÷ 365)`. Rows keep full precision; only the totals are rounded to cents.
   - Actual/365 with yearly compounding matches Excel's `XNPV` with the valuation date as its first date.
+  - **Downloads:** PDF, Excel and CSV, each with the inputs, totals, every row and its working, and the disclaimer. In Excel the valuation date and the rate are cells at the top, and each row's days, years, discount factor and present value are live formulas that use them (Actual/Actual writes its 1 January splits as `DATE(...)`), with the totals as `SUM`s.
   - **Also:** a shareable link (`?tab=pv&v=...&r=...&cf=date,amount,description`), and Recent and Saved like the other tabs.
 
 - **Advanced settings** (collapsed by default, so the basic form stays simple):
@@ -117,7 +118,7 @@ You can choose one of three rates:
 | `site/rates.json` | Judgment debt rates scraped from the Judiciary site |
 | `site/hibor.json`, `hibor-3m.json` | 1-month and 3-month HIBOR fixings since 1996: history from the HKMA API, and the recent days HKMA hasn't republished yet from [HKAB](https://www.hkab.org.hk/en/rates/hibor), which sets them each business day at 11:15 HKT (a few days overlap, as a cross-check). `scripts/backfill-hibor.mjs` fills in older history in small batches, saving after each one (rerun it to carry on). The daily update merges in recent fixings and fetches a few older pages per run until the history reaches 1996. Every download has a time limit, and the job is capped at 20 minutes. These are optional sources: an outage only logs a warning. |
 | `site/mortgage.js`, `mortgage-app.js`, `mortgage-export.js` | Mortgage calculation, tab and exports |
-| `site/pv.js`, `pv-app.js` | Present value calculation and tab |
+| `site/pv.js`, `pv-app.js`, `pv-export.js` | Present value calculation, tab and downloads. `test/pv-export.test.mjs` runs the Excel formulas for every compounding and day count basis and checks they give the page's figures |
 | `site/shared.js`, `tabs.js` | Helpers shared by the tabs; tab switching |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |
 | `site/us-prime-rates.json` | US prime rate changes since 2000 (Federal Reserve H.15) |

@@ -1,9 +1,11 @@
 // Present value tab: valuation date, discount rate, compounding, day count basis and dated cash flows.
 import { presentValue, pvWorking } from './pv.js?v=__BUILD__';
+import { buildPvPdf, buildPvWorkbook, buildPvCsv } from './pv-export.js?v=__BUILD__';
 import { addMonths } from './calc.js?v=__BUILD__';
 import { CURRENCIES } from './interest-text.js?v=__BUILD__';
 import {
-  $, money, fmtDate, fmtRate, parseNumber, isIsoDate, todayIso, row, copyLink, wireSteppers, autoFitText, flash,
+  $, money, fmtDate, fmtRate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
+  wireSteppers, autoFitText, flash,
 } from './shared.js?v=__BUILD__';
 import { saveCalculation, recordRecent } from './saved.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
@@ -106,9 +108,11 @@ function readFlows() {
 function setStale(stale) {
   $('pResults').classList.toggle('stale', stale);
   $('pStale').hidden = !stale;
-  // Save would keep the old results: off until Calculate is pressed again
-  $('pSave').disabled = stale;
-  $('pSave').title = stale ? 'Inputs changed: press Calculate first' : '';
+  // Downloads and Save would use the old results: off until Calculate is pressed again
+  for (const id of ['pPdf', 'pXlsx', 'pCsv', 'pSave']) {
+    $(id).disabled = stale;
+    $(id).title = stale ? 'Inputs changed: press Calculate first' : '';
+  }
 }
 const markStale = () => {
   if (last) setStale(true);
@@ -150,26 +154,30 @@ $('pform').addEventListener('submit', (e) => {
   setStale(false);
 });
 
+const rateLine = (res) =>
+  `Discounted at ${fmtRate(res.rate)} p.a., ${COMPOUNDING_NAMES[res.compounding]}, ${BASIS_NAMES[res.basis]}.`;
+function beforeNote(res) {
+  const n = res.rows.filter((x) => x.before).length;
+  if (!n) return '';
+  return `${n === 1 ? 'One cash flow is' : `${n} cash flows are`} dated before the valuation date, so ` +
+    `${n === 1 ? 'it is' : 'they are'} grown forward to it at the same rate (discount factor above 1).`;
+}
+const working = (res, x) => pvWorking(res, x, { money: signed, rate: fmtRate });
+
 function render(res) {
   const c = res.currency;
   $('pTotal').textContent = withCur(res.total, c);
   $('pFuture').textContent = withCur(res.futureTotal, c);
   $('pDiscount').textContent = withCur(res.discount, c);
   $('pValOut').textContent = fmtDate(res.valuation);
-  $('pRateLine').textContent =
-    `Discounted at ${fmtRate(res.rate)} p.a., ${COMPOUNDING_NAMES[res.compounding]}, ${BASIS_NAMES[res.basis]}.`;
-  const before = res.rows.filter((x) => x.before).length;
-  $('pWarn').textContent = before
-    ? `${before === 1 ? 'One cash flow is' : `${before} cash flows are`} dated before the valuation date, so ` +
-      `${before === 1 ? 'it is' : 'they are'} grown forward to it at the same rate (discount factor above 1).`
-    : '';
-  $('pWarn').hidden = !before;
+  $('pRateLine').textContent = rateLine(res);
+  $('pWarn').textContent = beforeNote(res);
+  $('pWarn').hidden = !$('pWarn').textContent;
 
-  const fmt = { money: signed, rate: fmtRate };
   $('pRows').replaceChildren(
     ...res.rows.map((x) => {
       const tr = row(
-        [fmtDate(x.date), x.label, String(x.days), x.t.toFixed(4), signed(x.amount), x.df.toFixed(6), signed(x.pv), pvWorking(res, x, fmt)],
+        [fmtDate(x.date), x.label, String(x.days), x.t.toFixed(4), signed(x.amount), x.df.toFixed(6), signed(x.pv), working(res, x)],
         ['', '', 'num', 'num', 'num', 'num', 'num', 'working'],
       );
       if (x.before) tr.cells[0].append(Object.assign(document.createElement('span'), { className: 'before', textContent: 'before valuation date' }));
@@ -236,6 +244,62 @@ $('pReset').addEventListener('click', () => {
   showError('');
   lastQuery = '';
   if (activeTab() === 'pv') history.replaceState(null, '', `${location.pathname}?tab=pv`);
+});
+
+// ---- Downloads ----
+
+// e.g. present_value_2026-10-05_3_cash_flows.pdf
+const exportName = (res, ext) =>
+  `present_value_${res.valuation}_${res.rows.length}_cash_flow${res.rows.length === 1 ? '' : 's'}.${ext}`;
+const CURRENCY_NAMES = { CNY: 'RMB' };
+const inputItems = (res) => [
+  ['Valuation date', fmtDate(res.valuation)],
+  ['Discount rate', `${fmtRate(res.rate)} p.a.`],
+  ['Compounding', COMPOUNDING_NAMES[res.compounding].replace(/^./, (c) => c.toUpperCase())],
+  ['Day count basis', BASIS_NAMES[res.basis]],
+  ['Currency', `${CURRENCY_NAMES[res.inputs.currencyCode] ?? res.inputs.currencyCode} (${res.currency})`],
+  ['Calculated on', fmtDate(todayIso())],
+];
+const exportLines = (res) => [beforeNote(res)].filter(Boolean);
+
+$('pPdf').addEventListener('click', () => {
+  if (!last) return;
+  const res = last;
+  busy($('pPdf'), async () => {
+    const lib = await loadPdf();
+    const doc = buildPvPdf(lib, res, {
+      inputs: inputItems(res),
+      lines: exportLines(res),
+      working: (x) => working(res, x),
+      fmt: { money: signed, date: fmtDate },
+      generatedOn: fmtDate(todayIso()),
+    });
+    download(doc.output('blob'), exportName(res, 'pdf'));
+  }, showError);
+});
+
+$('pXlsx').addEventListener('click', () => {
+  if (!last) return;
+  const res = last;
+  busy($('pXlsx'), async () => {
+    const XLSX = await loadXlsx();
+    // The valuation date and rate are live cells at the top; the rest of the inputs follow as text
+    const wb = buildPvWorkbook(XLSX, res, { inputs: inputItems(res).slice(2), lines: exportLines(res) });
+    const bytes = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), exportName(res, 'xlsx'));
+  }, showError);
+});
+
+$('pCsv').addEventListener('click', () => {
+  if (!last) return;
+  const res = last;
+  const csv = buildPvCsv(res, {
+    inputs: inputItems(res),
+    lines: exportLines(res),
+    working: (x) => working(res, x),
+    money: (n) => money.format(n),
+  });
+  download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), exportName(res, 'csv'));
 });
 
 $('pShare').addEventListener('click', () => copyLink(location.href, $('pShareStatus')));
