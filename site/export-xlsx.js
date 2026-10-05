@@ -71,7 +71,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   ];
   if (r.source === 'prime') rows.push(['Spread over prime (% p.a.)', num(r.spread)]);
   rows.push(['Day count basis', ctx.dayCount]);
-  rows.push(['Days counted', r.inclusive ? 'Both days inclusive' : 'Start inclusive, End exclusive']);
+  rows.push(['Days counted', r.inclusive ? 'End date included' : 'End date not included']);
   rows.push(['Rounding', ctx.rounding]);
   const compounding = r.compounding ?? 'none';
   if (compounding !== 'none') rows.push(['Compounding', ctx.compounding]);
@@ -237,7 +237,7 @@ export function buildWorkbook(XLSX, r, ctx) {
       : ctx.sourceUrl
         ? [['Source', hyperlink(ctx.sourceUrl)], ['Rates as at', date(ctx.updatedAt)]]
         : [['Rate', `${ctx.rateBasis} (no published rate source)`]]),
-    ['Calculation period', `${fmtDate(r.start)} to ${fmtDate(r.shownEnd ?? r.end)} (${r.inclusive ? 'both days inclusive' : 'start inclusive, end exclusive'})`],
+    ['Calculation period', `${fmtDate(r.start)} to ${fmtDate(r.shownEnd ?? r.end)} (${r.inclusive ? 'end date included' : 'end date not included'})`],
   ];
   if (ctx.crossCheck) {
     rateRows.push(['Cross-check', ctx.crossCheck.summary], ['', hyperlink(ctx.crossCheck.source)]);

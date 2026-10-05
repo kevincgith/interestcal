@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const WORKBOOK = '?src=judgment&p=135436.48&from=2025-11-24&to=2026-04-20&basis=act%2Fact&round=total';
+const WORKBOOK = '?src=judgment&p=135436.48&from=2025-11-24&to=2026-04-20&basis=act%2Fact&round=total&incl=0';
 
 const total = (page) => page.locator('#totalInterest');
 
@@ -42,19 +42,19 @@ test('changing inputs does not recalculate until Calculate is pressed', async ({
 });
 
 test('fixed rate: interest, daily interest, and no published rate table', async ({ page }) => {
-  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-02-01&basis=act%2Fact&round=total');
+  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-02-01&basis=act%2Fact&round=total&incl=0');
   await expect(total(page)).toHaveText('2,480.00');
   // Actual/Actual: a normal year and a leap year
   await expect(page.locator('#perDiem .per-diem-line')).toHaveText(['80.00 ÷ 365', '79.78 ÷ 366 (leap)']);
-  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-02-01&basis=act%2F365&round=total');
+  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-02-01&basis=act%2F365&round=total&incl=0');
   await expect(page.locator('#perDiem')).toHaveText('80.00');
-  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-02-01&basis=act%2Fact&round=total');
+  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-02-01&basis=act%2Fact&round=total&incl=0');
   await expect(page.locator('#verified')).toHaveText('Fixed rate of 8.000% p.a.');
   await expect(page.locator('#rateCard')).toBeHidden();
 });
 
 test('form fields share one height and never overlap; no sideways scrolling', async ({ page }) => {
-  await page.goto('?src=prime&pay=2026-03-01:1000&sw=2026-06-01&src2=prime');
+  await page.goto('?src=prime&pay=2026-03-01:1000&sw=2026-06-01&src2=prime&incl=0');
   const ids = ['principal', 'start', 'end', 'basis', 'rounding', 'compounding', 'switchDate'];
   const boxes = await Promise.all(ids.map((id) => page.locator(`#${id}`).boundingBox()));
   boxes.push(await page.locator('#spreadField .stepper').boundingBox());
@@ -76,7 +76,7 @@ test('form fields share one height and never overlap; no sideways scrolling', as
 });
 
 test('rate table sorts by effective date and by rate', async ({ page }) => {
-  await page.goto('?src=prime&p=250000&from=2024-06-15&to=2025-11-20&basis=act%2F365&round=total&spread=1.5');
+  await page.goto('?src=prime&p=250000&from=2024-06-15&to=2025-11-20&basis=act%2F365&round=total&spread=1.5&incl=0');
   await page.locator('#rateCard summary').click();
   const rates = () => page.locator('#rates tr td:nth-child(2)').allTextContents();
 
@@ -113,7 +113,7 @@ test('PDF, Excel, Word and CSV download with the right names; exports omit the s
 });
 
 test('partial payment from a shared link: applied interest first, outstanding shown', async ({ page }) => {
-  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-12-31&basis=act%2Fact&round=total&pay=2026-07-01:10000&alloc=interest');
+  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-12-31&basis=act%2Fact&round=total&pay=2026-07-01:10000&alloc=interest&incl=0');
   await expect(page.locator('#panel-interest .payment-row')).toHaveCount(1);
   await expect(page.locator('#panel-interest .pay-amount')).toHaveValue('10,000.00');
   await expect(total(page)).toHaveText('7,736.11');
@@ -125,7 +125,7 @@ test('partial payment from a shared link: applied interest first, outstanding sh
 });
 
 test('payments can be added and removed in the form; nothing recalculates until Calculate', async ({ page }) => {
-  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-12-31&basis=act%2Fact&round=total');
+  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-12-31&basis=act%2Fact&round=total&incl=0');
   await expect(total(page)).toHaveText('7,978.08');
   await expect(page.locator('#allocationField')).toBeHidden();
 
@@ -158,7 +158,7 @@ test('a half-filled payment row shows an error instead of calculating', async ({
 });
 
 test('fixed rate has +/- buttons that stop at 0', async ({ page }) => {
-  await page.goto('?src=fixed&rate=1.5&p=365000&from=2026-01-01&to=2026-02-01');
+  await page.goto('?src=fixed&rate=1.5&p=365000&from=2026-01-01&to=2026-02-01&incl=0');
   const rate = page.locator('#fixedRate');
   await page.getByRole('button', { name: 'Increase fixed rate by 1%' }).click();
   await expect(rate).toHaveValue('2.5');
@@ -168,7 +168,7 @@ test('fixed rate has +/- buttons that stop at 0', async ({ page }) => {
 });
 
 test('prime cross-check line carries a tick; column headers are left-aligned', async ({ page }) => {
-  await page.goto('?src=prime&p=1000000&from=2026-01-01&to=2026-09-30&spread=1');
+  await page.goto('?src=prime&p=1000000&from=2026-01-01&to=2026-09-30&spread=1&incl=0');
   await page.locator('#rateCard summary').click();
   await expect(page.locator('#rateSource p.checked')).toHaveText(/^✓ Cross-checked daily against HSBC’s official prime rate page: matches\.$/);
   const aligns = await page.locator('th').evaluateAll((ths) => ths.map((th) => getComputedStyle(th).textAlign));
@@ -193,7 +193,7 @@ test('footer links to the terms of use, which link back to the calculator', asyn
 });
 
 test('principal added later: from the form and from a shared link', async ({ page }) => {
-  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-12-31');
+  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-12-31&incl=0');
   await page.locator('#cashFlows summary').click(); // the add buttons are in the collapsed Cash flows pane
   await page.getByRole('button', { name: '+ Add principal' }).click();
   await page.getByLabel('Added principal date').fill('2026-07-01');
@@ -244,7 +244,7 @@ test('advanced settings are closed by default and compounding defaults to simple
 });
 
 test('monthly compounding from a shared link, compared with simple interest', async ({ page }) => {
-  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-04-01&comp=monthly');
+  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-04-01&comp=monthly&incl=0');
   await expect(page.locator('#advanced')).toHaveAttribute('open', '');
   await expect(total(page)).toHaveText('1,985.59');
   await expect(page.locator('#compareLine')).toHaveText(
@@ -254,7 +254,7 @@ test('monthly compounding from a shared link, compared with simple interest', as
 });
 
 test('switch from prime + 1% to the judgment rate on a date', async ({ page }) => {
-  await page.goto('?src=prime&p=100000&from=2026-01-01&to=2026-12-31&spread=1');
+  await page.goto('?src=prime&p=100000&from=2026-01-01&to=2026-12-31&spread=1&incl=0');
   await page.locator('#advanced summary').click();
   await page.getByLabel('Switch to a different rate from a date').check();
   await page.getByLabel('Switch date (new rate applies from this day)').fill('2026-07-01');
@@ -269,7 +269,7 @@ test('switch from prime + 1% to the judgment rate on a date', async ({ page }) =
 });
 
 test('downloads work with compounding and a rate switch', async ({ page }) => {
-  await page.goto('?src=prime&p=100000&from=2026-01-01&to=2026-12-31&spread=1&comp=daily&sw=2026-07-01&src2=judgment');
+  await page.goto('?src=prime&p=100000&from=2026-01-01&to=2026-12-31&spread=1&comp=daily&sw=2026-07-01&src2=judgment&incl=0');
   await expect(total(page)).not.toHaveText('');
   for (const button of ['Download PDF', 'Download Excel', 'Download CSV']) {
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
@@ -281,13 +281,13 @@ test('downloads work with compounding and a rate switch', async ({ page }) => {
 });
 
 test('a shared link with a non-default day count opens Advanced settings', async ({ page }) => {
-  await page.goto('?src=judgment&p=1000&from=2026-01-01&to=2026-02-01&basis=act%2F360');
+  await page.goto('?src=judgment&p=1000&from=2026-01-01&to=2026-02-01&basis=act%2F360&incl=0');
   await expect(page.locator('#advanced')).toHaveAttribute('open', '');
   await expect(page.locator('#basis')).toHaveValue('act/360');
 });
 
 test('calendar compounding dates from a shared link', async ({ page }) => {
-  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-15&to=2026-04-15&comp=monthly&cdates=calendar');
+  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-15&to=2026-04-15&comp=monthly&cdates=calendar&incl=0');
   await expect(page.locator('#compoundDates')).toHaveValue('calendar');
   await expect(page.locator('#periods tr td:first-child')).toHaveText([/^15-Jan-2026/, /^01-Feb-2026/, /^01-Mar-2026/, /^01-Apr-2026/]);
   await expect(page.locator('#compareLine')).toContainText('Compounded monthly (calendar month ends)');
@@ -295,7 +295,7 @@ test('calendar compounding dates from a shared link', async ({ page }) => {
 });
 
 test('compounding rows say how much interest was added; a year-end split says why it exists', async ({ page }) => {
-  await page.goto('?src=fixed&rate=8&p=1000000&from=2024-02-15&to=2025-08-15&comp=quarterly');
+  await page.goto('?src=fixed&rate=8&p=1000000&from=2024-02-15&to=2025-08-15&comp=quarterly&incl=0');
   const notes = page.locator('#periods .row-note');
   await expect(notes).toHaveText([
     '+HK$19,672.13 interest compounded',
@@ -308,7 +308,7 @@ test('compounding rows say how much interest was added; a year-end split says wh
 });
 
 test('very large amounts shrink to fit their summary box; normal ones keep the full size', async ({ page }) => {
-  await page.goto('?p=987654321.99&from=2000-01-01&to=2026-10-05');
+  await page.goto('?p=987654321.99&from=2000-01-01&to=2026-10-05&incl=0');
   await expect(page.locator('#panel-interest .summary dd').first()).not.toHaveText('');
   const sizes = await page.locator('#panel-interest .summary div').evaluateAll((divs) =>
     divs.filter((d) => d.clientWidth).map((d) => {
@@ -316,14 +316,14 @@ test('very large amounts shrink to fit their summary box; normal ones keep the f
       return { text: dd.textContent, fits: dd.scrollWidth <= dd.clientWidth, px: parseFloat(getComputedStyle(dd).fontSize) };
     }));
   for (const s of sizes) expect(s.fits, s.text).toBe(true);
-  await page.goto('?p=1000000&from=2026-01-01&to=2026-10-05');
+  await page.goto('?p=1000000&from=2026-01-01&to=2026-10-05&incl=0');
   await expect(page.locator('#panel-interest .summary dd').first()).toHaveText('1,000,000.00');
   const px = await page.locator('#panel-interest .summary dd').first().evaluate((dd) => parseFloat(getComputedStyle(dd).fontSize));
   expect(px).toBeGreaterThan(20);
 });
 
 test('US prime rate: spread applies, latest rate line and rate table use the Fed H.15 data', async ({ page }) => {
-  await page.goto('?src=usprime&p=1000000&from=2025-01-01&to=2026-01-01&spread=2');
+  await page.goto('?src=usprime&p=1000000&from=2025-01-01&to=2026-01-01&spread=2&incl=0');
   await expect(page.locator('input[name="source"][value="usprime"]')).toBeChecked();
   await expect(page.locator('#spreadField')).toBeVisible();
   await expect(page.locator('#periods tr').first()).toContainText('7.500% + 2.000% = 9.500%');
@@ -342,7 +342,7 @@ test('US prime rate: spread applies, latest rate line and rate table use the Fed
 });
 
 test('Calculation rows: one row per rate period combines year-end rows, keeps the total, and goes in the link', async ({ page }) => {
-  await page.goto('?src=fixed&rate=8&p=100000&from=2023-07-01&to=2024-07-01');
+  await page.goto('?src=fixed&rate=8&p=100000&from=2023-07-01&to=2024-07-01&incl=0');
   const totalBefore = await total(page).textContent();
   await expect(page.locator('#periods tr')).toHaveCount(2); // split at 1 January (365 -> 366)
   await page.locator('#advanced summary').click();
@@ -374,7 +374,7 @@ test('the Principal label stays on one line with its currency', async ({ page })
 });
 
 test('saved calculations: save from either tab, rename, open and delete; kept after a reload', async ({ page }) => {
-  await page.goto('?src=prime&p=250000&from=2025-01-01&to=2026-01-01&spread=1');
+  await page.goto('?src=prime&p=250000&from=2025-01-01&to=2026-01-01&spread=1&incl=0');
   await expect(total(page)).not.toHaveText('');
   await expect(page.locator('#savedCard')).toBeHidden(); // nothing saved yet
   await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -424,7 +424,7 @@ test('header shows the refresh time in HKT when the rate files have one', async 
 
 test('Combined rows: quarters at the same republished judgment rate become one row, with the reason', async ({ page }) => {
   // The judgment rate was 8% from 1 April, 1 July and 1 October 2026 (republished each quarter)
-  await page.goto('?src=judgment&p=100000&from=2026-04-01&to=2026-10-05&rows=rate');
+  await page.goto('?src=judgment&p=100000&from=2026-04-01&to=2026-10-05&rows=rate&incl=0');
   await expect(page.locator('#periods tr')).toHaveCount(1);
   await expect(page.locator('#periods tr').first()).toContainText('3 rows combined: same rate republished');
   await expect(page.locator('#periods tr').first()).toContainText('100,000.00 × 8.000% × 187 ÷ 365');
@@ -440,7 +440,7 @@ test('cash flows: collapsed by default, counts what is inside, and opens for a l
   await page.getByRole('button', { name: '+ Add principal' }).click();
   await expect(page.locator('#cashFlowsSummary')).toHaveText('(1 principal added, 2 payments)');
 
-  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-07-01&pay=2026-04-01:30000');
+  await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-07-01&pay=2026-04-01:30000&incl=0');
   await expect(page.locator('#cashFlows')).toHaveAttribute('open', '');
   await expect(page.locator('#cashFlowsSummary')).toHaveText('(1 payment)');
   await page.locator('#clear').click();
@@ -566,33 +566,17 @@ test('help: "?" shows and hides an explanation without changing the setting or m
   await expect(page.locator('label', { has: page.locator('#end') }).locator('.help-text')).toContainText('1 to 2 January is 1 day');
 });
 
-test('start and end date shortcuts fill in today, last month end, last quarter end or last year end', async ({ page }) => {
-  await page.goto('./');
-  await expect(total(page)).not.toHaveText('');
-  const today = new Date().toLocaleDateString('en-CA');
-  const [y, m] = today.split('-').map(Number);
-  const lastDayBefore = (Y, M) => new Date(Date.UTC(Y, M - 1, 0)).toISOString().slice(0, 10);
-  const expected = { Today: today, 'End of last month': lastDayBefore(y, m), 'End of last quarter': lastDayBefore(y, m - ((m - 1) % 3)), 'End of last year': `${y - 1}-12-31` };
-  for (const field of ['start', 'end']) {
-    const label = page.locator('label', { has: page.locator(`#${field}`) });
-    for (const [name, date] of Object.entries(expected)) {
-      await label.getByRole('button', { name: new RegExp(`date: ${name}:`) }).click();
-      await expect(page.locator(`#${field}`)).toHaveValue(date);
-    }
-  }
-  await expect(page.locator('#staleNote')).toBeVisible(); // a changed end date needs Calculate
-});
-
 test('the same start and end date shows an error instead of a zero result', async ({ page }) => {
   await page.goto('./');
   await expect(total(page)).not.toHaveText('');
+  await page.locator('#daysCounted').selectOption('excl'); // with the end date included, one day is valid
   await page.locator('#end').fill(await page.locator('#start').inputValue());
   await page.locator('#form button[type="submit"]').click();
   await expect(page.locator('#error')).toBeVisible();
   await expect(page.locator('#error')).toContainText('The end date is the same as the start date');
   await expect(page.locator('#results')).toBeHidden();
   // A later end date calculates again
-  await page.getByRole('button', { name: /End date: Today:/ }).click();
+  await page.locator('#end').fill('2030-01-01');
   await page.locator('#start').fill('2020-01-01'); // always before today
   await page.locator('#form button[type="submit"]').click();
   await expect(page.locator('#error')).toBeHidden();
@@ -633,7 +617,7 @@ test('changed inputs turn off the downloads and Save until Calculate is pressed'
 });
 
 test('recent calculations can be cleared; saved ones stay', async ({ page }) => {
-  await page.goto('?src=judgment&p=100000&from=2025-01-01&to=2025-06-30');
+  await page.goto('?src=judgment&p=100000&from=2025-01-01&to=2025-06-30&incl=0');
   await page.locator('#form').getByRole('button', { name: 'Calculate' }).click();
   await page.locator('#save').click();
   await expect(page.locator('#recentCard')).toBeVisible();
@@ -648,25 +632,26 @@ test('recent calculations can be cleared; saved ones stay', async ({ page }) => 
 
 test('days counted: both start and end dates count, on the page, in the link and in Word and Excel', async ({ page }) => {
   // HK$365,000 at a fixed 8%: one day earns exactly HK$80.00
-  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-03-31&basis=act%2F365&incl=1');
-  await expect(page.locator('#daysCounted')).toHaveValue('incl');
-  await expect(page.locator('#advanced')).toHaveAttribute('open', '');
+  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-03-31&basis=act%2F365');
+  await expect(page.locator('#daysCounted')).toHaveValue('incl'); // the default, outside Advanced settings
+  await expect(page.locator('#daysCounted')).toBeVisible();
   const row = page.locator('#periods tr').first().locator('td');
   await expect(row.nth(1)).toHaveText('31-Mar-2026'); // the last day counted
   await expect(row.nth(2)).toHaveText('90');
   await expect(total(page)).toHaveText('7,200.00'); // 90 days x 80.00
-  // The default leaves the end date out: one day less
+  // Leaving the end date out: one day less
   await page.locator('#daysCounted').selectOption('excl');
   await page.locator('#form button[type="submit"]').click();
   await expect(total(page)).toHaveText('7,120.00');
-  await expect(page).not.toHaveURL(/incl=1/);
+  await expect(page).toHaveURL(/incl=0/);
   // Both dates count: the same start and end date is one day, not an error
   await page.locator('#daysCounted').selectOption('incl');
   await page.locator('#end').fill('2026-01-01');
   await page.locator('#form button[type="submit"]').click();
   await expect(page.locator('#error')).toBeHidden();
   await expect(total(page)).toHaveText('80.00');
-  await expect(page).toHaveURL(/to=2026-01-01.*incl=1|incl=1.*to=2026-01-01/);
+  await expect(page).toHaveURL(/to=2026-01-01/);
+  await expect(page).not.toHaveURL(/incl=/);
   // Downloads show the last day counted
   await page.locator('#end').fill('2026-03-31');
   await page.locator('#form button[type="submit"]').click();
@@ -681,16 +666,16 @@ test('days counted: both start and end dates count, on the page, in the link and
 });
 
 test('the summary and downloads state how days were counted', async ({ page }) => {
+  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-03-31&basis=act%2F365&incl=0');
+  await expect(page.locator('#daysLine')).toHaveText(
+    'Days counted: End date not included: 01-Jan-2026 to 31-Mar-2026 = 89 days (the end date doesn’t earn interest).');
   await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-03-31&basis=act%2F365');
   await expect(page.locator('#daysLine')).toHaveText(
-    'Days counted: Start inclusive, End exclusive: 01-Jan-2026 to 31-Mar-2026 = 89 days (the end date doesn’t earn interest).');
-  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-03-31&basis=act%2F365&incl=1');
-  await expect(page.locator('#daysLine')).toHaveText(
-    'Days counted: Both days inclusive: 01-Jan-2026 to 31-Mar-2026 = 90 days (both dates earn interest).');
+    'Days counted: End date included: 01-Jan-2026 to 31-Mar-2026 = 90 days (both dates earn interest).');
   const fs = await import('node:fs/promises');
   for (const [button, check] of [
-    ['Download Word', (b) => b.toString('utf8').includes('Both days inclusive')],
-    ['Download CSV', (b) => b.toString('utf8').includes('Days Counted,Both days inclusive')],
+    ['Download Word', (b) => b.toString('utf8').includes('End date included')],
+    ['Download CSV', (b) => b.toString('utf8').includes('Days Counted,End date included')],
   ]) {
     const [d] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
     expect(check(await fs.readFile(await d.path())), button).toBe(true);

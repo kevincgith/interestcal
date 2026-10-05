@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 const FIXED = '?tab=mortgage&mt=fixed&fx=3&price=1000000&ltv=100&yrs=30&from=2026-01-15';
 
 test('tabs switch panels and each keeps its own link', async ({ page }) => {
-  await page.goto('?src=judgment&p=135436.48&from=2025-11-24&to=2026-04-20');
+  await page.goto('?src=judgment&p=135436.48&from=2025-11-24&to=2026-04-20&incl=0');
   await expect(page.locator('#totalInterest')).toHaveText('4,434.64');
   await expect(page.locator('#panel-mortgage')).toBeHidden();
 

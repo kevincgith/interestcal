@@ -397,7 +397,7 @@ function writeQuery(r) {
   if (hasSpread(r.source)) q.set('spread', String(r.spreadA ?? r.spread));
   if (isFixed(r)) q.set('rate', String(r.fixedRate));
   if (r.rows === 'rate') q.set('rows', 'rate');
-  if (r.inclusive) q.set('incl', '1');
+  if (!r.inclusive) q.set('incl', '0');
   // Only when it differs from the rate's default, so ordinary links stay short
   const code = $('currency').value;
   if (code === 'other') q.set('cur', `other:${r.currency}`);
@@ -437,7 +437,7 @@ function readQuery() {
   if (q.get('basis') in BASES) $('basis').value = q.get('basis');
   if (q.get('round') in ROUNDINGS) $('rounding').value = q.get('round');
   if (q.get('rows') === 'rate') $('rows').value = 'rate';
-  if (q.get('incl') === '1') $('daysCounted').value = 'incl';
+  if (q.get('incl') === '0') $('daysCounted').value = 'excl';
   const cur = q.get('cur') ?? '';
   if (cur.startsWith('other:') && cur.length > 6) {
     $('currency').value = 'other';

@@ -57,22 +57,17 @@
       </label>
       <label>Start date
         <input id="start" type="date" required>
-        <span class="date-shortcuts">
-          <button type="button" class="chip" data-date="today" data-target="start">Today</button>
-          <button type="button" class="chip" data-date="month" data-target="start">Month end</button>
-          <button type="button" class="chip" data-date="quarter" data-target="start">Quarter end</button>
-          <button type="button" class="chip" data-date="year" data-target="start">Year end</button>
-        </span>
       </label>
-      <label for="end"><span class="label-row">End date <button type="button" class="help" aria-expanded="false" aria-label="Why doesn’t the end date earn interest?">?</button></span>
+      <label for="end"><span class="label-row">End date <button type="button" class="help" aria-expanded="false" aria-label="Does the end date earn interest?">?</button></span>
         <input id="end" type="date" required>
-        <span class="help-text" hidden>The end date doesn’t earn interest. Each day earns interest once. A period counts the days from its start date up to, but not including, its end date (end date minus start date, as in Excel and the original workbook), so 1 to 2 January is 1 day. Where one period ends and the next begins, that shared date is counted once, in the later period, so no day is charged twice. If the end date itself should earn interest, choose “Both days inclusive” under Advanced settings → Days counted.</span>
-        <span class="date-shortcuts">
-          <button type="button" class="chip" data-date="today" data-target="end">Today</button>
-          <button type="button" class="chip" data-date="month" data-target="end">Month end</button>
-          <button type="button" class="chip" data-date="quarter" data-target="end">Quarter end</button>
-          <button type="button" class="chip" data-date="year" data-target="end">Year end</button>
-        </span>
+        <span class="help-text" hidden>Whether the end date earns interest depends on Days counted, just below. With “End date included” (the default) both the start and end dates earn interest, so 1 to 2 January is 2 days. With “End date not included” the end date doesn’t earn interest (end date minus start date, as in Excel and the original workbook), so 1 to 2 January is 1 day.</span>
+      </label>
+      <label for="daysCounted"><span class="label-row">Days counted <button type="button" class="help" aria-expanded="false" aria-label="What is days counted?">?</button></span>
+        <select id="daysCounted">
+          <option value="incl" selected>End date included</option>
+          <option value="excl">End date not included</option>
+        </select>
+        <span class="help-text" hidden>End date included (the default): both the start and end dates earn interest, so 1 to 2 January is 2 days and 1 January to 31 March is 90 days; each period then shows its last day counted. This is usually how it is counted in court, for example for judgment interest, and in most contracts and orders. End date not included (as in Excel and the original workbook): the start date earns interest and the end date doesn’t, so 1 to 2 January is 1 day, and where one period ends and the next begins the shared date is counted once.</span>
       </label>
       <label id="fixedField" for="fixedRate" hidden>Fixed rate (% p.a.)
         <div class="stepper">
@@ -89,29 +84,8 @@
         </div>
       </label>
       <details id="advanced" class="advanced">
-        <summary>Advanced settings <span class="muted">(currency, day count, days counted, rows, rounding, compounding, rate switch)</span></summary>
+        <summary>Advanced settings <span class="muted">(day count, rows, rounding, compounding, rate switch, currency)</span></summary>
         <div class="advanced-body">
-          <label for="currency"><span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
-            <select id="currency">
-              <option value="HKD" selected>HKD (HK$)</option>
-              <option value="USD">USD (US$)</option>
-              <option value="CNY">RMB (CN¥)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="JPY">JPY (JP¥)</option>
-              <option value="GBP">GBP (£)</option>
-              <option value="CHF">CHF</option>
-              <option value="CAD">CAD (C$)</option>
-              <option value="AUD">AUD (A$)</option>
-              <option value="NZD">NZD (NZ$)</option>
-              <option value="SEK">SEK</option>
-              <option value="NOK">NOK</option>
-              <option value="other">Other…</option>
-            </select>
-            <span class="help-text" hidden>Only changes the symbol shown on the page and in downloads; the calculation is the same in any currency. HKD by default, or USD for the US prime rate. Once you pick one, changing the rate won’t change it.</span>
-          </label>
-          <label id="customCurField" hidden>Currency symbol or code
-            <input id="customCur" type="text" maxlength="8" autocomplete="off" placeholder="e.g. S$ or SGD">
-          </label>
           <label for="basis"><span class="label-row">Day count basis <button type="button" class="help" aria-expanded="false" aria-label="What is day count basis?">?</button></span>
             <select id="basis">
               <option value="act/act" selected>Actual/Actual</option>
@@ -119,13 +93,6 @@
               <option value="act/360">Actual/360</option>
             </select>
             <span class="help-text" hidden>How many days a year has. Actual/Actual (used by the HK courts): 366 in a leap year, 365 otherwise, splitting the period at 1 January when that changes. Actual/365 Fixed: always 365. Actual/360: always 360, used for some US dollar loans.</span>
-          </label>
-          <label for="daysCounted"><span class="label-row">Days counted <button type="button" class="help" aria-expanded="false" aria-label="What is days counted?">?</button></span>
-            <select id="daysCounted">
-              <option value="excl" selected>Start inclusive, End exclusive</option>
-              <option value="incl">Both days inclusive</option>
-            </select>
-            <span class="help-text" hidden>Start inclusive, End exclusive (the default, as in Excel and the original workbook): the start date earns interest and the end date doesn’t, so 1 to 2 January is 1 day, and where one period ends and the next begins the shared date is counted once. Both days inclusive: the end date earns interest too, so 1 to 2 January is 2 days and 1 January to 31 March is 90 days; each period then shows its last day counted. Use it where a contract or court order counts both days.</span>
           </label>
           <label for="rows"><span class="label-row">Calculation rows <button type="button" class="help" aria-expanded="false" aria-label="What is calculation rows?">?</button></span>
             <select id="rows">
@@ -187,6 +154,27 @@
               </div>
             </label>
           </div>
+          <label for="currency"><span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
+            <select id="currency">
+              <option value="HKD" selected>HKD (HK$)</option>
+              <option value="USD">USD (US$)</option>
+              <option value="CNY">RMB (CN¥)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="JPY">JPY (JP¥)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="CHF">CHF</option>
+              <option value="CAD">CAD (C$)</option>
+              <option value="AUD">AUD (A$)</option>
+              <option value="NZD">NZD (NZ$)</option>
+              <option value="SEK">SEK</option>
+              <option value="NOK">NOK</option>
+              <option value="other">Other…</option>
+            </select>
+            <span class="help-text" hidden>Only changes the symbol shown on the page and in downloads; the calculation is the same in any currency. HKD by default, or USD for the US prime rate. Once you pick one, changing the rate won’t change it.</span>
+          </label>
+          <label id="customCurField" hidden>Currency symbol or code
+            <input id="customCur" type="text" maxlength="8" autocomplete="off" placeholder="e.g. S$ or SGD">
+          </label>
         </div>
       </details>
       <details id="cashFlows" class="advanced">
@@ -884,7 +872,7 @@
         the US prime rate from the Federal Reserve’s
         <a href="https://www.federalreserve.gov/releases/h15/" target="_blank" rel="noopener">H.15 release</a>,
         or a fixed rate, with optional principal added later and partial payments.
-        The start date earns interest and the end date does not: each day earns interest once. A period counts the days from its start date up to, but not including, its end date (end date minus start date, as in Excel and the original workbook), so 1 to 2 January is 1 day. Where one period ends and the next begins, that shared date is counted once, in the later period, so no day is charged twice. If the end date itself should earn interest, choose “Both days inclusive” under Advanced settings → Days counted.
+        By default both the start and end dates earn interest (End date included), the usual court convention, so 1 to 2 January is 2 days; each day earns interest once, and where one period ends and the next begins the shared date is counted once. Choose “End date not included” under Days counted to count from the start date up to, but not including, the end date (end date minus start date, as in Excel and the original workbook).
         Interest for each period = principal × rate × days ÷ year days, where the year days depend on the day count basis you choose.</p>
       <p><strong>Mortgage:</strong> equal monthly instalments (interest = balance × rate × days ÷ 365) at a prime-based,
         HIBOR-based (1-month or 3-month HIBOR, set by
