@@ -756,40 +756,40 @@
     </section>
 
     <section id="panel-inflation" role="tabpanel" aria-labelledby="tab-inflation" hidden>
-      <form id="iform" class="card" novalidate>
-        <label for="iAmount"><span>Amount (HK$)</span>
-          <input id="iAmount" type="text" inputmode="decimal" autocomplete="off" value="100.00">
-        </label>
-        <label for="iBy"><span class="label-row">Compare <button type="button" class="help" aria-expanded="false" aria-label="Years or months?">?</button></span>
-          <select id="iBy">
-            <option value="year" selected>Years (yearly average CPI)</option>
-            <option value="month">Months (monthly CPI)</option>
-          </select>
-          <span class="help-text" hidden>Years use C&amp;SD’s average Composite CPI for each calendar year, the usual figure for “inflation in 2024”. Months use the index for each month, for a date-to-date comparison. The latest year is the last full year.</span>
-        </label>
-        <label for="iFromYear" class="i-year">From
-          <select id="iFromYear"></select>
-        </label>
-        <label for="iToYear" class="i-year">To
-          <select id="iToYear"></select>
-        </label>
-        <label for="iFromMonth" class="i-month" hidden>From
-          <input id="iFromMonth" type="month">
-        </label>
-        <label for="iToMonth" class="i-month" hidden>To
-          <input id="iToMonth" type="month">
-        </label>
-        <div class="actions">
-          <button type="submit">Calculate</button>
-          <button type="button" id="iReset" class="secondary">Reset</button>
+      <form id="iform" class="card i-form" novalidate>
+        <div class="view-toggle i-dir" role="group" aria-label="Which way">
+          <button type="button" class="secondary" data-dir="fwd" aria-pressed="true">Then → now</button>
+          <button type="button" class="secondary" data-dir="back" aria-pressed="false">Now → then</button>
         </div>
+        <div class="i-line">
+          <span class="i-cur">HK$</span>
+          <input id="iAmount" type="text" inputmode="decimal" autocomplete="off" value="100.00" aria-label="Amount (HK$)">
+          <span class="i-in">in</span>
+          <span id="iSlot1" class="i-slot">
+            <span id="iFromPick" class="i-pick">
+              <select id="iFromYear" aria-label="Earlier year"></select>
+              <select id="iFromMonth" aria-label="Earlier month"></select>
+            </span>
+          </span>
+        </div>
+        <div class="i-line">
+          <span id="iWorth">is worth</span>
+          <output id="iValue" class="i-value" for="iAmount iFromYear iFromMonth iToYear iToMonth" aria-live="polite"></output>
+          <span class="i-in">in</span>
+          <span id="iSlot2" class="i-slot">
+            <span id="iToPick" class="i-pick">
+              <select id="iToYear" aria-label="Later year"></select>
+              <select id="iToMonth" aria-label="Later month"></select>
+            </span>
+          </span>
+        </div>
+        <p id="iSummary" class="i-summary"></p>
         <p id="iError" class="error" role="alert" hidden></p>
+        <p class="i-note muted">A full year uses C&amp;SD’s average CPI for that year; a month uses that month’s CPI; “Now” is the latest month published.</p>
       </form>
 
       <section id="iResults" hidden>
-        <p id="iStale" class="stale-note" role="status" hidden>Inputs changed. Press <strong>Calculate</strong> to recalculate.</p>
         <dl class="summary">
-          <div class="answer"><dt id="iValueLabel"></dt><dd id="iValue"></dd></div>
           <div><dt>Prices changed by</dt><dd id="iChange"></dd></div>
           <div><dt>Average a year</dt><dd id="iAnnual"></dd></div>
           <div><dt>Composite CPI</dt><dd id="iIndex"></dd></div>
@@ -798,9 +798,21 @@
         <div class="exports">
           <button type="button" id="iShare" class="secondary">Copy link</button>
           <button type="button" id="iSave" class="secondary">Save</button>
+          <button type="button" id="iReset" class="secondary">Reset</button>
           <span id="iShareStatus" class="muted" role="status"></span>
         </div>
       </section>
+
+      <details id="iIndexCard" class="card chart-card" open>
+        <summary>Price level <span class="muted">Composite CPI, rebased so your start month = 100</span></summary>
+        <div class="range-row i-rebase">
+          <span>Start (= 100)</span>
+          <select id="iBaseYear" aria-label="Start year"></select>
+          <select id="iBaseMonth" aria-label="Start month"></select>
+        </div>
+        <div id="iIndexChart" class="chart" role="img" aria-label="HK price level"></div>
+        <p id="iIndexNote" class="muted m-note"></p>
+      </details>
 
       <details id="iChartCard" class="card chart-card" open>
         <summary>HK inflation history <span class="muted">year-on-year change in the Composite CPI, each month</span></summary>

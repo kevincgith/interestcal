@@ -390,3 +390,17 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1p
 #tResults.stale > :not(.stale-note) { opacity: 0.45; }
 .summary .answer { border-color: var(--accent); }
 .summary dd small { display: block; font-size: 0.8rem; font-weight: normal; color: var(--muted); margin-top: 2px; }
+/* Inflation tab: the calculator reads as a sentence, "HK$ [100] in [2000] [full year] is worth HK$153.60 in [Now]" */
+.i-form { grid-template-columns: 1fr; gap: 12px; }
+.i-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; font-size: 1.1rem; }
+.i-line input, .i-line select { width: auto; font-size: 1rem; }
+.i-line #iAmount { width: 9em; }
+.i-cur { font-weight: 600; }
+.i-value { font-size: 1.6rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.i-summary { margin: 0; color: var(--text); }
+.i-summary:empty { display: none; }
+.i-note { margin: 0; font-size: 0.82rem; }
+.i-rebase { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.i-rebase select { width: auto; }
+.i-dir { margin: 0; }
+.i-slot, .i-pick { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }

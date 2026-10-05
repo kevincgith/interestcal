@@ -30,10 +30,12 @@ const stepValueAt = (rates, iso) => rates.find((r) => r.effective <= iso)?.rate;
  *   Daily fixings are drawn point to point; a step series (rate changes, e.g. prime) holds each rate until the next
  *   change, up to `end`.
  * @param opts { range } for a preset (a key of RATE_RANGES, ending at the latest data), or { from, to } (ISO dates;
- *   either can be left out to run from the earliest or to the latest data)
+ *   either can be left out to run from the earliest or to the latest data). For values that aren't rates (e.g. a
+ *   price index): unit ('' instead of '%'), decimals (tooltip, default 3) and zero: false (the axis needn't reach 0).
  * @returns {{ from: string, to: string } | null} the dates drawn
  */
-export function renderRateChart(box, series, { range, from: fromOpt, to: toOpt } = { range: '10y' }) {
+export function renderRateChart(box, series, { range, from: fromOpt, to: toOpt, unit = '%', decimals = 3, zero = true } = { range: '10y' }) {
+  const fmt = (v, dp = decimals) => `${v.toFixed(dp)}${unit}`;
   const message = (text) => {
     box.replaceChildren(Object.assign(document.createElement('p'), { className: 'muted', textContent: text }));
     return null;
@@ -70,7 +72,7 @@ export function renderRateChart(box, series, { range, from: fromOpt, to: toOpt }
 
   const W = Math.round(Math.max(300, box.clientWidth || 720)); // real width, so text stays 11px on phones
   const H = W < 500 ? 220 : 260;
-  const labelOf = (l) => `${l.short}${shortSpread(l.spread)} ${l.pts.at(-1).rate.toFixed(2)}%`;
+  const labelOf = (l) => `${l.short}${shortSpread(l.spread)} ${fmt(l.pts.at(-1).rate, Math.min(2, decimals))}`;
   const pad = { l: 44, r: 16 + Math.max(...lines.map((l) => labelOf(l).length)) * 6.2, t: 10, b: 28 };
   const plotW = W - pad.l - pad.r;
   const plotH = H - pad.t - pad.b;
@@ -78,8 +80,8 @@ export function renderRateChart(box, series, { range, from: fromOpt, to: toOpt }
   const t1 = dayMs(latest);
   const x = (iso) => pad.l + ((dayMs(iso) - t0) / Math.max(1, t1 - t0)) * plotW;
   const values = lines.flatMap((l) => l.pts.map((p) => p.rate));
-  const maxV = Math.max(...values, 0.1);
-  const minV = Math.min(...values, 0);
+  const maxV = Math.max(...values, ...(zero ? [0.1] : []));
+  const minV = Math.min(...values, ...(zero ? [0] : []));
   const step = niceStep((maxV - minV) / 5);
   const top = Math.ceil(maxV / step) * step;
   const bottom = Math.floor(minV / step) * step;
@@ -90,7 +92,7 @@ export function renderRateChart(box, series, { range, from: fromOpt, to: toOpt }
   for (let v = bottom; v <= top + 1e-9; v += step) {
     svg.append(el('line', { x1: pad.l, x2: W - pad.r, y1: y(v), y2: y(v), stroke: 'var(--grid)', 'stroke-width': 1 }));
     const t = el('text', { x: pad.l - 8, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 11, fill: 'var(--muted)' });
-    t.textContent = `${Number(v.toFixed(2))}%`;
+    t.textContent = `${Number(v.toFixed(2))}${unit}`;
     svg.append(t);
   }
   // Year labels: about one per 70px
@@ -171,10 +173,10 @@ export function renderRateChart(box, series, { range, from: fromOpt, to: toOpt }
       const value = !p
         ? '–'
         : p.note
-          ? `${p.rate.toFixed(3)}% (${p.note})`
+          ? `${fmt(p.rate)} (${p.note})`
           : l.spread
-          ? `${p.rate.toFixed(3)}% (${p.base.toFixed(3)}%${fmtSpread(l.spread)})`
-          : `${p.rate.toFixed(3)}%`;
+          ? `${fmt(p.rate)} (${fmt(p.base)}${fmtSpread(l.spread)})`
+          : fmt(p.rate);
       const rowEl = document.createElement('div');
       rowEl.append(Object.assign(document.createElement('i'), { style: `background:${l.color}` }), `${l.name}: ${value}`);
       tip.append(rowEl);
@@ -206,7 +208,7 @@ export function renderRateChart(box, series, { range, from: fromOpt, to: toOpt }
   box.setAttribute(
     'aria-label',
     `Rates from ${fmtDate(isoOf(t0))} to ${fmtDate(latest)}; latest ${lines
-      .map((l) => `${l.name}${fmtSpread(l.spread)} ${l.pts.at(-1).rate.toFixed(3)}%`)
+      .map((l) => `${l.name}${fmtSpread(l.spread)} ${fmt(l.pts.at(-1).rate)}`)
       .join(', ')}`,
   );
   box.replaceChildren(legend, svg, tip);
