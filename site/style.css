@@ -196,6 +196,8 @@ td.formula { color: var(--muted); font-size: 0.9rem; white-space: normal; min-wi
 .tabs [role="tab"]:hover { color: var(--accent); }
 /* Each tab's form card attaches to the tab bar the same way (every panel, not just the first) */
 [role="tabpanel"] > .card:first-child { margin-top: 0; border-top-left-radius: 0; }
+/* The PV tab's calculator form sits after the (hidden) cash flows form: attach it the same way */
+[role="tabpanel"] > form.card { margin-top: 0; border-top-left-radius: 0; }
 .tabs [role="tab"][aria-selected="true"]:hover { color: var(--text); }
 .loan-line { grid-column: 1 / -1; margin: -4px 0 0; font-size: 0.9rem; color: var(--muted); }
 .loan-line:empty { display: none; }

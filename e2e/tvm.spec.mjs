@@ -80,3 +80,13 @@ test('calculator: compounding half-yearly with monthly payments, and payments at
   await expect(page.locator('#tPmt')).toHaveValue(`−${pmt.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
   await expect(page.locator('#tSentence')).toContainText('compounded half-yearly');
 });
+
+test('both PV modes look the same: the form card attaches to the tab bar, no focus ring after a click', async ({ page }) => {
+  await page.goto('?tab=pv');
+  const box = async (id) => page.locator(id).evaluate((el) => ({ top: Math.round(el.getBoundingClientRect().top), radius: getComputedStyle(el).borderTopLeftRadius }));
+  const flows = await box('#pform');
+  await page.locator('#pform').getByRole('button', { name: 'Time Value of Money' }).click();
+  expect(await box('#tform')).toEqual(flows);
+  const ring = await page.locator('#tform .pv-mode [data-mode="tvm"]').evaluate((el) => el.matches(':focus-visible'));
+  expect(ring).toBe(false);
+});

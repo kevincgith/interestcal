@@ -39,9 +39,11 @@ function setMode(next) {
   if (tvm && !last) $('tform').requestSubmit(); // first look: the example already worked out
 }
 document.querySelectorAll('.pv-mode button').forEach((b) =>
-  b.addEventListener('click', () => {
+  b.addEventListener('click', (e) => {
     setMode(b.dataset.mode);
-    document.querySelector(`#${tvmMode() ? 'tform' : 'pform'} .pv-mode [data-mode="${mode}"]`).focus();
+    // Keyboard users (Enter / Space: no mouse click count) stay on the switch, which is now in the other form; after
+    // a mouse click nothing is focused, so no focus ring makes the two modes look different
+    if (e.detail === 0) document.querySelector(`#${tvmMode() ? 'tform' : 'pform'} .pv-mode [data-mode="${mode}"]`).focus();
   }),
 );
 
