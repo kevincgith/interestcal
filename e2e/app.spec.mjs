@@ -582,3 +582,19 @@ test('start and end date shortcuts fill in today, last month end, last quarter e
   }
   await expect(page.locator('#staleNote')).toBeVisible(); // a changed end date needs Calculate
 });
+
+test('the same start and end date shows an error instead of a zero result', async ({ page }) => {
+  await page.goto('./');
+  await expect(total(page)).not.toHaveText('');
+  await page.locator('#end').fill(await page.locator('#start').inputValue());
+  await page.locator('#form button[type="submit"]').click();
+  await expect(page.locator('#error')).toBeVisible();
+  await expect(page.locator('#error')).toContainText('The end date is the same as the start date');
+  await expect(page.locator('#results')).toBeHidden();
+  // A later end date calculates again
+  await page.getByRole('button', { name: /End date: Today:/ }).click();
+  await page.locator('#start').fill('2020-01-01'); // always before today
+  await page.locator('#form button[type="submit"]').click();
+  await expect(page.locator('#error')).toBeHidden();
+  await expect(total(page)).not.toHaveText('');
+});

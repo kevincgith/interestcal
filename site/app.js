@@ -627,6 +627,12 @@ $('form').addEventListener('submit', (e) => {
   const allocation = $('allocation').value;
   const compounding = $('compounding').value;
   const compoundDates = $('compoundDates').value;
+  // The end date doesn't earn interest, so the same start and end date would cover no days at all
+  if (start && start === end) {
+    clearResults();
+    return showError('The end date is the same as the start date, so there is no period to charge interest on. ' +
+      'Choose a later end date (the end date itself doesn’t earn interest).');
+  }
 
   // Advanced: switch to another rate from a date
   let switchTo = null;
