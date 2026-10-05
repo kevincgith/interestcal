@@ -198,6 +198,7 @@ test('Excel: with both dates counted, rows show the last day counted and days = 
   const { out, rows } = roundTrip(r, [], 'judgment');
   const calc = rows('Calculation');
   assert.ok(calc.some((x) => x[0] === 'End date (earns interest)'));
+  assert.ok(calc.some((x) => x[0] === 'Days counted' && x[1] === 'Both days inclusive'));
   const sheet = out.Sheets.Calculation;
   const days = Object.values(sheet).find((c) => c && typeof c.f === 'string' && /^B\d+-A\d+\+1$/.test(c.f));
   assert.ok(days, 'days formula B-A+1');

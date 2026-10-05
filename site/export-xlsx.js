@@ -71,6 +71,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   ];
   if (r.source === 'prime') rows.push(['Spread over prime (% p.a.)', num(r.spread)]);
   rows.push(['Day count basis', ctx.dayCount]);
+  rows.push(['Days counted', r.inclusive ? 'Both days inclusive' : 'Start inclusive, End exclusive']);
   rows.push(['Rounding', ctx.rounding]);
   const compounding = r.compounding ?? 'none';
   if (compounding !== 'none') rows.push(['Compounding', ctx.compounding]);

@@ -9,7 +9,7 @@ import { setupInterestExports } from './interest-exports.js?v=__BUILD__';
 import {
   fmtRateWithSpread, periodNote, formula, BASES, COMPOUNDINGS, PERIOD_NAME, compoundingLabel, KIND_LABEL, ALLOCATIONS,
   ROUNDINGS, SOURCES, hasSpread, CURRENCIES, defaultCurrency, CROSS_CHECK, HSBC_PAGE, crossCheckTick, FIXED_FROM,
-  isFixed, fmtPct, kindLabel, rateBasisLabel,
+  isFixed, fmtPct, kindLabel, rateBasisLabel, DAYS_COUNTED, daysCountedText,
 } from './interest-text.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 let currencyChosen = false; // the user picked a currency themselves
@@ -251,6 +251,7 @@ const printInputItems = (r) => [
   ['Start date', fmtDate(r.start)],
   [r.inclusive ? 'End date (earns interest)' : 'End date (does not earn interest)', fmtDate(r.shownEnd ?? r.end)],
   ['Day count basis', BASES[r.basis]],
+  ['Days counted', DAYS_COUNTED[r.inclusive ? 'incl' : 'excl']],
   ['Rounding', ROUNDINGS[r.rounding]],
   ...(r.rows === 'rate' ? [['Calculation rows', 'Combined (per rate period)']] : []),
   ...(r.compounding !== 'none' ? [['Compounding', compoundingLabel(r)]] : []),
@@ -354,6 +355,7 @@ function render(r) {
     ),
   );
   $('totalDays').textContent = r.totalDays;
+  $('daysLine').textContent = `Days counted: ${daysCountedText(r)}.`;
   // Actual/Actual: two figures, a normal year (÷ 365) and a leap year (÷ 366)
   if (r.perDiem?.byYearDays) {
     $('perDiem').replaceChildren(...r.perDiem.byYearDays.map((x) => {

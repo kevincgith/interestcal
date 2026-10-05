@@ -159,3 +159,10 @@ export const perDiemText = (r) => {
   return `${r.currency}${money.format(a.amount)} (at ${fmtRate(r.perDiem.rate)} ÷ ${a.yearDays}, ${LEAP[a.yearDays]}) / ` +
     `${r.currency}${money.format(b.amount)} (÷ ${b.yearDays}, ${LEAP[b.yearDays]})`;
 };
+
+// How days are counted (Advanced settings → Days counted)
+export const DAYS_COUNTED = { excl: 'Start inclusive, End exclusive', incl: 'Both days inclusive' };
+/** "Start inclusive, End exclusive: 01-Jan-2026 to 05-Oct-2026 = 277 days (the end date doesn't earn interest)" */
+export const daysCountedText = (r) =>
+  `${DAYS_COUNTED[r.inclusive ? 'incl' : 'excl']}: ${fmtDate(r.start)} to ${fmtDate(r.shownEnd ?? r.end)} = ` +
+  `${r.totalDays} ${r.totalDays === 1 ? 'day' : 'days'} (${r.inclusive ? 'both dates earn interest' : 'the end date doesn’t earn interest'})`;

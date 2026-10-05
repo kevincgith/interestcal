@@ -7,7 +7,7 @@ import { DISCLAIMER_WITH_TERMS } from './disclaimer.js?v=__BUILD__';
 import { $, money, fmtDate, fmtRate, download, loadXlsx, loadPdf, busy } from './shared.js?v=__BUILD__';
 import {
   fmtRateWithSpread, periodNote, formula, BASES, compoundingLabel, ALLOCATIONS, ROUNDINGS, SOURCES, CROSS_CHECK,
-  HSBC_PAGE, crossCheckTick, isFixed, rateBasisLabel, perDiemText,
+  HSBC_PAGE, crossCheckTick, isFixed, rateBasisLabel, perDiemText, DAYS_COUNTED,
 } from './interest-text.js?v=__BUILD__';
 
 const exportName = (r, ext) => `interest_${r.source}_${r.basis.replace('/', '')}_${r.start}_${r.shownEnd ?? r.end}.${ext}`;
@@ -123,7 +123,7 @@ export function setupInterestExports({
       ['Principal', money.format(r.principal)],
       ['Start Date', r.start],
       ['End Date', r.shownEnd ?? r.end],
-      ...(r.inclusive ? [['Days Counted', 'Both days inclusive']] : []),
+      ['Days Counted', DAYS_COUNTED[r.inclusive ? 'incl' : 'excl']],
       ['Total Interest', money.format(r.totalInterest)],
       ...(r.additions.length ? [['Principal Added', money.format(r.totalAdded)]] : []),
       ...(r.payments.length

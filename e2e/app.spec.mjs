@@ -679,3 +679,20 @@ test('days counted: both start and end dates count, on the page, in the link and
   const [xlsx] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download Excel' }).click()]);
   expect(xlsx.suggestedFilename()).toContain('2026-01-01_2026-03-31');
 });
+
+test('the summary and downloads state how days were counted', async ({ page }) => {
+  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-03-31&basis=act%2F365');
+  await expect(page.locator('#daysLine')).toHaveText(
+    'Days counted: Start inclusive, End exclusive: 01-Jan-2026 to 31-Mar-2026 = 89 days (the end date doesn’t earn interest).');
+  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-03-31&basis=act%2F365&incl=1');
+  await expect(page.locator('#daysLine')).toHaveText(
+    'Days counted: Both days inclusive: 01-Jan-2026 to 31-Mar-2026 = 90 days (both dates earn interest).');
+  const fs = await import('node:fs/promises');
+  for (const [button, check] of [
+    ['Download Word', (b) => b.toString('utf8').includes('Both days inclusive')],
+    ['Download CSV', (b) => b.toString('utf8').includes('Days Counted,Both days inclusive')],
+  ]) {
+    const [d] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
+    expect(check(await fs.readFile(await d.path())), button).toBe(true);
+  }
+});
