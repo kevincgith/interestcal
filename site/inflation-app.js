@@ -102,17 +102,12 @@ function fillPickers() {
 }
 
 // ---- Which way: then -> now (the amount at the earlier time) or now -> then (the amount at the later time) ----
-// The earlier and later pickers swap places in the sentence; "in" is dropped before "Now".
+// The earlier and later pickers swap between "In" (the amount's time) and "Worth in" (the answer's).
 
 let back = false;
 function placePickers() {
   $('iSlot1').append(back ? $('iToPick') : $('iFromPick'));
   $('iSlot2').append(back ? $('iFromPick') : $('iToPick'));
-  $('iWorth').textContent = back ? 'was worth' : 'is worth';
-  for (const slot of ['iSlot1', 'iSlot2']) {
-    const isNow = $(slot).querySelector('select').value === 'now';
-    $(slot).previousElementSibling.hidden = isNow; // the "in" before it
-  }
   document.querySelectorAll('[data-dir]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.dir === 'back') === back)));
 }
 document.querySelectorAll('[data-dir]').forEach((b) =>
@@ -134,8 +129,6 @@ function calculate({ record = false } = {}) {
     last = adjustForInflation(cpi, { amount, from: valueOf('From'), to: valueOf('To'), back });
   } catch (err) {
     last = null;
-    $('iValue').textContent = '–';
-    $('iSummary').textContent = '';
     $('iResults').hidden = true;
     showError(err.message);
     return;
@@ -182,10 +175,9 @@ const sinceText = (r) => `${r.toPoint.key === cpi.monthly.at(-1).month && r.to =
   `${r.to === 'now' ? '' : ` to ${r.toPoint.label}`}`;
 
 function render(r) {
+  const answerAt = r.back ? r.fromPoint : r.toPoint;
+  $('iValueLabel').textContent = (r.back ? r.from : r.to) === 'now' ? `Worth ${answerAt.label}` : `Worth in ${answerAt.label}`;
   $('iValue').textContent = `HK$${money.format(r.value)}`;
-  $('iSummary').textContent =
-    `Prices are ${r.change >= 0 ? 'up' : 'down'} ${Math.abs(r.change * 100).toFixed(1)}% ${sinceText(r)}, ` +
-    `about ${Math.abs(r.annual * 100).toFixed(1)}% a year${r.annual < 0 ? ' down' : ''}.`;
   $('iChange').textContent = pct(r.change);
   $('iAnnual').textContent = `${pct(r.annual, 2)} a year`;
   $('iIndex').textContent = `${r.fromIndex} → ${r.toIndex}`;
@@ -195,8 +187,10 @@ function render(r) {
     ? [`HK$${money.format(r.amount)} ${at(r.toPoint, r.to)}`, `HK$${money.format(r.value)} ${at(r.fromPoint, r.from)}`]
     : [`HK$${money.format(r.amount)} ${at(r.fromPoint, r.from)}`, `HK$${money.format(r.value)} ${at(r.toPoint, r.to)}`];
   $('iSentence').textContent =
-    `${first} had the same buying power as ${second}, ${yearsText(r.years)} ${r.back ? 'earlier' : 'later'} (Composite CPI ${r.fromIndex} and ${r.toIndex}, ${cpi.base}; ` +
-    'a full year is C&SD’s average for the year, counted from its middle).';
+    `${first} had the same buying power as ${second}. Prices ${r.change >= 0 ? 'rose' : 'fell'} ` +
+    `${Math.abs(r.change * 100).toFixed(1)}% ${sinceText(r)}, about ${Math.abs(r.annual * 100).toFixed(1)}% a year over ` +
+    `${yearsText(r.years)} (Composite CPI ${r.fromIndex} and ${r.toIndex}, ${cpi.base}; a full year is C&SD’s average ` +
+    'for the year, counted from its middle).';
   $('iResults').hidden = false;
 }
 autoFitText($('iResults').querySelector('.summary'));

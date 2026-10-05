@@ -6,15 +6,18 @@ const cpi = JSON.parse(readFileSync(new URL('../site/cpi.json', import.meta.url)
 const yearIndex = (y) => cpi.yearly.find((x) => x.year === y).index;
 const monthIndex = (m) => cpi.monthly.find((x) => x.month === m).index;
 const latest = cpi.monthly.at(-1);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const monthNameOf = (m) => `${MONTHS[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`;
 const fmt = (n) => n.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-test('inflation reads as a sentence: HK$100 in 2000 is worth ... now, worked out as you type', async ({ page }) => {
+test('inflation: HK$100 in 2000 is worth ... now, worked out as you type', async ({ page }) => {
   await page.goto('?');
   await page.getByRole('tab', { name: 'Inflation' }).click();
   await expect(page).toHaveURL(/tab=inflation&a=100&f=2000&t=now/);
   await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * latest.index) / yearIndex(2000))}`);
-  await expect(page.locator('#iSummary')).toContainText('Prices are up');
-  await expect(page.locator('#iSummary')).toContainText('since 2000');
+  await expect(page.locator('#iValueLabel')).toHaveText(`Worth now (${monthNameOf(latest.month)})`);
+  await expect(page.locator('#iSentence')).toContainText('Prices rose');
+  await expect(page.locator('#iSentence')).toContainText('since 2000');
   await expect(page.locator('#iToMonth')).toBeHidden(); // "Now" has no month to pick
 
   // No Calculate button: typing updates it
@@ -35,17 +38,17 @@ test('inflation pickers: a year and a month on each side, months with no figures
   // 1980: only Oct to Dec; the latest year: no "full year" yet, nothing after the latest month
   await page.locator('#iFromYear').selectOption('1980');
   await expect(page.locator('#iFromMonth')).toHaveValue('10');
-  await expect(page.locator('#iFromMonth option[value="09"]')).toBeDisabled();
-  await expect(page.locator('#iFromMonth option[value="year"]')).toBeDisabled();
+  await expect(page.locator('#iFromMonth option[value="09"]')).toHaveJSProperty('disabled', true);
+  await expect(page.locator('#iFromMonth option[value="year"]')).toHaveJSProperty('disabled', true);
   await page.locator('#iFromYear').selectOption(latest.month.slice(0, 4));
-  await expect(page.locator('#iFromMonth option[value="year"]')).toBeDisabled();
+  await expect(page.locator('#iFromMonth option[value="year"]')).toHaveJSProperty('disabled', true);
 });
 
 test('inflation: “from” has to come before “to”; earlier “to” choices are greyed out', async ({ page }) => {
   await page.goto('?tab=inflation&a=100&f=2010&t=2020');
-  await expect(page.locator('#iToYear option[value="2009"]')).toBeDisabled();
-  await expect(page.locator('#iToYear option[value="2010"]')).toBeDisabled(); // nothing in 2010 is after all of 2010
-  await expect(page.locator('#iToYear option[value="2011"]')).toBeEnabled();
+  await expect(page.locator('#iToYear option[value="2009"]')).toHaveJSProperty('disabled', true);
+  await expect(page.locator('#iToYear option[value="2010"]')).toHaveJSProperty('disabled', true); // nothing in 2010 is after all of 2010
+  await expect(page.locator('#iToYear option[value="2011"]')).toHaveJSProperty('disabled', false);
   // Moving "from" past "to" moves "to" to now
   await page.locator('#iFromYear').selectOption('2022');
   await expect(page.locator('#iToYear')).toHaveValue('now');
@@ -84,16 +87,16 @@ test('inflation history tables, chart and source; save and recent', async ({ pag
 test('now -> then: HK$100 now was worth ... in 2000; the link keeps the direction', async ({ page }) => {
   await page.goto('?tab=inflation');
   await page.getByRole('button', { name: 'Now → then' }).click();
-  await expect(page.locator('#iWorth')).toHaveText('was worth');
+  await expect(page.locator('#iValueLabel')).toHaveText('Worth in 2000');
   await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * yearIndex(2000)) / latest.index)}`);
   await expect(page.locator('#iSlot1 #iToYear')).toHaveValue('now'); // the amount's picker comes first
   await expect(page.locator('#iSlot2 #iFromYear')).toHaveValue('2000');
   await expect(page).toHaveURL(/f=2000&t=now&d=back/);
   await page.reload();
   await expect(page.getByRole('button', { name: 'Now → then' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('#iSentence')).toContainText('earlier');
+  await expect(page.locator('#iSentence')).toContainText(`had the same buying power as HK$${fmt((100 * yearIndex(2000)) / latest.index)} in 2000`);
   await page.getByRole('button', { name: 'Then → now' }).click();
-  await expect(page.locator('#iWorth')).toHaveText('is worth');
+  await expect(page.locator('#iValueLabel')).toHaveText(/^Worth now/);
   await expect(page).not.toHaveURL(/d=back/);
 });
 
