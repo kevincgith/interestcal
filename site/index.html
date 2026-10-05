@@ -51,20 +51,20 @@
       <label>Start date
         <input id="start" type="date" required>
         <span class="date-shortcuts">
-          <button type="button" class="link-button" data-date="today" data-target="start">Today</button>
-          <button type="button" class="link-button" data-date="month" data-target="start">End of last month</button>
-          <button type="button" class="link-button" data-date="quarter" data-target="start">End of last quarter</button>
-          <button type="button" class="link-button" data-date="year" data-target="start">End of last year</button>
+          <button type="button" class="chip" data-date="today" data-target="start">Today</button>
+          <button type="button" class="chip" data-date="month" data-target="start">Month end</button>
+          <button type="button" class="chip" data-date="quarter" data-target="start">Quarter end</button>
+          <button type="button" class="chip" data-date="year" data-target="start">Year end</button>
         </span>
       </label>
       <label><span class="label-row">End date <button type="button" class="help" aria-expanded="false" aria-label="Why doesn’t the end date earn interest?">?</button></span>
         <input id="end" type="date" required>
         <span class="help-text" hidden>The end date doesn’t earn interest. Each day earns interest once. A period counts the days from its start date up to, but not including, its end date (end date minus start date, as in Excel and the original workbook), so 1 to 2 January is 1 day. Where one period ends and the next begins, that shared date is counted once, in the later period, so no day is charged twice. If the end date itself should earn interest, use the next day as the end date.</span>
         <span class="date-shortcuts">
-          <button type="button" class="link-button" data-date="today" data-target="end">Today</button>
-          <button type="button" class="link-button" data-date="month" data-target="end">End of last month</button>
-          <button type="button" class="link-button" data-date="quarter" data-target="end">End of last quarter</button>
-          <button type="button" class="link-button" data-date="year" data-target="end">End of last year</button>
+          <button type="button" class="chip" data-date="today" data-target="end">Today</button>
+          <button type="button" class="chip" data-date="month" data-target="end">Month end</button>
+          <button type="button" class="chip" data-date="quarter" data-target="end">Quarter end</button>
+          <button type="button" class="chip" data-date="year" data-target="end">Year end</button>
         </span>
       </label>
       <label id="fixedField" for="fixedRate" hidden>Fixed rate (% p.a.)

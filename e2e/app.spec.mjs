@@ -576,7 +576,7 @@ test('start and end date shortcuts fill in today, last month end, last quarter e
   for (const field of ['start', 'end']) {
     const label = page.locator('label', { has: page.locator(`#${field}`) });
     for (const [name, date] of Object.entries(expected)) {
-      await label.getByRole('button', { name, exact: true }).click();
+      await label.getByRole('button', { name: new RegExp(`date: ${name}:`) }).click();
       await expect(page.locator(`#${field}`)).toHaveValue(date);
     }
   }

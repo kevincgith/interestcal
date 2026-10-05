@@ -70,7 +70,7 @@ You can choose one of three rates:
 - **Word source note:** the Word file ends with a short note naming where the rates came from and when they were checked, e.g. "Source of rates: HK Judiciary: interest rates on judgment debts (as at 5 October 2026)." There's none for a fixed rate.
 - **Recent calculations:** the last 5 calculations you ran with Calculate (either tab) are kept automatically in a "Recent calculations" list, in your browser only; open one, or save it to keep it. The sample run when the page opens isn't recorded.
 - **Help:** a "?" next to each Advanced setting, "Apply payments to" and the End date shows a short explanation; tap again to hide it.
-- **Date shortcuts:** under the start and end dates, "Today", "End of last month", "End of last quarter" and "End of last year" fill in the date.
+- **Date shortcuts:** under the start and end dates, small buttons "Today", "Month end", "Quarter end" and "Year end" (the end of last month, quarter or year) fill in the date; hovering shows the exact date.
 - **Saved calculations:** **Save** (on either tab) keeps the calculation's link and a name in your browser's local storage, never uploaded. The **Saved calculations** card lists them, newest first: rename, open or delete. Up to 50 are kept.
 - **Rounding:** you can round only the total (periods are added unrounded) or round each period to cents first. The second option makes the rows add up exactly to the total.
 
