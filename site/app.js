@@ -509,7 +509,7 @@ function shortcutDate(kind) {
 document.querySelectorAll('[data-date]').forEach((btn) => {
   const MEANING = { today: 'Today', month: 'End of last month', quarter: 'End of last quarter', year: 'End of last year' };
   btn.title = `${MEANING[btn.dataset.date]}: ${fmtDate(shortcutDate(btn.dataset.date))}`;
-  btn.setAttribute('aria-label', `${btn.dataset.target === 'start' ? 'Start' : 'End'} date: ${btn.title}`);
+  btn.setAttribute('aria-label', `${btn.dataset.field ?? (btn.dataset.target === 'start' ? 'Start date' : 'End date')}: ${btn.title}`);
   btn.addEventListener('click', (e) => {
     e.preventDefault(); // inside the date's label: don't open the date picker
     const field = $(btn.dataset.target);

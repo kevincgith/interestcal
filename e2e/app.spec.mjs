@@ -59,7 +59,7 @@ test('form fields share one height and never overlap; no sideways scrolling', as
   const boxes = await Promise.all(ids.map((id) => page.locator(`#${id}`).boundingBox()));
   boxes.push(await page.locator('#spreadField .stepper').boundingBox());
   boxes.push(await page.locator('#spread2Field .stepper').boundingBox());
-  for (const sel of ['.pay-date', '.pay-amount', '.payment-row .remove']) boxes.push(await page.locator(sel).boundingBox());
+  for (const sel of ['.pay-date', '.pay-amount', '.payment-row .remove']) boxes.push(await page.locator(`#panel-interest ${sel}`).boundingBox());
 
   const heights = boxes.map((b) => Math.round(b.height));
   expect(new Set(heights).size, `field heights ${heights}`).toBe(1);
@@ -114,8 +114,8 @@ test('PDF, Excel, Word and CSV download with the right names; exports omit the s
 
 test('partial payment from a shared link: applied interest first, outstanding shown', async ({ page }) => {
   await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-01&to=2026-12-31&basis=act%2Fact&round=total&pay=2026-07-01:10000&alloc=interest');
-  await expect(page.locator('.payment-row')).toHaveCount(1);
-  await expect(page.locator('.pay-amount')).toHaveValue('10,000.00');
+  await expect(page.locator('#panel-interest .payment-row')).toHaveCount(1);
+  await expect(page.locator('#panel-interest .pay-amount')).toHaveValue('10,000.00');
   await expect(total(page)).toHaveText('7,736.11');
   await expect(page.locator('#totalPaid')).toHaveText('10,000.00');
   await expect(page.locator('#totalDue')).toHaveText('97,736.11');

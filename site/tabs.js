@@ -1,8 +1,10 @@
-// Interest / Mortgage tabs. Each tab keeps its own shareable link (?...); the Mortgage tab's links carry tab=mortgage.
+// Interest / Mortgage / Present value tabs. Each tab keeps its own shareable link (?...); the Mortgage and Present
+// value tabs' links carry tab=mortgage and tab=pv.
 
-const TABS = ['interest', 'mortgage'];
+const TABS = ['interest', 'mortgage', 'pv'];
 const queries = {};
-let current = new URLSearchParams(location.search).get('tab') === 'mortgage' ? 'mortgage' : 'interest';
+const asked = new URLSearchParams(location.search).get('tab');
+let current = TABS.includes(asked) ? asked : 'interest';
 
 export const activeTab = () => current;
 
@@ -23,7 +25,7 @@ function show(name) {
 
 function select(name) {
   show(name);
-  const q = queries[name]?.() || (name === 'mortgage' ? '?tab=mortgage' : '');
+  const q = queries[name]?.() || (name === 'interest' ? '' : `?tab=${name}`);
   history.replaceState(null, '', `${location.pathname}${q}`);
 }
 

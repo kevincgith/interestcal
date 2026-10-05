@@ -7,6 +7,8 @@ const KEY = 'interestcal.saved';
 const MAX = 50;
 const RECENT_KEY = 'interestcal.recent';
 const RECENT_MAX = 5;
+const TAB_NAMES = { interest: 'Interest', mortgage: 'Mortgage', pv: 'Present value' };
+const tabName = (tab) => TAB_NAMES[tab] ?? 'Interest';
 
 function load(key = KEY) {
   try {
@@ -35,7 +37,7 @@ export function recordRecent({ tab, query, title }) {
 
 /**
  * Save a calculation. The same link saved again moves to the top and keeps its name.
- * @param {{ tab: 'interest' | 'mortgage', query: string, title: string }} item  query is the link's "?..." part
+ * @param {{ tab: 'interest' | 'mortgage' | 'pv', query: string, title: string }} item  query is the link's "?..." part
  * @returns {boolean} false when the browser won't store it
  */
 export function saveCalculation({ tab, query, title }) {
@@ -78,7 +80,7 @@ export function renderSaved() {
       });
       const meta = Object.assign(document.createElement('span'), {
         className: 'muted saved-meta',
-        textContent: `${x.tab === 'mortgage' ? 'Mortgage' : 'Interest'} · saved ${fmtWhen(x.savedAt)}`,
+        textContent: `${tabName(x.tab)} · saved ${fmtWhen(x.savedAt)}`,
       });
       const open = Object.assign(document.createElement('a'), { href: `./${x.query}`, textContent: 'Open', className: 'saved-open' });
       const del = Object.assign(document.createElement('button'), { type: 'button', className: 'secondary remove', textContent: '×' });
@@ -105,7 +107,7 @@ export function renderRecent() {
       const name = Object.assign(document.createElement('span'), { className: 'recent-name', textContent: x.name });
       const meta = Object.assign(document.createElement('span'), {
         className: 'muted saved-meta',
-        textContent: `${x.tab === 'mortgage' ? 'Mortgage' : 'Interest'} · ${fmtWhen(x.savedAt)}`,
+        textContent: `${tabName(x.tab)} · ${fmtWhen(x.savedAt)}`,
       });
       const open = Object.assign(document.createElement('a'), { href: `./${x.query}`, textContent: 'Open', className: 'saved-open' });
       const keep = Object.assign(document.createElement('button'), { type: 'button', className: 'secondary', textContent: 'Save' });

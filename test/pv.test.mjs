@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { presentValue, yearPieces, yearFraction, PV_COMPOUNDING } from '../site/pv.js';
+import { presentValue, yearPieces, yearFraction, pvWorking, PV_COMPOUNDING } from '../site/pv.js';
 import { toDay, fromDay } from '../site/calc.js';
 
 const close = (actual, expected, eps = 1e-9) =>
@@ -46,6 +46,14 @@ test('Act/360 and Act/Act year fractions', () => {
   // 2027-07-01 -> 2028-01-01: 184 days of a 365-day year; 2028-01-01 -> 2028-07-01: 182 days of a 366-day year
   assert.deepEqual(yearPieces(v, d, 'act/act'), [{ days: 184, yearDays: 365 }, { days: 182, yearDays: 366 }]);
   close(yearFraction(yearPieces(v, d, 'act/act')), 184 / 365 + 182 / 366);
+});
+
+test('Act/Act joins consecutive years of the same length', () => {
+  // 2025-10-05 -> 2028-10-05: 2025, 2026 and 2027 are 365-day years, 2028 is a leap year
+  assert.deepEqual(yearPieces(toDay('2025-10-05'), toDay('2028-10-05'), 'act/act'), [
+    { days: 818, yearDays: 365 }, { days: 278, yearDays: 366 },
+  ]);
+  assert.deepEqual(yearPieces(toDay('2026-01-01'), toDay('2027-06-01'), 'act/act'), [{ days: 516, yearDays: 365 }]);
 });
 
 test('Act/Act daily compounding uses each year\'s own days', () => {
@@ -132,4 +140,23 @@ test('agrees with Excel XNPV over random cases', () => {
     const expected = xnpv(rate / 100, [0, ...flows.map((f) => f.amount)], [v, ...flows.map((f) => toDay(f.date))]);
     assert.ok(Math.abs(r.total - expected) < 0.006, `case ${n}: ${r.total} vs XNPV ${expected}`);
   }
+});
+
+test('working text for each compounding', () => {
+  const fmt = { money: (n) => n.toFixed(2), rate: (r) => `${(r * 100).toFixed(3)}%` };
+  const at = (opts) => {
+    const res = presentValue({ valuation: '2027-07-01', rate: 5, flows: [{ date: '2028-07-01', amount: 100 }], ...opts });
+    return pvWorking(res, res.rows[0], fmt);
+  };
+  assert.equal(at({}), '100.00 ÷ (1 + 5.000%)^(366 ÷ 365)');
+  assert.equal(at({ basis: 'act/act' }), '100.00 ÷ (1 + 5.000%)^(184 ÷ 365 + 182 ÷ 366)');
+  assert.equal(at({ compounding: 'quarterly', basis: 'act/act' }), '100.00 ÷ (1 + 5.000% ÷ 4)^(4 × (184 ÷ 365 + 182 ÷ 366))');
+  assert.equal(at({ compounding: 'monthly', basis: 'act/360' }), '100.00 ÷ (1 + 5.000% ÷ 12)^(12 × 366 ÷ 360)');
+  assert.equal(at({ compounding: 'daily', basis: 'act/act' }), '100.00 ÷ ((1 + 5.000% ÷ 365)^184 × (1 + 5.000% ÷ 366)^182)');
+  assert.equal(at({ compounding: 'continuous' }), '100.00 × e^(−5.000% × 366 ÷ 365)');
+  assert.equal(at({ compounding: 'simple' }), '100.00 ÷ (1 + 5.000% × 366 ÷ 365)');
+  assert.equal(at({ flows: [{ date: '2027-07-01', amount: 100 }] }), '100.00 (on the valuation date)');
+  // Before the valuation date: grown forward, so the working multiplies
+  assert.equal(at({ flows: [{ date: '2026-07-01', amount: 100 }] }), '100.00 × (1 + 5.000%)^(365 ÷ 365)');
+  assert.equal(at({ compounding: 'continuous', flows: [{ date: '2026-07-01', amount: 100 }] }), '100.00 × e^(5.000% × 365 ÷ 365)');
 });

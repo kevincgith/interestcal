@@ -181,6 +181,11 @@ td.formula { color: var(--muted); font-size: 0.9rem; white-space: normal; min-wi
   border-radius: 8px 8px 0 0;
   padding: 10px 20px;
   margin-bottom: -1px;
+  white-space: nowrap;
+}
+/* Three tabs on a phone: tighter padding so "Present value" stays on one line */
+@media (max-width: 420px) {
+  .tabs [role="tab"] { padding: 10px 12px; }
 }
 .tabs [role="tab"][aria-selected="true"] { color: var(--text); background: var(--surface); border-color: var(--border); }
 .tabs [role="tab"]:hover { color: var(--accent); }
@@ -348,3 +353,10 @@ button.chip {
 }
 button.chip:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
 button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Present value tab */
+.pv-flows-note { margin: 0 0 8px; }
+#pResults.stale > :not(.stale-note) { opacity: 0.45; }
+#pRows .working { white-space: nowrap; color: var(--muted); font-size: 0.85rem; }
+#pRows .before { color: var(--muted); font-size: 0.8rem; display: block; }
+#pFoot td { font-weight: 700; border-top: 2px solid var(--border); }

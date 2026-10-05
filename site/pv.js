@@ -24,8 +24,8 @@ const yearOf = (day) => new Date(day * MS_PER_DAY).getUTCFullYear();
 const jan1 = (y) => Date.UTC(y, 0, 1) / MS_PER_DAY;
 
 /**
- * Days from `from` to `to` split by the year days that apply: [{ days, yearDays }]. Under act/act a span crossing
- * 1 January is split there; otherwise one piece. Days are negative when `to` is before `from`.
+ * Days from `from` to `to` split by the year days that apply: [{ days, yearDays }]. Under act/act a span is split at
+ * each 1 January where the year length changes (365 <-> 366); otherwise one piece. Days are negative when `to` is before `from`.
  */
 export function yearPieces(from, to, basis) {
   if (basis === 'act/365') return [{ days: to - from, yearDays: 365 }];
@@ -35,7 +35,10 @@ export function yearPieces(from, to, basis) {
   for (let a = lo; a < hi; ) {
     const y = yearOf(a);
     const b = Math.min(hi, jan1(y + 1));
-    pieces.push({ days: sign * (b - a), yearDays: isLeapYear(y) ? 366 : 365 });
+    const yearDays = isLeapYear(y) ? 366 : 365;
+    // Consecutive years of the same length join up, as on the Interest tab: 88 ÷ 365 + 365 ÷ 365 -> 453 ÷ 365
+    if (pieces.at(-1)?.yearDays === yearDays) pieces.at(-1).days += sign * (b - a);
+    else pieces.push({ days: sign * (b - a), yearDays });
     a = b;
   }
   return pieces.length ? pieces : [{ days: 0, yearDays: 365 }];
@@ -89,4 +92,38 @@ export function presentValue({ valuation, rate, compounding = 'yearly', basis = 
   const total = round2(rows.reduce((s, x) => s + x.pv, 0));
   const futureTotal = round2(rows.reduce((s, x) => s + x.amount, 0));
   return { valuation, rate: r, compounding, basis, rows, total, futureTotal, discount: round2(futureTotal - total) };
+}
+
+/**
+ * The working for one row, e.g. "100,000.00 ÷ (1 + 5.000%)^(731 ÷ 365)" or, under act/act across a leap year,
+ * "100,000.00 ÷ (1 + 5.000%)^(184 ÷ 365 + 182 ÷ 366)". A cash flow before the valuation date is grown forward, so
+ * its working multiplies instead: "20,000.00 × (1 + 5.000%)^(365 ÷ 365)".
+ * @param {{ rate: number, compounding: string }} res  a presentValue result
+ * @param {object} row  one of its rows
+ * @param {{ money: (n: number) => string, rate: (r: number) => string }} fmt  rate takes a fraction
+ */
+export function pvWorking(res, row, fmt) {
+  const amount = fmt.money(row.amount);
+  if (row.days === 0) return `${amount} (on the valuation date)`;
+  const op = row.before ? '×' : '÷';
+  const pieces = row.pieces.map((p) => ({ days: Math.abs(p.days), yearDays: p.yearDays }));
+  const r = fmt.rate(res.rate);
+  const sum = pieces.map((p) => `${p.days} ÷ ${p.yearDays}`).join(' + ');
+  const years = pieces.length > 1 ? `(${sum})` : sum;
+  switch (res.compounding) {
+    case 'continuous':
+      return `${amount} × e^(${row.before ? '' : '−'}${r} × ${years})`;
+    case 'simple':
+      return `${amount} ${op} (1 + ${r} × ${years})`;
+    case 'daily': {
+      const factors = pieces.map((p) => `(1 + ${r} ÷ ${p.yearDays})^${p.days}`);
+      return `${amount} ${op} ${factors.length > 1 ? `(${factors.join(' × ')})` : factors[0]}`;
+    }
+    default: {
+      const m = PER_YEAR[res.compounding];
+      return m === 1
+        ? `${amount} ${op} (1 + ${r})^(${sum})`
+        : `${amount} ${op} (1 + ${r} ÷ ${m})^(${m} × ${years})`;
+    }
+  }
 }

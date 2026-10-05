@@ -35,6 +35,14 @@ You can choose one of three rates:
   - **Each year:** a chart of principal and interest (plus extra repayments) per loan year, and a Monthly / Yearly switch for the schedule.
   - **Also:** the full schedule, a shareable link (`?tab=mortgage&...`), and PDF / Excel / CSV downloads.
 
+- **Present value tab:** the value today of amounts due on future dates, at one discount rate.
+  - **Inputs:** a valuation date, a discount rate (% p.a., may be negative), compounding (yearly by default, half-yearly, quarterly, monthly, daily, continuous or none), a day count basis (Actual/365 by default, Actual/360 or Actual/Actual) and a currency.
+  - **Cash flows:** any number of date + amount rows with an optional description. A minus sign (or brackets) marks money paid out, so the total is a net present value. An amount dated before the valuation date is grown forward to it at the same rate, and the page says so.
+  - **Discount factor:** `(1 + rate ÷ m)^(−m × years)` for m compounding periods a year; daily `(1 + rate ÷ year days)^(−days)`; continuous `e^(−rate × years)`; none `1 ÷ (1 + rate × years)`. Years = days ÷ 365 (or 360); under Actual/Actual, the days in each calendar year ÷ 365 or 366, added up.
+  - **Results:** the present value, the total of the amounts and the discount, plus a row per cash flow with its days, years, discount factor, present value and the working, e.g. `100,000.00 ÷ (1 + 5.000%)^(731 ÷ 365)`. Rows keep full precision; only the totals are rounded to cents.
+  - Actual/365 with yearly compounding matches Excel's `XNPV` with the valuation date as its first date.
+  - **Also:** a shareable link (`?tab=pv&v=...&r=...&cf=date,amount,description`), and Recent and Saved like the other tabs.
+
 - **Advanced settings** (collapsed by default, so the basic form stays simple):
   - **Currency:** HKD by default, USD by default for the US prime rate; or RMB, the other G10 currencies (EUR, JPY, GBP, CHF, CAD, AUD, NZD, SEK, NOK) or any symbol you type. Amounts on the page and in every download use its symbol (HK$, US$, CN¥, €, JP¥, £, C$, A$, NZ$; codes for CHF, SEK and NOK). Once chosen, it doesn't change with the rate.
   - **Day count basis** (Actual/Actual by default) and **rounding** (round the total only, by default).
@@ -109,7 +117,8 @@ You can choose one of three rates:
 | `site/rates.json` | Judgment debt rates scraped from the Judiciary site |
 | `site/hibor.json`, `hibor-3m.json` | 1-month and 3-month HIBOR fixings since 1996: history from the HKMA API, and the recent days HKMA hasn't republished yet from [HKAB](https://www.hkab.org.hk/en/rates/hibor), which sets them each business day at 11:15 HKT (a few days overlap, as a cross-check). `scripts/backfill-hibor.mjs` fills in older history in small batches, saving after each one (rerun it to carry on). The daily update merges in recent fixings and fetches a few older pages per run until the history reaches 1996. Every download has a time limit, and the job is capped at 20 minutes. These are optional sources: an outage only logs a warning. |
 | `site/mortgage.js`, `mortgage-app.js`, `mortgage-export.js` | Mortgage calculation, tab and exports |
-| `site/shared.js`, `tabs.js` | Helpers shared by both tabs; tab switching |
+| `site/pv.js`, `pv-app.js` | Present value calculation and tab |
+| `site/shared.js`, `tabs.js` | Helpers shared by the tabs; tab switching |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |
 | `site/us-prime-rates.json` | US prime rate changes since 2000 (Federal Reserve H.15) |
 | `scripts/fetch-rates.mjs` | Fetches and validates both sources, and rewrites a JSON file only when its rates change |
