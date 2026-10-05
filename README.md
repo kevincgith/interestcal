@@ -13,7 +13,7 @@ You can choose one of three rates:
   - **HSBC has a newer change:** the HKMA table is updated monthly, so HSBC can be ahead. The newer change is added and marked "HSBC".
   - **Disagreement:** the HKMA data is kept, the page shows a warning, and the daily workflow fails so you get an email.
 
-- **US prime rate** (Interest tab), the "Bank prime loan" rate in the Federal Reserve's [H.15 release](https://www.federalreserve.gov/releases/h15/): the rate posted by most of the top 25 US banks. You can add a spread. Choosing it switches the amounts to US$, on the page and in the downloads. The history since 2000 comes from the Fed's full H.15 data file (series RIFSPBLP_N.B); the daily update reads the release page, which shows the last five business days, and adds any change.
+- **US prime rate** (Interest tab), the "Bank prime loan" rate in the Federal Reserve's [H.15 release](https://www.federalreserve.gov/releases/h15/): the rate posted by most of the top 25 US banks. You can add a spread. Choosing it switches the currency to USD (US$) unless you've picked one in Advanced settings. The history since 2000 comes from the Fed's full H.15 data file (series RIFSPBLP_N.B); the daily update reads the release page, which shows the last five business days, and adds any change.
 
 - **Fixed rate**, e.g. 8% p.a., for contract rates not tied to a published rate.
 
@@ -35,6 +35,7 @@ You can choose one of three rates:
   - **Also:** the full schedule, a shareable link (`?tab=mortgage&...`), and PDF / Excel / CSV downloads.
 
 - **Advanced settings** (collapsed by default, so the basic form stays simple):
+  - **Currency:** HKD by default, USD by default for the US prime rate; or RMB, the other G10 currencies (EUR, JPY, GBP, CHF, CAD, AUD, NZD, SEK, NOK) or any symbol you type. Amounts on the page and in every download use its symbol (HK$, US$, CN¥, €, JP¥, £, C$, A$, NZ$; codes for CHF, SEK and NOK). Once chosen, it doesn't change with the rate.
   - **Day count basis** (Actual/Actual by default) and **rounding** (round the total only, by default).
   - **Calculation rows:** **Detailed (each published rate)**, the default, with a row for each published rate (even when a quarter repeats the same rate), payment and new year; or **Combined (per rate period)**, which combines consecutive rows at the same rate, including rows split only by a republished rate, a new year (Actual/Actual), a payment, principal added or compounding, and shows the working as one sum, e.g. `100,000.00 × 8.000% × (184 ÷ 365 + 182 ÷ 366)`. Totals don't change. The downloads follow the same choice; in Excel a combined row is one live formula summing its pieces.
   - **Compounding:** None (simple interest, the default), monthly, quarterly, yearly, daily or continuous.

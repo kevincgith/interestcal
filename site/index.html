@@ -68,8 +68,28 @@
         </div>
       </label>
       <details id="advanced" class="advanced">
-        <summary>Advanced settings <span class="muted">(day count, rows, rounding, compounding, rate switch)</span></summary>
+        <summary>Advanced settings <span class="muted">(currency, day count, rows, rounding, compounding, rate switch)</span></summary>
         <div class="advanced-body">
+          <label>Currency
+            <select id="currency">
+              <option value="HKD" selected>HKD (HK$)</option>
+              <option value="USD">USD (US$)</option>
+              <option value="CNY">RMB (CN¥)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="JPY">JPY (JP¥)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="CHF">CHF</option>
+              <option value="CAD">CAD (C$)</option>
+              <option value="AUD">AUD (A$)</option>
+              <option value="NZD">NZD (NZ$)</option>
+              <option value="SEK">SEK</option>
+              <option value="NOK">NOK</option>
+              <option value="other">Other…</option>
+            </select>
+          </label>
+          <label id="customCurField" hidden>Currency symbol or code
+            <input id="customCur" type="text" maxlength="8" autocomplete="off" placeholder="e.g. S$ or SGD">
+          </label>
           <label>Day count basis
             <select id="basis">
               <option value="act/act" selected>Actual/Actual</option>

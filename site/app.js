@@ -123,8 +123,17 @@ const SOURCES = {
   },
 };
 const hasSpread = (key) => !!SOURCES[key]?.spread;
-// Amounts are in HK$, or US$ when the US prime rate is chosen (the currency follows the first rate, not a later switch)
-const currencyOf = (source) => (source === 'usprime' ? 'US$' : 'HK$');
+// Currency (Advanced settings): HKD by default, USD by default for the US prime rate. Once the user picks one
+// themselves, changing the rate no longer changes it. RMB and JPY both use ¥, so they're CN¥ and JP¥; SEK and NOK
+// both use "kr", so they (and CHF, which has no separate symbol) use their codes. "Other" takes whatever is typed.
+const CURRENCIES = {
+  HKD: 'HK$', USD: 'US$', CNY: 'CN¥', EUR: '€', JPY: 'JP¥', GBP: '£', CHF: 'CHF', CAD: 'C$', AUD: 'A$', NZD: 'NZ$',
+  SEK: 'SEK', NOK: 'NOK',
+};
+const defaultCurrency = (source) => (source === 'usprime' ? 'USD' : 'HKD');
+let currencyChosen = false; // the user picked a currency themselves
+const currentCurrency = () =>
+  $('currency').value === 'other' ? $('customCur').value.trim() : CURRENCIES[$('currency').value];
 
 const CROSS_CHECK = {
   match: 'Cross-checked daily against HSBC’s official prime rate page: matches.',
@@ -502,6 +511,10 @@ function writeQuery(r) {
   if (hasSpread(r.source)) q.set('spread', String(r.spreadA ?? r.spread));
   if (isFixed(r)) q.set('rate', String(r.fixedRate));
   if (r.rows === 'rate') q.set('rows', 'rate');
+  // Only when it differs from the rate's default, so ordinary links stay short
+  const code = $('currency').value;
+  if (code === 'other') q.set('cur', `other:${r.currency}`);
+  else if (code !== defaultCurrency(r.source)) q.set('cur', code);
   if (r.compounding !== 'none') q.set('comp', r.compounding);
   if (PERIOD_NAME[r.compounding] && r.compoundDates === 'calendar') q.set('cdates', 'calendar');
   if (r.switch) {
@@ -537,6 +550,15 @@ function readQuery() {
   if (q.get('basis') in BASES) $('basis').value = q.get('basis');
   if (q.get('round') in ROUNDINGS) $('rounding').value = q.get('round');
   if (q.get('rows') === 'rate') $('rows').value = 'rate';
+  const cur = q.get('cur') ?? '';
+  if (cur.startsWith('other:') && cur.length > 6) {
+    $('currency').value = 'other';
+    $('customCur').value = cur.slice(6, 14);
+    currencyChosen = true;
+  } else if (cur in CURRENCIES) {
+    $('currency').value = cur;
+    currencyChosen = true;
+  }
   const spread = Number(q.get('spread'));
   if (q.has('spread') && Number.isFinite(spread)) $('spread').value = String(spread);
   for (const pair of (q.get('pay') ?? '').split(',').filter(Boolean)) {
@@ -568,7 +590,8 @@ function readQuery() {
     $('switchOn').checked ||
     (q.get('basis') && q.get('basis') !== 'act/act') ||
     (q.get('round') && q.get('round') !== 'total') ||
-    q.get('rows') === 'rate';
+    q.get('rows') === 'rate' ||
+    currencyChosen;
   if (nonDefault) $('advanced').open = true;
   const rate = Number(q.get('rate'));
   if (q.has('rate') && Number.isFinite(rate)) $('fixedRate').value = String(rate);
@@ -584,11 +607,18 @@ function showSourceFields() {
   $('spread2Field').hidden = !hasSpread(currentSource2());
   $('fixed2Field').hidden = currentSource2() !== 'fixed';
   $('compoundDatesField').hidden = !PERIOD_NAME[$('compounding').value];
-  const cur = currencyOf(currentSource());
+  if (!currencyChosen) $('currency').value = defaultCurrency(currentSource());
+  $('customCurField').hidden = $('currency').value !== 'other';
+  const cur = currentCurrency() || '¤';
   document.querySelectorAll('#form .cur').forEach((el) => (el.textContent = cur));
   document.querySelectorAll('#form .pay-amount').forEach((el) => (el.placeholder = `Amount (${cur})`));
 }
 
+$('currency').addEventListener('change', () => {
+  currencyChosen = true;
+  showSourceFields();
+});
+$('customCur').addEventListener('input', showSourceFields);
 $('share').addEventListener('click', () => copyLink(location.href, $('shareStatus')));
 // Save: keep this calculation (its link and a name) in the browser, listed under "Saved calculations"
 const SHORT_NAMES = { judgment: 'Judgment debt rate', prime: 'HSBC prime', usprime: 'US prime' };
@@ -651,7 +681,7 @@ function addEventRow(kind, date = '', amount = '', label = '') {
   const a = input('text', 'pay-amount', `${cfg.aria} amount`, amount === '' ? '' : money.format(amount));
   a.inputMode = 'decimal';
   a.autocomplete = 'off';
-  a.placeholder = `Amount (${currencyOf(currentSource())})`;
+  a.placeholder = `Amount (${currentCurrency() || '¤'})`;
   a.addEventListener('blur', () => {
     const n = parseNumber(a.value);
     if (a.value.trim() && Number.isFinite(n)) a.value = money.format(n);
@@ -818,6 +848,12 @@ $('form').addEventListener('submit', (e) => {
     spread: switchTo ? 0 : spread,
   };
 
+  const currency = currentCurrency();
+  if (!currency) {
+    clearResults();
+    showError('Enter a currency symbol or code (Advanced settings), e.g. S$ or SGD.');
+    return;
+  }
   try {
     const result = calculateInterest({ ...calcInput, compounding, compoundDates });
     const rows = $('rows').value;
@@ -829,7 +865,7 @@ $('form').addEventListener('submit', (e) => {
       // For the comparison line: the same calculation as simple interest
       simpleInterest: compounding === 'none' ? null : calculateInterest({ ...calcInput, compounding: 'none' }).totalInterest,
       source,
-      currency: currencyOf(source),
+      currency,
       fixedRate,
       spreadA: spread,
       switch: switchTo,
@@ -859,6 +895,7 @@ $('clear').addEventListener('click', () => {
   $('additionRows').replaceChildren();
   $('advanced').open = false;
   $('cashFlows').open = false;
+  currencyChosen = false;
   updatePaymentFields();
   showSourceFields();
   clearResults();

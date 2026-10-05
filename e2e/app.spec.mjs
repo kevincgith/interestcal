@@ -435,3 +435,42 @@ test('cash flows: collapsed by default, counts what is inside, and opens for a l
   await page.locator('#clear').click();
   await expect(page.locator('#cashFlows')).not.toHaveAttribute('open', '');
 });
+
+test('currency: HKD by default, USD for US prime, a chosen one sticks, and Other takes any symbol', async ({ page }) => {
+  const principalLabel = page.locator('label', { hasText: 'Principal (' }).first();
+  await page.goto('./');
+  await expect(page.locator('#currency')).toHaveValue('HKD');
+  await page.locator('input[name="source"][value="usprime"]').check();
+  await expect(page.locator('#currency')).toHaveValue('USD');
+  await expect(principalLabel).toContainText('Principal (US$)');
+  await page.locator('input[name="source"][value="judgment"]').check();
+  await expect(page.locator('#currency')).toHaveValue('HKD');
+
+  // A currency the user picks stays when the rate changes, and goes in the link
+  await page.locator('#advanced summary').click();
+  await page.locator('#currency').selectOption('GBP');
+  await page.locator('input[name="source"][value="usprime"]').check();
+  await expect(page.locator('#currency')).toHaveValue('GBP');
+  await expect(principalLabel).toContainText('Principal (£)');
+  await page.locator('#form button[type="submit"]').click();
+  await expect(page).toHaveURL(/cur=GBP/);
+
+  // Other: whatever is typed
+  await page.locator('#currency').selectOption('other');
+  await expect(page.locator('#customCurField')).toBeVisible();
+  await page.locator('#customCur').fill('S$');
+  await expect(principalLabel).toContainText('Principal (S$)');
+  await page.locator('#form button[type="submit"]').click();
+  await expect(page).toHaveURL(/cur=other%3AS%24/);
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download Word' }).click()]);
+  const doc = (await (await import('node:fs/promises')).readFile(await download.path())).toString('utf8');
+  expect(doc).toContain('Interest on the Debt of S$1,000,000.00');
+
+  // The link reopens with it; Reset goes back to HKD
+  await page.reload();
+  await expect(page.locator('#currency')).toHaveValue('other');
+  await expect(page.locator('#customCur')).toHaveValue('S$');
+  await page.locator('#clear').click();
+  await expect(page.locator('#currency')).toHaveValue('HKD');
+  await expect(principalLabel).toContainText('Principal (HK$)');
+});
