@@ -598,3 +598,23 @@ test('the same start and end date shows an error instead of a zero result', asyn
   await expect(page.locator('#error')).toBeHidden();
   await expect(total(page)).not.toHaveText('');
 });
+
+test('help opens only from the "?" itself, not by clicking the label text', async ({ page }) => {
+  await page.goto('./');
+  await expect(total(page)).not.toHaveText('');
+  await page.locator('#advanced summary').click();
+  for (const [, helpName, field] of [
+    ['Day count basis', 'What is day count basis?', '#basis'],
+    ['Rounding', 'What is rounding?', '#rounding'],
+    ['End date', /end date earn interest/, '#end'],
+  ]) {
+    const label = page.locator('label', { has: page.locator(field) });
+    const text = label.locator('.help-text');
+    await label.locator('.label-row').click({ position: { x: 4, y: 6 } }); // on the words, away from the "?"
+    await expect(text).toBeHidden();
+    await label.getByRole('button', { name: helpName }).click();
+    await expect(text).toBeVisible();
+    await label.getByRole('button', { name: helpName }).click();
+    await expect(text).toBeHidden();
+  }
+});

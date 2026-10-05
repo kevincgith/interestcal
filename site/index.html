@@ -57,7 +57,7 @@
           <button type="button" class="chip" data-date="year" data-target="start">Year end</button>
         </span>
       </label>
-      <label><span class="label-row">End date <button type="button" class="help" aria-expanded="false" aria-label="Why doesn’t the end date earn interest?">?</button></span>
+      <label for="end"><span class="label-row">End date <button type="button" class="help" aria-expanded="false" aria-label="Why doesn’t the end date earn interest?">?</button></span>
         <input id="end" type="date" required>
         <span class="help-text" hidden>The end date doesn’t earn interest. Each day earns interest once. A period counts the days from its start date up to, but not including, its end date (end date minus start date, as in Excel and the original workbook), so 1 to 2 January is 1 day. Where one period ends and the next begins, that shared date is counted once, in the later period, so no day is charged twice. If the end date itself should earn interest, use the next day as the end date.</span>
         <span class="date-shortcuts">
@@ -84,7 +84,7 @@
       <details id="advanced" class="advanced">
         <summary>Advanced settings <span class="muted">(currency, day count, rows, rounding, compounding, rate switch)</span></summary>
         <div class="advanced-body">
-          <label><span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
+          <label for="currency"><span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
             <select id="currency">
               <option value="HKD" selected>HKD (HK$)</option>
               <option value="USD">USD (US$)</option>
@@ -105,7 +105,7 @@
           <label id="customCurField" hidden>Currency symbol or code
             <input id="customCur" type="text" maxlength="8" autocomplete="off" placeholder="e.g. S$ or SGD">
           </label>
-          <label><span class="label-row">Day count basis <button type="button" class="help" aria-expanded="false" aria-label="What is day count basis?">?</button></span>
+          <label for="basis"><span class="label-row">Day count basis <button type="button" class="help" aria-expanded="false" aria-label="What is day count basis?">?</button></span>
             <select id="basis">
               <option value="act/act" selected>Actual/Actual</option>
               <option value="act/365">Actual/365 Fixed</option>
@@ -113,21 +113,21 @@
             </select>
             <span class="help-text" hidden>How many days a year has. Actual/Actual (used by the HK courts): 366 in a leap year, 365 otherwise, splitting the period at 1 January when that changes. Actual/365 Fixed: always 365. Actual/360: always 360, used for some US dollar loans.</span>
           </label>
-          <label><span class="label-row">Calculation rows <button type="button" class="help" aria-expanded="false" aria-label="What is calculation rows?">?</button></span>
+          <label for="rows"><span class="label-row">Calculation rows <button type="button" class="help" aria-expanded="false" aria-label="What is calculation rows?">?</button></span>
             <select id="rows">
               <option value="all" selected>Detailed (each published rate)</option>
               <option value="rate">Combined (per rate period)</option>
             </select>
             <span class="help-text" hidden>Detailed: a row for each published rate (even when a quarter repeats the same rate), each payment and each new year. Combined: consecutive rows at the same rate become one, with the working shown as a sum. The total is the same either way.</span>
           </label>
-          <label><span class="label-row">Rounding <button type="button" class="help" aria-expanded="false" aria-label="What is rounding?">?</button></span>
+          <label for="rounding"><span class="label-row">Rounding <button type="button" class="help" aria-expanded="false" aria-label="What is rounding?">?</button></span>
             <select id="rounding">
               <option value="total" selected>Round the total only</option>
               <option value="period">Round each period</option>
             </select>
             <span class="help-text" hidden>Round the total only: rows are added unrounded and only the total is rounded to cents (the original workbook’s method). Round each period: each row is rounded to cents first, which can change the total by a cent or two.</span>
           </label>
-          <label><span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="What is compounding?">?</button></span>
+          <label for="compounding"><span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="What is compounding?">?</button></span>
             <select id="compounding">
               <option value="none" selected>None (simple interest)</option>
               <option value="monthly">Monthly</option>
@@ -138,7 +138,7 @@
             </select>
             <span class="help-text" hidden>None: simple interest, so interest never earns interest (the usual position for judgment debts). Monthly, quarterly or yearly: unpaid interest is added to the principal at the end of each period and earns interest from then. Daily or continuous: compounded every day, or continuously.</span>
           </label>
-          <label id="compoundDatesField" hidden><span class="label-row">Compounding dates <button type="button" class="help" aria-expanded="false" aria-label="What is compounding dates?">?</button></span>
+          <label id="compoundDatesField" for="compoundDates" hidden><span class="label-row">Compounding dates <button type="button" class="help" aria-expanded="false" aria-label="What is compounding dates?">?</button></span>
             <select id="compoundDates">
               <option value="start" selected>From the start date (anniversaries)</option>
               <option value="calendar">Calendar period ends</option>
@@ -190,7 +190,7 @@
             <div id="paymentRows" class="event-rows"></div>
             <div class="payments-actions">
               <button type="button" id="addPayment" class="secondary">+ Add payment</button>
-              <label id="allocationField" class="inline" hidden>Apply payments to <button type="button" class="help" aria-expanded="false" aria-label="What is apply payments to?">?</button>
+              <label id="allocationField" for="allocation" class="inline" hidden>Apply payments to <button type="button" class="help" aria-expanded="false" aria-label="What is apply payments to?">?</button>
                 <select id="allocation">
                   <option value="interest" selected>Interest first, then principal</option>
                   <option value="principal">Principal first, then interest</option>
