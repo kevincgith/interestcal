@@ -236,7 +236,7 @@ export function buildWorkbook(XLSX, r, ctx) {
       : ctx.sourceUrl
         ? [['Source', hyperlink(ctx.sourceUrl)], ['Rates as at', date(ctx.updatedAt)]]
         : [['Rate', `${ctx.rateBasis} (no published rate source)`]]),
-    ['Calculation period', `${fmtDate(r.start)} to ${fmtDate(r.shownEnd ?? r.end)} (${r.inclusive ? 'both dates included' : 'end date excluded'})`],
+    ['Calculation period', `${fmtDate(r.start)} to ${fmtDate(r.shownEnd ?? r.end)} (${r.inclusive ? 'both days inclusive' : 'start inclusive, end exclusive'})`],
   ];
   if (ctx.crossCheck) {
     rateRows.push(['Cross-check', ctx.crossCheck.summary], ['', hyperlink(ctx.crossCheck.source)]);

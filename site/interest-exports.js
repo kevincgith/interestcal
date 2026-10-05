@@ -123,7 +123,7 @@ export function setupInterestExports({
       ['Principal', money.format(r.principal)],
       ['Start Date', r.start],
       ['End Date', r.shownEnd ?? r.end],
-      ...(r.inclusive ? [['Days Counted', 'Both start and end dates']] : []),
+      ...(r.inclusive ? [['Days Counted', 'Both days inclusive']] : []),
       ['Total Interest', money.format(r.totalInterest)],
       ...(r.additions.length ? [['Principal Added', money.format(r.totalAdded)]] : []),
       ...(r.payments.length
