@@ -135,12 +135,14 @@ test('mortgage exports: PDF has the schedule on every page; Excel totals are liv
   const pdf = doc.output();
   assert.ok(doc.getNumberOfPages() > 3);
   assert.ok(pdf.includes('4216.04') && pdf.includes('Extra') && pdf.includes(`Page ${doc.getNumberOfPages()} of`));
+  assert.ok(pdf.includes('Disclaimer: for general information only') && pdf.includes('/URI (https://app.kevinlhc.com/interestcal/terms.html)'));
 
   const wb = buildMortgageWorkbook(XLSX, m, { inputs: [['Loan', '1,000,000.00']], lines: ['Rate: 3%'], primeSource: 'https://example.com' });
   const out = XLSX.read(XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }), { type: 'buffer', cellFormula: true });
   const ws = out.Sheets.Mortgage;
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
   const at = (label) => rows.findIndex((r) => r[0] === label) + 1;
+  assert.match(rows[1][0], /^Disclaimer: .*terms\.html$/);
   assert.match(ws[`B${at('Total interest')}`].f, /^SUM\(E\d+:E\d+\)$/);
   close(ws[`B${at('Total interest')}`].v, m.totalInterest);
   assert.equal(rows.filter((r) => typeof r[0] === 'number').length, m.rows.length);

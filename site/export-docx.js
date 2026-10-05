@@ -10,6 +10,8 @@
 // Dates are the calculator's own periods: "from" the first day, which earns interest, "to" the end date, which doesn't
 // (so 20 September to 2 October is 12 days), as on screen and in the other downloads.
 
+import { DISCLAIMER_WITH_TERMS } from './disclaimer.js?v=__BUILD__';
+
 const LONG_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
   'November', 'December'];
 /** "2026-10-01" -> "1 October 2026" */
@@ -112,7 +114,8 @@ export function documentXml(r, { money, rate, formula, currency: cur = 'HK$', in
   const sourceNote = sources?.length
     ? para('') + para(run(`Source of rates: ${sources.map((x) => `${x.name} (as at ${longDate(x.asAt)})`).join('; ')}.`, { small: true }))
     : '';
-  const table = `${inputsBlock}${tbl(rows)}${para('')}${tbl(summary)}${para('')}${daily}${sourceNote}`;
+  const disclaimer = para('') + para(run(DISCLAIMER_WITH_TERMS, { small: true }));
+  const table = `${inputsBlock}${tbl(rows)}${para('')}${tbl(summary)}${para('')}${daily}${sourceNote}${disclaimer}`;
 
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +

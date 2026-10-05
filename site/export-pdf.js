@@ -2,6 +2,8 @@
 // this runs both in the browser (lazy-loaded vendor builds) and in Node tests (npm packages).
 // No raw URLs are printed: sources are named, and the names are clickable links.
 
+import { pdfDisclaimer } from './disclaimer.js?v=__BUILD__';
+
 const MARGIN = 40;
 const MUTED = [90, 90, 90];
 const BORDER = [200, 200, 200];
@@ -208,6 +210,8 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
       columnStyles: { 1: { halign: 'right' } },
     });
   }
+
+  pdfDisclaimer(doc, y, { margin: MARGIN, color: MUTED, clean: pdfText });
 
   // ---- Footer on every page ----
   const pages = doc.getNumberOfPages();

@@ -5,6 +5,8 @@
 // live Excel formulas, so the workbook can be audited or tweaked in Excel.
 // Sheet 2 "Rates": the rate source URL and the rates used in this calculation.
 
+import { DISCLAIMER_WITH_TERMS } from './disclaimer.js?v=__BUILD__';
+
 const MONEY = '#,##0.00';
 const DATE = 'dd-mmm-yyyy';
 const PCT = '0.000%';
@@ -63,6 +65,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   // ---- Sheet 1: Calculation ----
   const rows = [
     [text('HK Interest Calculator')],
+    [DISCLAIMER_WITH_TERMS],
     [],
     ['Rate basis', ctx.rateBasis],
   ];

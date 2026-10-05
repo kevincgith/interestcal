@@ -55,6 +55,8 @@ test('Word: a valid .docx with one row per period, worded like a statutory deman
   assert.match(text, /\(iii\)\tInterest .* from 2 April 2026 to 20 April 2026 \(18 days\)/);
   assert.ok(text.includes(`Total:${money(r.totalInterest)}`));
   assert.match(files['word/styles.xml'], /Times New Roman/);
+  // Disclaimer and terms link close the document
+  assert.match(text, /Disclaimer: for general information only, not legal, financial or mortgage advice\..*Terms of use: https:\/\/app\.kevinlhc\.com\/interestcal\/terms\.html$/);
 });
 
 test('Word: text is XML-escaped and a single day is "1 day"', () => {
@@ -121,5 +123,5 @@ test('Word: source of rates note at the end, only when given', () => {
     { name: 'HK Judiciary: interest rates on judgment debts', asAt: '2026-10-05' },
     { name: 'Federal Reserve H.15: bank prime loan rate', asAt: '2026-10-04' },
   ] }));
-  assert.match(text, /Source of rates: HK Judiciary: interest rates on judgment debts \(as at 5 October 2026\); Federal Reserve H\.15: bank prime loan rate \(as at 4 October 2026\)\.\n*$/);
+  assert.match(text, /Source of rates: HK Judiciary: interest rates on judgment debts \(as at 5 October 2026\); Federal Reserve H\.15: bank prime loan rate \(as at 4 October 2026\)\.\n+Disclaimer: /);
 });

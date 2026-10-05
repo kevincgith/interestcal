@@ -2,6 +2,7 @@
 import { mortgageSummary, mortgageRates, comparePlans, yearlySummary, effectiveRate, mortgageLine } from './mortgage.js?v=__BUILD__';
 import { buildMortgagePdf, buildMortgageWorkbook } from './mortgage-export.js?v=__BUILD__';
 import { renderRateChart } from './rate-chart.js?v=__BUILD__';
+import { DISCLAIMER_WITH_TERMS } from './disclaimer.js?v=__BUILD__';
 import {
   $, money, fmtDate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
   wireSteppers, autoFitText, flash,
@@ -710,6 +711,7 @@ $('mCsv').addEventListener('click', () => {
     ...m.rows.map((r) => [r.no, r.date, rate3(r.rate),
       ...(m.inputs.type === 'hibor' ? [rate3(r.hLeg), rate3(r.cap), r.hLeg < r.cap ? 'HIBOR' : 'Cap'] : []), money.format(r.payment), money.format(r.interest), money.format(r.principal), money.format(r.extra), money.format(r.balance)]),
   ];
+  lines.push([], [DISCLAIMER_WITH_TERMS]);
   const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
   const csv = '﻿' + lines.map((l) => l.map(cell).join(',')).join('\n') + '\n';
   download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), exportName(m, 'csv'));

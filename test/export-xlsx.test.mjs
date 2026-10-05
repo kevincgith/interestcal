@@ -38,6 +38,7 @@ test('Excel export: calculation sheet with live formulas, rates sheet with sourc
   assert.deepEqual(out.SheetNames, ['Calculation', 'Rates']);
 
   const calc = rows('Calculation');
+  assert.match(calc[1][0], /^Disclaimer: for general information only, .*Terms of use: https:\/\/app\.kevinlhc\.com\/interestcal\/terms\.html$/);
   const ws = out.Sheets.Calculation;
   const head = findRow(calc, 'Period Start');
   assert.deepEqual(calc[head], ['Period Start', 'Period End', 'No. of Days', 'Interest Rate', 'Year Days', 'Formula', 'Interest Amount']);

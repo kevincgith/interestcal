@@ -37,12 +37,13 @@ test('PDF report: text content, named source links, no raw URLs in the text', ()
   const pdf = doc.output();
   assert.ok(pdf.startsWith('%PDF-'));
   assert.equal(doc.getNumberOfPages(), 1);
-  for (const s of ['HK Interest Calculator', 'Total interest', '5.125% + 1.000% =', '100000 × 6.125% × 30 ÷ 365', 'HKMA Monthly Statistical Bulletin', 'Source:', 'Page 1 of 1']) {
+  for (const s of ['HK Interest Calculator', 'Total interest', '5.125% + 1.000% =', '100000 × 6.125% × 30 ÷ 365', 'HKMA Monthly Statistical Bulletin', 'Source:', 'Page 1 of 1', 'Disclaimer: for general information only', 'Terms of Use']) {
     assert.ok(pdf.includes(s), `missing: ${s}`);
   }
   // Links are annotations (clickable), not printed text
   assert.match(pdf, /\/URI \(https:\/\/www\.hkma\.gov\.hk\/x\.xls\)/);
   assert.match(pdf, /\/URI \(https:\/\/www\.hsbc\.com\.hk\//);
+  assert.match(pdf, /\/URI \(https:\/\/app\.kevinlhc\.com\/interestcal\/terms\.html\)/);
   assert.ok(!/\(https:\/\/www\.hkma[^)]*\) Tj/.test(pdf), 'URL should not be printed as text');
 });
 

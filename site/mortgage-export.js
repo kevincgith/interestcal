@@ -1,5 +1,7 @@
 // PDF and Excel exports for the Mortgage tab. Libraries are passed in (browser vendor builds or npm packages in tests).
 
+import { pdfDisclaimer, DISCLAIMER_WITH_TERMS } from './disclaimer.js?v=__BUILD__';
+
 const MARGIN = 40;
 const MUTED = [90, 90, 90];
 const BORDER = [200, 200, 200];
@@ -108,6 +110,7 @@ export function buildMortgagePdf({ jsPDF, autoTable }, m, ctx) {
     },
     showHead: 'everyPage',
   });
+  pdfDisclaimer(doc, y, { margin: MARGIN, color: MUTED, clean: pdfText });
 
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
@@ -134,7 +137,7 @@ const cell = (v) => (v && typeof v === 'object' ? v : { t: typeof v === 'number'
  *   hiborRecentSource?: string }
  */
 export function buildMortgageWorkbook(XLSX, m, ctx) {
-  const rows = [[{ t: 's', v: 'HK Interest Calculator: Mortgage' }], []];
+  const rows = [[{ t: 's', v: 'HK Interest Calculator: Mortgage' }], [DISCLAIMER_WITH_TERMS], []];
   for (const [k, v] of ctx.inputs) rows.push([k, v]);
   const src = [
     ctx.primeSource && ['HSBC prime rate source', { t: 's', v: ctx.primeSource, l: { Target: ctx.primeSource } }],

@@ -106,6 +106,7 @@ test('PDF, Excel, Word and CSV download with the right names; exports omit the s
     if (ext === 'csv') {
       const csv = bytes.toString('utf8');
       expect(csv).toContain('Total Interest,"4,434.64"');
+      expect(csv.trimEnd()).toMatch(/Terms of use: https:\/\/app\.kevinlhc\.com\/interestcal\/terms\.html"?$/);
       expect(csv).not.toContain('127.0.0.1');
     }
   }
