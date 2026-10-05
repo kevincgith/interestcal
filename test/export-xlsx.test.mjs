@@ -96,10 +96,22 @@ test('Excel export: daily interest row is a live formula', () => {
   const calc = rows('Calculation');
   const i = calc.findIndex((x) => String(x[0]).startsWith('Daily interest thereafter'));
   assert.ok(i >= 0);
-  assert.equal(calc[i][0], 'Daily interest thereafter (at 8.000% ÷ 365)');
+  // Actual/Actual: a non-leap-year row and a leap-year row
+  assert.equal(calc[i][0], 'Daily interest thereafter, non-leap year (at 8.000% ÷ 365)');
+  assert.equal(calc[i + 1][0], 'Daily interest thereafter, leap year (at 8.000% ÷ 366)');
   const cell = out.Sheets.Calculation[`B${i + 1}`];
   assert.match(cell.f, /^\$B\$\d+\*0\.08\/365$/);
   assert.ok(Math.abs(cell.v - (135436.48 * 0.08) / 365) < 1e-9);
+  const leap = out.Sheets.Calculation[`B${i + 2}`];
+  assert.match(leap.f, /^\$B\$\d+\*0\.08\/366$/);
+  assert.ok(Math.abs(leap.v - (135436.48 * 0.08) / 366) < 1e-9);
+});
+
+test('Excel export: Actual/365 Fixed has one daily interest row', () => {
+  const r = calculateInterest({ principal: 135436.48, start: '2025-11-24', end: '2026-04-20', rates: judgment, basis: 'act/365' });
+  const calc = roundTrip(r, judgment, 'judgment').rows('Calculation');
+  const labels = calc.map((x) => String(x[0])).filter((x) => x.startsWith('Daily interest thereafter'));
+  assert.deepEqual(labels, ['Daily interest thereafter (at 8.000% ÷ 365)']);
 });
 
 test('Excel export: a fixed rate has no source rows or rate table', () => {

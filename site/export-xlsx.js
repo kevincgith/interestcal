@@ -95,8 +95,9 @@ export function buildWorkbook(XLSX, r, ctx) {
         ...(withPayments ? ['Payments received'] : []),
         ...(compounding !== 'none' ? ['Interest added to principal'] : []),
         'Outstanding principal', 'Unpaid interest', 'Total amount due', 'Total no. of days', 'perDiem',
+        ...(r.perDiem?.byYearDays ? ['perDiemLeap'] : []),
       ]
-    : ['Total interest', 'Total amount due', 'Total no. of days', 'perDiem'];
+    : ['Total interest', 'Total amount due', 'Total no. of days', 'perDiem', ...(r.perDiem?.byYearDays ? ['perDiemLeap'] : [])];
   const totalAt = (label) => totalsRow + 1 + totalLabels.indexOf(label); // 1-based Excel row
   totalLabels.forEach(() => rows.push([]));
   rows.push([]);
@@ -205,12 +206,20 @@ export function buildWorkbook(XLSX, r, ctx) {
   set('Total no. of days', ['Total no. of days', formula(hasPeriods ? `SUM(${DAYS}${first}:${DAYS}${last})` : '0', r.totalDays)]);
   // Daily interest after the end date: principal still owed x rate in force on the end date / year days
   const owed = withEvents ? `B${totalAt('Outstanding principal')}` : P;
-  set('perDiem', r.perDiem
-    ? [
-        `Daily interest thereafter (at ${(r.perDiem.rate * 100).toFixed(3)}% ÷ ${r.perDiem.yearDays})`,
-        formula(`${owed}*${tidy(r.perDiem.rate)}/${r.perDiem.yearDays}`, r.perDiem.amount, MONEY),
-      ]
-    : ['Daily interest thereafter', '–']);
+  const pct = r.perDiem && `${(r.perDiem.rate * 100).toFixed(3)}%`;
+  if (r.perDiem?.byYearDays) {
+    // Actual/Actual: one row for a normal year (÷ 365) and one for a leap year (÷ 366)
+    const [a, b] = r.perDiem.byYearDays;
+    set('perDiem', [`Daily interest thereafter, non-leap year (at ${pct} ÷ ${a.yearDays})`,
+      formula(`${owed}*${tidy(r.perDiem.rate)}/${a.yearDays}`, a.amount, MONEY)]);
+    set('perDiemLeap', [`Daily interest thereafter, leap year (at ${pct} ÷ ${b.yearDays})`,
+      formula(`${owed}*${tidy(r.perDiem.rate)}/${b.yearDays}`, b.amount, MONEY)]);
+  } else {
+    set('perDiem', r.perDiem
+      ? [`Daily interest thereafter (at ${pct} ÷ ${r.perDiem.yearDays})`,
+          formula(`${owed}*${tidy(r.perDiem.rate)}/${r.perDiem.yearDays}`, r.perDiem.amount, MONEY)]
+      : ['Daily interest thereafter', '–']);
+  }
 
   const widths = [34, 44, 12, ...(withEvents ? [14] : []), ...(withSpread ? [12, 10] : []), 14, 11, 40, 16, ...(hasNotes ? [34] : [])];
   const calc = sheetFrom(XLSX, rows, widths);

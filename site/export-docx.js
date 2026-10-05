@@ -81,10 +81,15 @@ export function documentXml(r, { money, rate, formula, currency: cur = 'HK$' }) 
     ...(paid > 0 ? [line('Less: payments received', `(${money(paid)})`)] : []),
     line(`Total amount due as at ${longDate(r.end)}`, money(r.totalDue), true),
   ];
-  const daily = r.perDiem
-    ? para(run(`Daily interest from ${longDate(r.end)} until payment: ${cur}${money(r.perDiem.amount)} ` +
-        `(i.e. ${money(r.outstandingPrincipal)} × ${rate(r.perDiem.rate)} ÷ ${r.perDiem.yearDays}).`))
-    : '';
+  const owedTimesRate = r.perDiem && `${money(r.outstandingPrincipal)} × ${rate(r.perDiem.rate)}`;
+  const daily = !r.perDiem
+    ? ''
+    : r.perDiem.byYearDays // Actual/Actual: a normal year and a leap year
+      ? para(run(`Daily interest from ${longDate(r.end)} until payment: ` +
+          r.perDiem.byYearDays.map((x) => `${cur}${money(x.amount)} in a ${x.yearDays === 366 ? 'leap' : 'non-leap'} year ` +
+            `(i.e. ${owedTimesRate} ÷ ${x.yearDays})`).join(' or ') + '.'))
+      : para(run(`Daily interest from ${longDate(r.end)} until payment: ${cur}${money(r.perDiem.amount)} ` +
+          `(i.e. ${owedTimesRate} ÷ ${r.perDiem.yearDays}).`));
 
   const border = (side) => `<w:${side} w:val="single" w:sz="4" w:space="0" w:color="000000"/>`;
   const tbl = (rowsXml) =>

@@ -294,8 +294,12 @@ export function calculateInterest({
   // year days. Used for "...plus HK$X per day until payment". null if no rate applies on the end date.
   const atEnd = sorted.filter((r) => r.day <= loanEnd).at(-1);
   const endYearDays = basis === 'act/360' ? 360 : basis === 'act/365' ? 365 : isLeapYear(yearOf(loanEnd)) ? 366 : 365;
+  // Actual/Actual: the daily figure depends on the year, so give both (÷ 365 and ÷ 366) in byYearDays
   const perDiem = atEnd
-    ? { amount: (balance * atEnd.rate) / endYearDays, rate: atEnd.rate, baseRate: atEnd.baseRate, yearDays: endYearDays }
+    ? {
+        amount: (balance * atEnd.rate) / endYearDays, rate: atEnd.rate, baseRate: atEnd.baseRate, yearDays: endYearDays,
+        ...(basis === 'act/act' && { byYearDays: [365, 366].map((y) => ({ yearDays: y, amount: (balance * atEnd.rate) / y })) }),
+      }
     : null;
 
   return {

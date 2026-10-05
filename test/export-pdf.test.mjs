@@ -54,7 +54,7 @@ test('PDF report: fixed rate has no rates section; daily interest is shown', () 
     warnings: [],
     crossCheck: null,
     summaryLine: { text: 'Fixed rate of 8.000% p.a.' },
-    perDiem: '80.00 (at 8.000% ÷ 365)',
+    perDiem: 'HK$80.00 (at 8.000% ÷ 365)',
     fmt: { ...fmt, rateWithSpread: (p) => `${(p.rate * 100).toFixed(3)}%` },
     generatedOn: '30-Sep-2026',
   });

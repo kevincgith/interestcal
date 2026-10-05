@@ -81,7 +81,8 @@ test('Word summary: principal + interest = total due at the end date, then the d
   assert.equal(amount(text, 'Principal'), 1000000);
   assert.equal(amount(text, 'Interest \\(as above\\)'), Number(r.totalInterest.toFixed(2)));
   assert.equal(amount(text, 'Total amount due as at 5 October 2026'), Number(r.totalDue.toFixed(2)));
-  assert.match(text, /Daily interest from 5 October 2026 until payment: HK\$219\.18 \(i\.e\. 1,000,000\.00 × 8\.000% ÷ 365\)\./);
+  // Actual/Actual (the default): both a non-leap and a leap year
+  assert.match(text, /Daily interest from 5 October 2026 until payment: HK\$219\.18 in a non-leap year \(i\.e\. 1,000,000\.00 × 8\.000% ÷ 365\) or HK\$218\.58 in a leap year \(i\.e\. 1,000,000\.00 × 8\.000% ÷ 366\)\./);
   assert.doesNotMatch(text, /payments received|Principal added later/);
 });
 
@@ -95,5 +96,12 @@ test('Word summary with principal added and a payment still adds up to the total
     'Total amount due as at 1 July 2026'].map((l) => amount(text, l));
   assert.deepEqual([p, a, paid], [100000, 20000, 30000]);
   assert.ok(Math.abs(p + a + i - paid - due) < 0.011, `${p} + ${a} + ${i} - ${paid} = ${due}`);
-  assert.match(text, /Daily interest from 1 July 2026 until payment: HK\$[\d,.]+ \(i\.e\. [\d,.]+ × 8\.000% ÷ 365\)/);
+  assert.match(text, /Daily interest from 1 July 2026 until payment: HK\$[\d,.]+ in a non-leap year \(i\.e\. 92,231\.23 × 8\.000% ÷ 365\) or HK\$[\d,.]+ in a leap year/);
+});
+
+test('Word: Actual/365 Fixed gives one daily figure', () => {
+  const r = calculateInterest({ principal: 1000000, start: '2026-01-01', end: '2026-10-05', rates: [{ effective: '2000-01-01', rate: 8 }], basis: 'act/365' });
+  const text = textOf(buildDocx(r, { money, rate, formula }));
+  assert.match(text, /Daily interest from 5 October 2026 until payment: HK\$219\.18 \(i\.e\. 1,000,000\.00 × 8\.000% ÷ 365\)\./);
+  assert.doesNotMatch(text, /leap year/);
 });

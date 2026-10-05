@@ -310,3 +310,7 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 .saved-list .saved-name { flex: 1 1 260px; width: auto; height: 36px; font-weight: 600; }
 .saved-list .saved-meta { flex: 0 1 auto; }
 .saved-list .remove { margin-left: auto; }
+
+/* Daily interest under Actual/Actual: one line per year length */
+.per-diem-line { display: block; white-space: nowrap; }
+.per-diem-basis { font-size: 0.8rem; font-weight: normal; color: var(--muted); }

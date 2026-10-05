@@ -44,7 +44,11 @@ test('changing inputs does not recalculate until Calculate is pressed', async ({
 test('fixed rate: interest, daily interest, and no published rate table', async ({ page }) => {
   await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-02-01&basis=act%2Fact&round=total');
   await expect(total(page)).toHaveText('2,480.00');
+  // Actual/Actual: a normal year and a leap year
+  await expect(page.locator('#perDiem .per-diem-line')).toHaveText(['80.00 ÷ 365', '79.78 ÷ 366 (leap)']);
+  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-02-01&basis=act%2F365&round=total');
   await expect(page.locator('#perDiem')).toHaveText('80.00');
+  await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-02-01&basis=act%2Fact&round=total');
   await expect(page.locator('#verified')).toHaveText('Fixed rate of 8.000% p.a.');
   await expect(page.locator('#rateCard')).toBeHidden();
 });

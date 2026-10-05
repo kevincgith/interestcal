@@ -26,7 +26,7 @@ const pdfText = (s) =>
  * @param {string} [ctx.allocation]                  e.g. "Payments applied interest first, then principal."
  * @param {string} [ctx.compareLine]                 compounding vs simple interest
  * @param {{name: string, url: string}[]} [ctx.extraSources]  further sources after a rate switch
- * @param {string} [ctx.perDiem]                     e.g. "219.18 (at 8.000% ÷ 365)"
+ * @param {string} [ctx.perDiem]                     e.g. "HK$219.18 (at 8.000% ÷ 365)", with its currency
  * @param {string} [ctx.currency]                    'HK$' (default) or 'US$'
  * @param {string} [ctx.ratesHeading]                  e.g. "HSBC prime rates (3 of 191 rates, used from ...)"
  * @param {{name: string, url: string}} [ctx.source]   omitted for a fixed rate: no "rates used" section
@@ -131,7 +131,7 @@ export function buildPdf({ jsPDF, autoTable }, r, ctx) {
     headStyles: { fillColor: false, textColor: MUTED, fontStyle: 'normal', fontSize: 8, lineWidth: 0 },
     bodyStyles: { fontStyle: 'bold', fontSize: 13, lineWidth: { bottom: 0.75 } },
   });
-  if (ctx.perDiem) linkedLine({ text: `Daily interest thereafter: ${ctx.currency ?? 'HK$'}${ctx.perDiem}` });
+  if (ctx.perDiem) linkedLine({ text: `Daily interest thereafter: ${ctx.perDiem}` });
   if (ctx.summaryLine) linkedLine(ctx.summaryLine);
   if (ctx.compareLine) linkedLine({ text: ctx.compareLine });
 

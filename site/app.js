@@ -340,8 +340,16 @@ const rateBasisLabel = (r) =>
   (r.switch ? `; from ${fmtDate(r.switch.date)}: ${kindLabel(r.switch.source, r.switch.spread, r.switch.fixedRate)}` : '');
 
 // "HK$219.18 (at 8.000% ÷ 365)", or a dash when no rate applies on the end date
-const perDiemText = (r) =>
-  r.perDiem ? `${money.format(r.perDiem.amount)} (at ${fmtRate(r.perDiem.rate)} ÷ ${r.perDiem.yearDays})` : '–';
+// "HK$219.18 (at 8.000% ÷ 365)"; under Actual/Actual both years:
+// "HK$219.18 (at 8.000% ÷ 365, non-leap year) / HK$218.58 (÷ 366, leap year)"
+const LEAP = { 365: 'non-leap year', 366: 'leap year' };
+const perDiemText = (r) => {
+  if (!r.perDiem) return '–';
+  const [a, b] = r.perDiem.byYearDays ?? [];
+  if (!a) return `${r.currency}${money.format(r.perDiem.amount)} (at ${fmtRate(r.perDiem.rate)} ÷ ${r.perDiem.yearDays})`;
+  return `${r.currency}${money.format(a.amount)} (at ${fmtRate(r.perDiem.rate)} ÷ ${a.yearDays}, ${LEAP[a.yearDays]}) / ` +
+    `${r.currency}${money.format(b.amount)} (÷ ${b.yearDays}, ${LEAP[b.yearDays]})`;
+};
 
 // Inputs block, shown only when printing / saving as PDF (the form itself is hidden there)
 const printInputItems = (r) => [
@@ -453,8 +461,19 @@ function render(r) {
     ),
   );
   $('totalDays').textContent = r.totalDays;
-  $('perDiem').textContent = r.perDiem ? money.format(r.perDiem.amount) : '–';
-  $('perDiem').title = r.perDiem ? `${fmtRate(r.perDiem.rate)} × principal ÷ ${r.perDiem.yearDays}` : '';
+  // Actual/Actual: two figures, a normal year (÷ 365) and a leap year (÷ 366)
+  if (r.perDiem?.byYearDays) {
+    $('perDiem').replaceChildren(...r.perDiem.byYearDays.map((x) => {
+      const line = Object.assign(document.createElement('span'), { className: 'per-diem-line' });
+      line.append(money.format(x.amount), Object.assign(document.createElement('span'), {
+        className: 'per-diem-basis', textContent: ` ÷ ${x.yearDays}${x.yearDays === 366 ? ' (leap)' : ''}`,
+      }));
+      return line;
+    }));
+  } else {
+    $('perDiem').textContent = r.perDiem ? money.format(r.perDiem.amount) : '–';
+  }
+  $('perDiem').title = r.perDiem ? `${fmtRate(r.perDiem.rate)} × principal ÷ ${r.perDiem.byYearDays ? '365 or 366' : r.perDiem.yearDays}` : '';
   $('periods').replaceChildren(
     ...r.periods.map((p, i) => {
       const tr = row(
