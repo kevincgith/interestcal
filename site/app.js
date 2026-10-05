@@ -3,7 +3,7 @@ import {
   $, money, fmtDate, fmtRate, parseNumber, isIsoDate, link, row, copyLink, wireSteppers,
   autoFitText, flash, todayIso,
 } from './shared.js?v=__BUILD__';
-import { saveCalculation, renderSaved } from './saved.js?v=__BUILD__';
+import { saveCalculation, renderSaved, recordRecent, renderRecent } from './saved.js?v=__BUILD__';
 import { setupCashFlows, addEventRow, updatePaymentFields, readEventRows } from './cash-flows.js?v=__BUILD__';
 import { setupInterestExports } from './interest-exports.js?v=__BUILD__';
 import {
@@ -496,6 +496,38 @@ function showSourceFields() {
   document.querySelectorAll('#form .pay-amount').forEach((el) => (el.placeholder = `Amount (${cur})`));
 }
 
+// Start and end date shortcuts: today, the last day of last month, of last quarter (Mar, Jun, Sep or Dec) or of last
+// year. As when typed, the start date earns interest and the end date doesn't.
+function shortcutDate(kind) {
+  const [y, m, d] = todayIso().split('-').map(Number);
+  if (kind === 'today') return todayIso();
+  const lastDayBefore = (year, month) => new Date(Date.UTC(year, month - 1, 0)).toISOString().slice(0, 10); // day 0 = previous month's last day
+  if (kind === 'month') return lastDayBefore(y, m);
+  if (kind === 'year') return `${y - 1}-12-31`;
+  return lastDayBefore(y, m - ((m - 1) % 3)); // the month after the last quarter end is the first month of this quarter
+}
+document.querySelectorAll('[data-date]').forEach((btn) => {
+  btn.title = fmtDate(shortcutDate(btn.dataset.date));
+  btn.addEventListener('click', (e) => {
+    e.preventDefault(); // inside the date's label: don't open the date picker
+    const field = $(btn.dataset.target);
+    field.value = shortcutDate(btn.dataset.date);
+    field.dispatchEvent(new Event('input', { bubbles: true })); // inputs changed: press Calculate
+  });
+});
+
+// "?" help: each button shows or hides the explanation next to it (the help-text in the same label, or right after it)
+document.querySelectorAll('#form .help').forEach((btn) => {
+  const label = btn.closest('label');
+  const text = label.querySelector('.help-text') ?? label.nextElementSibling;
+  btn.addEventListener('click', (e) => {
+    e.preventDefault(); // inside a label: don't also toggle its checkbox or open its list
+    const open = text.hidden;
+    text.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+  });
+});
+
 $('currency').addEventListener('change', () => {
   currencyChosen = true;
   showSourceFields();
@@ -504,18 +536,17 @@ $('customCur').addEventListener('input', showSourceFields);
 $('share').addEventListener('click', () => copyLink(location.href, $('shareStatus')));
 // Save: keep this calculation (its link and a name) in the browser, listed under "Saved calculations"
 const SHORT_NAMES = { judgment: 'Judgment debt rate', prime: 'HSBC prime', usprime: 'US prime' };
+// A calculation's name in the saved and recent lists, e.g. "HSBC prime · HK$250,000.00 · 01-Jan-2025 to 01-Jan-2026"
+const titleFor = (r) =>
+  `${isFixed(r) ? `Fixed ${fmtPct(r.fixedRate)}` : SHORT_NAMES[r.source]} · ${r.currency}${money.format(r.principal)} · ` +
+  `${fmtDate(r.start)} to ${fmtDate(r.end)}`;
 $('save').addEventListener('click', () => {
   if (!lastResult || !lastQuery) return;
-  const r = lastResult;
-  const rateName = isFixed(r) ? `Fixed ${fmtPct(r.fixedRate)}` : SHORT_NAMES[r.source];
-  const ok = saveCalculation({
-    tab: 'interest',
-    query: lastQuery,
-    title: `${rateName} · ${r.currency}${money.format(r.principal)} · ${fmtDate(r.start)} to ${fmtDate(r.end)}`,
-  });
+  const ok = saveCalculation({ tab: 'interest', query: lastQuery, title: titleFor(lastResult) });
   flash($('shareStatus'), ok ? 'Saved below' : 'This browser won’t save data here');
 });
 renderSaved();
+renderRecent();
 
 // ---- Sorting the detailed rate table: click a header; click again to reverse ----
 
@@ -663,6 +694,8 @@ $('form').addEventListener('submit', (e) => {
       rateTable,
     };
     writeQuery(lastResult);
+    // A Calculate the user pressed (not the sample run on load) goes in Recent calculations
+    if (e.submitter) recordRecent({ tab: 'interest', query: lastQuery, title: titleFor(lastResult) });
     render(lastResult);
     setStale(false);
   } catch (err) {

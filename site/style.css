@@ -60,7 +60,7 @@ form {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
 }
-label { display: grid; gap: 6px; font-size: 0.9rem; font-weight: 600; min-width: 0; }
+label { display: grid; gap: 6px; align-content: start; font-size: 0.9rem; font-weight: 600; min-width: 0; }
 input[type="text"], input[type="date"], select {
   display: block;
   width: 100%;
@@ -317,6 +317,7 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 .saved-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 0; border-top: 1px solid var(--border); }
 .saved-list .saved-name { flex: 1 1 260px; width: auto; height: 36px; font-weight: 600; }
 .saved-list .saved-meta { flex: 0 1 auto; }
+.saved-list .recent-name { flex: 1 1 260px; font-weight: 600; }
 .saved-list .remove { margin-left: auto; }
 
 /* Daily interest under Actual/Actual: one line per year length */
@@ -325,3 +326,23 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 
 /* Cash flows (principal added later, payments received): collapsible like Advanced settings */
 .cash-flows-body { display: grid; gap: 16px; margin-top: 14px; }
+
+/* "?" help next to a setting, and the explanation it shows */
+.label-row { display: flex; align-items: center; gap: 6px; }
+button.help {
+  width: 20px; height: 20px; min-height: 0; padding: 0; border-radius: 50%; flex: none;
+  font-size: 0.75rem; font-weight: 700; line-height: 1; border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+}
+button.help[aria-expanded="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.help-text { display: block; font-size: 0.82rem; font-weight: normal; line-height: 1.45; color: var(--muted); }
+.help-text[hidden] { display: none; }
+.switch-help { grid-column: 1 / -1; margin-top: -8px; }
+label.inline .help-text { flex-basis: 100%; }
+
+/* End date shortcuts: small text buttons under the field */
+.date-shortcuts { display: flex; flex-wrap: wrap; gap: 2px 12px; }
+button.link-button {
+  all: unset; cursor: pointer; font-size: 0.8rem; font-weight: normal; color: var(--accent); text-decoration: underline;
+  text-underline-offset: 2px;
+}
+button.link-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }

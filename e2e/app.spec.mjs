@@ -520,3 +520,65 @@ test("header shows today's judgment, HSBC prime, US prime, 1M and 3M HIBOR rates
   await page.reload();
   await expect(page.locator('#latestRates .latest-rate')).toHaveCount(3);
 });
+
+test('recent calculations: only Calculate presses are kept, newest first, at most 5; Save keeps one', async ({ page }) => {
+  await page.goto('./');
+  await expect(total(page)).not.toHaveText('');
+  await expect(page.locator('#recentCard')).toBeHidden(); // the sample run on load isn't recorded
+  for (const p of ['100000', '200000', '300000', '400000', '500000', '600000']) {
+    await page.locator('#principal').fill(p);
+    await page.locator('#form button[type="submit"]').click();
+    await expect(page).toHaveURL(new RegExp(`p=${p}`));
+  }
+  await page.locator('#recentCard summary').click();
+  await expect(page.locator('#recentList li')).toHaveCount(5);
+  await expect(page.locator('#recentList li').first()).toContainText('HK$600,000.00');
+  await expect(page.locator('#recentList li').last()).toContainText('HK$200,000.00');
+  // A mortgage calculation joins the same list
+  await page.getByRole('tab', { name: 'Mortgage' }).click();
+  await expect(page.locator('#mPayment')).not.toHaveText('');
+  await page.locator('#mform button[type="submit"]').click();
+  await expect(page.locator('#recentList li').first()).toContainText('Mortgage ·');
+  // Save one from the recent list
+  await page.locator('#recentList li').nth(1).getByRole('button', { name: /^Save / }).click();
+  await expect(page.locator('#savedCard')).toBeVisible();
+  await page.locator('#savedCard summary').click();
+  await expect(page.locator('#savedList li').first().locator('.saved-name')).toHaveValue(/HK\$600,000\.00/);
+});
+
+test('help: "?" shows and hides an explanation without changing the setting or marking results stale', async ({ page }) => {
+  await page.goto('./');
+  await expect(total(page)).not.toHaveText('');
+  await page.locator('#advanced summary').click();
+  const help = page.getByRole('button', { name: 'What is day count basis?' });
+  const text = page.locator('label', { has: page.locator('#basis') }).locator('.help-text');
+  await expect(text).toBeHidden();
+  await help.click();
+  await expect(text).toBeVisible();
+  await expect(text).toContainText('366 in a leap year');
+  await expect(help).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#basis')).toHaveValue('act/act');
+  await expect(page.locator('#staleNote')).toBeHidden();
+  await help.click();
+  await expect(text).toBeHidden();
+  // The end date's rule is explained too
+  await page.getByRole('button', { name: /end date earn interest/ }).click();
+  await expect(page.locator('label', { has: page.locator('#end') }).locator('.help-text')).toContainText('1 to 2 January is 1 day');
+});
+
+test('start and end date shortcuts fill in today, last month end, last quarter end or last year end', async ({ page }) => {
+  await page.goto('./');
+  await expect(total(page)).not.toHaveText('');
+  const today = new Date().toLocaleDateString('en-CA');
+  const [y, m] = today.split('-').map(Number);
+  const lastDayBefore = (Y, M) => new Date(Date.UTC(Y, M - 1, 0)).toISOString().slice(0, 10);
+  const expected = { Today: today, 'End of last month': lastDayBefore(y, m), 'End of last quarter': lastDayBefore(y, m - ((m - 1) % 3)), 'End of last year': `${y - 1}-12-31` };
+  for (const field of ['start', 'end']) {
+    const label = page.locator('label', { has: page.locator(`#${field}`) });
+    for (const [name, date] of Object.entries(expected)) {
+      await label.getByRole('button', { name, exact: true }).click();
+      await expect(page.locator(`#${field}`)).toHaveValue(date);
+    }
+  }
+  await expect(page.locator('#staleNote')).toBeVisible(); // a changed end date needs Calculate
+});

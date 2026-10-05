@@ -7,7 +7,7 @@ import {
   $, money, fmtDate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
   wireSteppers, autoFitText, flash,
 } from './shared.js?v=__BUILD__';
-import { saveCalculation } from './saved.js?v=__BUILD__';
+import { saveCalculation, recordRecent } from './saved.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 
 const TYPES = { prime: 'Prime-based', hibor: 'HIBOR-based', fixed: 'Fixed rate' };
@@ -261,6 +261,7 @@ $('mform').addEventListener('submit', async (e) => {
     return;
   }
   writeQuery(last);
+  if (e.submitter) recordRecent({ tab: 'mortgage', query: lastQuery, title: titleFor(last) }); // a Calculate the user pressed
   render(last);
   setStale(false);
 });
@@ -718,14 +719,11 @@ $('mCsv').addEventListener('click', () => {
 });
 
 $('mShare').addEventListener('click', () => copyLink(location.href, $('mShareStatus')));
+// e.g. "HIBOR-based · loan HK$8,000,000.00 · 30 yrs from 05-Oct-2026"
+const titleFor = (m) => `${TYPES[m.inputs.type]} · loan HK$${money.format(m.loan)} · ${m.inputs.years} yrs from ${fmtDate(m.inputs.start)}`;
 $('mSave').addEventListener('click', () => {
   if (!last || !lastQuery) return;
-  const i = last.inputs;
-  const ok = saveCalculation({
-    tab: 'mortgage',
-    query: lastQuery,
-    title: `${TYPES[i.type]} · loan HK$${money.format(last.loan)} · ${i.years} yrs from ${fmtDate(i.start)}`,
-  });
+  const ok = saveCalculation({ tab: 'mortgage', query: lastQuery, title: titleFor(last) });
   flash($('mShareStatus'), ok ? 'Saved below' : 'This browser won’t save data here');
 });
 

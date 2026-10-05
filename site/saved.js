@@ -1,26 +1,36 @@
-// Saved calculations: each is a calculation's shareable link plus a name, kept in this browser's localStorage only
-// (never uploaded). Both tabs save here; the "Saved calculations" card lists them, newest first, to rename, open or
-// delete. Storage can be unavailable (private windows, blocked site data): saving then says so and nothing breaks.
+// Saved and recent calculations: each is a calculation's shareable link plus a name, kept in this browser's
+// localStorage only (never uploaded). "Saved calculations" are the ones the user chose to keep (rename, open, delete);
+// "Recent calculations" are the last 5 the user ran with Calculate, kept automatically (open, or save to keep).
+// Storage can be unavailable (private windows, blocked site data): saving then says so and nothing breaks.
 
 const KEY = 'interestcal.saved';
 const MAX = 50;
+const RECENT_KEY = 'interestcal.recent';
+const RECENT_MAX = 5;
 
-function load() {
+function load(key = KEY) {
   try {
-    const list = JSON.parse(localStorage.getItem(KEY) ?? '[]');
+    const list = JSON.parse(localStorage.getItem(key) ?? '[]');
     return Array.isArray(list) ? list.filter((x) => x && typeof x.query === 'string') : [];
   } catch {
     return [];
   }
 }
 
-function store(list) {
+function store(list, key = KEY, max = MAX) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)));
+    localStorage.setItem(key, JSON.stringify(list.slice(0, max)));
     return true;
   } catch {
     return false;
   }
+}
+
+/** Remember a calculation the user just ran (the last 5, newest first; running the same one again moves it up) */
+export function recordRecent({ tab, query, title }) {
+  const list = load(RECENT_KEY).filter((x) => x.query !== query);
+  store([{ tab, query, name: title, savedAt: new Date().toISOString() }, ...list], RECENT_KEY, RECENT_MAX);
+  renderRecent();
 }
 
 /**
@@ -83,5 +93,36 @@ export function renderSaved() {
   );
 }
 
-// Another browser tab saved or deleted something
-window.addEventListener('storage', (e) => e.key === KEY && renderSaved());
+export function renderRecent() {
+  const card = document.getElementById('recentCard');
+  const ul = document.getElementById('recentList');
+  if (!card || !ul) return;
+  const list = load(RECENT_KEY);
+  card.hidden = !list.length;
+  ul.replaceChildren(
+    ...list.map((x) => {
+      const li = document.createElement('li');
+      const name = Object.assign(document.createElement('span'), { className: 'recent-name', textContent: x.name });
+      const meta = Object.assign(document.createElement('span'), {
+        className: 'muted saved-meta',
+        textContent: `${x.tab === 'mortgage' ? 'Mortgage' : 'Interest'} · ${fmtWhen(x.savedAt)}`,
+      });
+      const open = Object.assign(document.createElement('a'), { href: `./${x.query}`, textContent: 'Open', className: 'saved-open' });
+      const keep = Object.assign(document.createElement('button'), { type: 'button', className: 'secondary', textContent: 'Save' });
+      keep.setAttribute('aria-label', `Save ${x.name}`);
+      keep.addEventListener('click', () => {
+        saveCalculation({ tab: x.tab, query: x.query, title: x.name });
+        keep.textContent = 'Saved';
+        keep.disabled = true;
+      });
+      li.append(name, meta, open, keep);
+      return li;
+    }),
+  );
+}
+
+// Another browser tab saved, deleted or ran something
+window.addEventListener('storage', (e) => {
+  if (e.key === KEY) renderSaved();
+  if (e.key === RECENT_KEY) renderRecent();
+});
