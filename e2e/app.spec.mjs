@@ -179,6 +179,16 @@ test('footer shows the licence and links to the GitHub repo', async ({ page }) =
   const footer = page.locator('footer.about');
   await expect(footer.getByRole('link', { name: 'MIT License' })).toHaveAttribute('href', 'https://github.com/kevincgith/interestcal/blob/main/LICENSE');
   await expect(footer.getByRole('link', { name: 'Source code on GitHub' })).toHaveAttribute('href', 'https://github.com/kevincgith/interestcal');
+  await expect(footer.locator('.disclaimer')).toContainText('not legal, financial or mortgage advice');
+});
+
+test('footer links to the terms of use, which link back to the calculator', async ({ page }) => {
+  await page.goto('./');
+  await page.locator('footer.about').getByRole('link', { name: 'Terms of Use' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Terms of Use and Disclaimer');
+  await expect(page.getByRole('heading', { name: '5. Limitation of liability' })).toBeVisible();
+  await page.getByRole('link', { name: '← Back to the calculator' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('HK Interest Calculator');
 });
 
 test('principal added later: from the form and from a shared link', async ({ page }) => {
@@ -324,6 +334,7 @@ test('US prime rate: spread applies, latest rate line and rate table use the Fed
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download Word' }).click()]);
   const doc = (await (await import('node:fs/promises')).readFile(await download.path())).toString('utf8');
   expect(doc).toContain('Interest on the Debt of US$1,000,000.00');
+  expect(doc).toContain('Source of rates: Federal Reserve H.15: bank prime loan rate (as at ');
   expect(doc).not.toContain('HK$');
   await page.locator('input[name="source"][value="prime"]').check();
   await expect(page.locator('label', { hasText: 'Principal (' }).first()).toContainText('Principal (HK$)');

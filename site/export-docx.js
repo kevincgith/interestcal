@@ -34,8 +34,8 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 
 // ---- WordprocessingML ----
 
-const run = (text, { bold = false, underline = false } = {}) =>
-  `<w:r><w:rPr>${bold ? '<w:b/>' : ''}${underline ? '<w:u w:val="single"/>' : ''}</w:rPr>` +
+const run = (text, { bold = false, underline = false, small = false } = {}) =>
+  `<w:r><w:rPr>${bold ? '<w:b/>' : ''}${underline ? '<w:u w:val="single"/>' : ''}${small ? '<w:i/><w:sz w:val="20"/>' : ''}</w:rPr>` +
   `<w:t xml:space="preserve">${esc(text).replace(/\t/g, '</w:t><w:tab/><w:t xml:space="preserve">')}</w:t></w:r>`;
 const para = (runs, { align, hanging } = {}) =>
   `<w:p><w:pPr><w:spacing w:after="0"/>${hanging ? `<w:ind w:left="${hanging}" w:hanging="${hanging}"/>` : ''}` +
@@ -48,10 +48,11 @@ const tableRow = (left, right) => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${cell(L
 /**
  * @param {object} r    result of calculateInterest
  * @param {object} ctx  { money: (n) => string, rate: (fraction) => string, formula: (period) => string,
- *   currency?: e.g. 'HK$' (default), inputs?: [label, value][] for a "Calculation inputs" block above the table }
+ *   currency?: e.g. 'HK$' (default), inputs?: [label, value][] for a "Calculation inputs" block above the table,
+ *   sources?: { name, asAt }[] for a "Source of rates" note at the end (none for a fixed rate) }
  * @returns {string} word/document.xml
  */
-export function documentXml(r, { money, rate, formula, currency: cur = 'HK$', inputs }) {
+export function documentXml(r, { money, rate, formula, currency: cur = 'HK$', inputs, sources }) {
   const rows = [
     tableRow(
       para(run(`Interest on the Debt of ${cur}${money(r.principal)}`, { bold: true })),
@@ -107,7 +108,11 @@ export function documentXml(r, { money, rate, formula, currency: cur = 'HK$', in
       `<w:tblGrid><w:gridCol w:w="3200"/><w:gridCol w:w="${LEFT_W + RIGHT_W - 3200}"/></w:tblGrid>` +
       `${inputs.map(plainRow).join('')}</w:tbl>${para('')}`
     : '';
-  const table = `${inputsBlock}${tbl(rows)}${para('')}${tbl(summary)}${para('')}${daily}`;
+  // Where the rates came from, e.g. "Source of rates: HK Judiciary: interest rates on judgment debts (as at 5 October 2026)."
+  const sourceNote = sources?.length
+    ? para('') + para(run(`Source of rates: ${sources.map((x) => `${x.name} (as at ${longDate(x.asAt)})`).join('; ')}.`, { small: true }))
+    : '';
+  const table = `${inputsBlock}${tbl(rows)}${para('')}${tbl(summary)}${para('')}${daily}${sourceNote}`;
 
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +

@@ -113,3 +113,13 @@ test('Word: optional calculation inputs above the table', () => {
   const text = textOf(buildDocx(r, { money, rate, formula, inputs: [['Interest rate', 'Fixed rate of 8.000% p.a.'], ['Day count basis', 'Actual/Actual']] }));
   assert.match(text, /^Calculation inputs\nInterest rate\nFixed rate of 8\.000% p\.a\.\nDay count basis\nActual\/Actual\n\nInterest on the Debt of HK\$1,000\.00/);
 });
+
+test('Word: source of rates note at the end, only when given', () => {
+  const r = calculateInterest({ principal: 1000, start: '2026-01-01', end: '2026-02-01', rates: [{ effective: '2000-01-01', rate: 8 }] });
+  assert.doesNotMatch(textOf(buildDocx(r, { money, rate, formula })), /Source of rates/);
+  const text = textOf(buildDocx(r, { money, rate, formula, sources: [
+    { name: 'HK Judiciary: interest rates on judgment debts', asAt: '2026-10-05' },
+    { name: 'Federal Reserve H.15: bank prime loan rate', asAt: '2026-10-04' },
+  ] }));
+  assert.match(text, /Source of rates: HK Judiciary: interest rates on judgment debts \(as at 5 October 2026\); Federal Reserve H\.15: bank prime loan rate \(as at 4 October 2026\)\.\n*$/);
+});

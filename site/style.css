@@ -215,7 +215,11 @@ details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
 .verified { margin: -8px 0 16px; font-size: 0.9rem; color: var(--muted); overflow-wrap: anywhere; }
 .about { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.9rem; }
 .about p { margin: 0; }
+.about .disclaimer { margin-top: 12px; font-size: 0.85rem; }
 .about .license { margin-top: 12px; font-size: 0.85rem; }
+.terms { max-width: 760px; }
+.terms h2 { font-size: 1.1rem; margin: 28px 0 6px; }
+.terms p { margin: 0 0 10px; }
 .about .license a { white-space: nowrap; }
 .rate-source p.checked { color: var(--text); }
 .rate-source p { margin: 10px 0 0; font-size: 0.9rem; overflow-wrap: anywhere; }
