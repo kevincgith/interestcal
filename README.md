@@ -89,7 +89,7 @@ You can choose one of three rates:
 
 - **Daily interest thereafter:** principal × the rate in force on the end date ÷ that day's year days. Under Actual/Actual it shows two figures, ÷ 365 for a normal year and ÷ 366 for a leap year, on the page and in every download. Use it for wording like "…plus HK$219.18 per day until payment". It appears on the page and in the Word, PDF and Excel files; in Excel it's a live formula.
 
-- **Downloads (every tab with files):** **Download [Word | PDF | Excel]** (Mortgage and PV: PDF | Excel), each a one-click download, with **[Copy link | Save]** on the line below.
+- **Downloads (every tab with files):** **Download [Word | PDF | Excel]** (Mortgage and PV: PDF | Excel), each a one-click download, with **[Copy link | Save]** beside it (below on a phone).
 - **Download PDF:** downloads a report straight away (built in the browser with [jsPDF](https://github.com/parallax/jsPDF)): inputs, results, the formula for each period, the rates used, and the sources as named, clickable links. No raw URLs are printed.
 - **Sortable rate table:** click **Effective date** or **Rate** to sort; click again to reverse. The PDF and Excel exports use the same order.
 - **Shareable link:** the inputs are stored in the page address (e.g. `?src=prime&p=1000000&from=2026-01-01&to=2026-09-30&basis=act%2Fact&round=total&spread=1`). **Copy link** copies it.

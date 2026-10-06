@@ -79,15 +79,16 @@ test('each tab highlights exactly one main figure', async ({ page }) => {
   }
 });
 
-test('downloads: one click each in Download [Word | PDF | Excel]; [Copy link | Save] on the line below; same on every tab', async ({ page }) => {
+test('downloads: one click each in Download [Word | PDF | Excel]; [Copy link | Save] beside it (below on a phone); same on every tab', async ({ page, isMobile }) => {
   await page.goto('./');
   const panel = page.locator('#panel-interest');
   await expect(panel.locator('.btn-group').first().getByRole('button')).toHaveText(['Word', 'PDF', 'Excel']);
   const [download] = await Promise.all([page.waitForEvent('download'), panel.getByRole('button', { name: 'Download Excel' }).click()]);
   expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
-  // Copy link and Save sit on the next line, joined the same way
+  // Copy link and Save sit beside the downloads (on the next line on a phone), joined the same way
   const [dl, link] = await Promise.all([panel.getByRole('button', { name: 'Download Word' }).boundingBox(), page.locator('#share').boundingBox()]);
-  expect(link.y).toBeGreaterThan(dl.y + dl.height - 1);
+  if (isMobile) expect(link.y).toBeGreaterThan(dl.y + dl.height - 1);
+  else expect(Math.abs(link.y - dl.y)).toBeLessThan(1);
   await expect(panel.locator('.btn-group').nth(1).getByRole('button')).toHaveText(['Copy link', 'Save']);
   // Mortgage and PV: PDF | Excel; the calculator and Inflation: only Copy link | Save
   for (const [query, panelId, files] of [['?tab=mortgage', 'mortgage', ['PDF', 'Excel']], ['?tab=pv', 'pv', ['PDF', 'Excel']],
