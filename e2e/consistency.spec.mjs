@@ -6,6 +6,9 @@ const VIEWS = {
   interest: '?src=prime&comp=monthly&sw=2026-06-01&src2=fixed&pay=2026-03-01:1000',
   mortgage: '?tab=mortgage&mt=prime',
   pv: '?tab=pv',
+  'pv by periods': '?tab=pv&tm=p&pl=quarter&cf=0,-100&cf=4,110',
+  'mortgage, prime plan with another bank': '?tab=mortgage&mt=prime&pk=other:0.5',
+  'calculator, advanced': '?tab=pv&m=tvm&ts=pmt&py=12&n=30&r=5&pv=1000000&fv=0&due=1&cur=other:S%24',
   calculator: '?tab=pv&m=tvm',
   inflation: '?tab=inflation',
 };
