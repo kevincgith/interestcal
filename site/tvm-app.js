@@ -3,7 +3,6 @@
 // Also owns the PV tab's mode switch (Cash flows | Time Value of Money).
 import { solveTvm, tvmSchedule, periodRate, PAYMENT_FREQUENCIES } from './tvm.js?v=__BUILD__';
 import { $, money, fmtRate, row, copyLink, flash, autoFitText, segValue } from './shared.js?v=__BUILD__';
-import { currencyControl } from './currency-control.js?v=__BUILD__';
 import { saveCalculation, recordRecent } from './saved.js?v=__BUILD__';
 import { activeTab } from './tabs.js?v=__BUILD__';
 
@@ -48,11 +47,9 @@ document.querySelectorAll('.pv-mode button').forEach((b) =>
 
 // ---- Formatting ----
 
-// Payments made (end / start) is a segmented control read like the dropdown it replaced; currency is HK$ / US$ /
-// Others, as on the Interest tab
+// Payments made (end / start) is a segmented control read like the dropdown it replaced; amounts are in HK$
 segValue('tDue');
-const currency = currencyControl('tCurrency', 'tCustomCur');
-const cur = () => currency.symbol();
+const cur = () => 'HK$';
 const signedMoney = (n, c = cur()) => (n < 0 ? `−${c}${money.format(-n)}` : `${c}${money.format(n)}`);
 const plain = (n) => (n < 0 ? `−${money.format(-n)}` : money.format(n));
 const freq = () => $('tFreq').value;
@@ -123,7 +120,7 @@ function readInputs() {
   if (s !== 'n' && !Number.isInteger(Math.round(vals.n * 1e9) / 1e9)) {
     throw new Error(`The term must be a whole number of payments: ${fmtCount(vals.n)} ${freq()} payments isn’t.`);
   }
-  return { solve: s, ...vals, py: py(), cy: cy(), due: $('tDue').value === 'start', freq: freq(), inYears, comp: $('tComp').value, currencyCode: $('tCurrency').value };
+  return { solve: s, ...vals, py: py(), cy: cy(), due: $('tDue').value === 'start', freq: freq(), inYears, comp: $('tComp').value };
 }
 
 $('tform').addEventListener('submit', (e) => {
@@ -245,7 +242,6 @@ function writeQuery(t) {
   for (const key of ['pv', 'pmt', 'fv']) if (i.solve !== key) q.set(key, String(i[key]));
   if (i.comp !== 'same') q.set('cy', i.comp);
   if (i.due) q.set('due', '1');
-  if (i.currencyCode && i.currencyCode !== 'HKD') q.set('cur', i.currencyCode);
   lastQuery = `?${q}`;
   if (activeTab() === 'pv' && tvmMode()) history.replaceState(null, '', `${location.pathname}${lastQuery}`);
 }
@@ -272,8 +268,7 @@ function readQuery() {
   set('fv', 'tFv', plain);
   if (['12', '4', '2', '1'].includes(q.get('cy'))) $('tComp').value = q.get('cy');
   if (q.get('due') === '1') $('tDue').value = 'start';
-  if (q.get('cur')) $('tCurrency').value = q.get('cur').slice(0, 8);
-  if (q.has('cy') || q.has('due') || q.has('cur')) $('tAdvanced').open = true;
+  if (q.has('cy') || q.has('due')) $('tAdvanced').open = true;
   return true;
 }
 
@@ -281,7 +276,6 @@ function readQuery() {
 
 $('tReset').addEventListener('click', () => {
   $('tform').reset();
-  $('tCurrency').value = 'HKD';
   $('tAdvanced').open = false;
   fill({ comp: 'same', due: 'end', ...EXAMPLES.loan });
   $('tResults').hidden = true;

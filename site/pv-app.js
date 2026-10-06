@@ -3,12 +3,10 @@
 import { presentValue, pvWorking, solveRate, REPEAT_MONTHS, MAX_REPEATS, PERIOD_LENGTHS } from './pv.js?v=__BUILD__';
 import { buildPvPdf, buildPvWorkbook, periodName } from './pv-export.js?v=__BUILD__';
 import { addMonths, toDay } from './calc.js?v=__BUILD__';
-import { CURRENCIES } from './interest-text.js?v=__BUILD__';
 import {
   $, money, fmtDate, fmtRate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
   wireSteppers, autoFitText, flash, segValue,
 } from './shared.js?v=__BUILD__';
-import { currencyControl } from './currency-control.js?v=__BUILD__';
 import { saveCalculation, recordRecent } from './saved.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 import { tvmMode, tvmQuery, setFlowsQuery } from './tvm-app.js?v=__BUILD__';
@@ -55,12 +53,9 @@ const showCompFreq = () => ($('pCompFreq').hidden = !compoundOn());
 $('pCompMode').addEventListener('change', showCompFreq);
 $('pform').addEventListener('reset', () => setTimeout(showCompFreq));
 
-// Currency: HK$ / US$ / Others, as on the Interest tab
-const currency = currencyControl('pCurrency', 'pCustomCur', () => {
-  document.querySelectorAll('#pFlowRows .pay-amount').forEach((el) => (el.placeholder = amountPlaceholder()));
-});
-const cur = () => currency.symbol();
-const amountPlaceholder = () => (cur() ? `Amount (${cur()})` : 'Amount');
+// Amounts are in HK$, as on the Mortgage tab
+const cur = () => 'HK$';
+const amountPlaceholder = () => 'Amount (HK$)';
 
 // ---- Cash flow rows: date + amount (may be negative) + optional description; a repeating row also has how often
 // and how many times ----
@@ -255,7 +250,7 @@ function readInputs() {
   if (solve === 'pv' && (!$('pRate').value.trim() || !Number.isFinite(rate))) throw new Error('Enter a discount rate, e.g. 5 for 5% p.a.');
   return {
     solve, timing, periodLength: $('pPeriod').value, valuation, rate, compounding: $('pCompounding').value, basis: $('pBasis').value,
-    currencyCode: $('pCurrency').value, flows: readFlows(),
+    flows: readFlows(),
   };
 }
 
@@ -368,7 +363,6 @@ function writeQuery(res) {
   else q.set('r', String(i.rate));
   if (!periods && i.compounding !== 'yearly') q.set('c', i.compounding);
   if (!periods && i.basis !== 'act/365') q.set('b', BASIS_KEYS[i.basis]);
-  if (i.currencyCode && i.currencyCode !== 'HKD') q.set('cur', i.currencyCode);
   // One cf per cash flow: date,amount,description (the description may itself contain commas)
   // A repeating one: rf=date,amount,every,times,description
   // Periods timing: the period number instead of the date, and "p" (every period) for how often
@@ -390,7 +384,6 @@ function readQuery() {
   if (q.get('c') === 'simple' || [...$('pCompFreq').options].some((o) => o.value === q.get('c'))) $('pCompounding').value = q.get('c');
   const basis = Object.keys(BASIS_KEYS).find((k) => BASIS_KEYS[k] === q.get('b'));
   if (basis) $('pBasis').value = basis;
-  if (q.get('cur')) $('pCurrency').value = q.get('cur').slice(0, 8);
   const periods = q.get('tm') === 'p';
   if (periods) $('pTiming').value = 'periods';
   if (q.get('pl') in PERIOD_LENGTHS) $('pPeriod').value = q.get('pl');
@@ -431,7 +424,6 @@ function setDefaults(valuation = todayIso()) {
 
 $('pReset').addEventListener('click', () => {
   $('pform').reset();
-  $('pCurrency').value = 'HKD';
   setDefaults();
   showSolveFields();
   showTimingFields();
@@ -450,7 +442,6 @@ $('pReset').addEventListener('click', () => {
 // e.g. present_value_2026-10-05_3_cash_flows.pdf, or present_value_quarters_3_cash_flows.pdf by periods
 const exportName = (res, ext) =>
   `present_value_${isPeriods(res) ? `${res.periodLength}s` : res.valuation}_${res.rows.length}_cash_flow${res.rows.length === 1 ? '' : 's'}.${ext}`;
-const CURRENCY_NAMES = { CNY: 'RMB' };
 // The first two are the Excel sheet's live cells (valuation date or period length, and the rate)
 const inputItems = (res) => [
   isPeriods(res)
@@ -463,8 +454,6 @@ const inputItems = (res) => [
     ['Compounding', COMPOUNDING_NAMES[res.compounding].replace(/^./, (c) => c.toUpperCase())],
     ['Day count basis', BASIS_NAMES[res.basis]],
   ]),
-  ...(res.currency ? [['Currency', res.inputs.currencyCode in CURRENCIES
-    ? `${CURRENCY_NAMES[res.inputs.currencyCode] ?? res.inputs.currencyCode} (${res.currency})` : res.currency]] : []),
   ['Calculated on', fmtDate(todayIso())],
 ];
 const exportLines = (res) => notes(res);

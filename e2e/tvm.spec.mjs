@@ -90,3 +90,13 @@ test('both PV modes look the same: the form card attaches to the tab bar, no foc
   const ring = await page.locator('#tform .pv-mode [data-mode="tvm"]').evaluate((el) => el.matches(':focus-visible'));
   expect(ring).toBe(false);
 });
+
+test('calculator examples are in the order of what they solve for: N, I/Y, PV, PMT, FV', async ({ page }) => {
+  await page.goto('?tab=pv&m=tvm');
+  const solved = [];
+  for (const chip of await page.locator('.tvm-examples .chip').all()) {
+    await chip.click();
+    solved.push(await page.locator('input[name="tsolve"]:checked').getAttribute('value'));
+  }
+  expect(solved).toEqual(['n', 'rate', 'pv', 'pmt', 'fv']);
+});

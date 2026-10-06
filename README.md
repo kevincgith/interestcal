@@ -36,7 +36,7 @@ You can choose one of three rates:
   - **Also:** the full schedule, a shareable link (`?tab=mortgage&...`), and PDF / Excel downloads.
 
 - **Present value tab** (labelled **PV**): the value today of amounts due on future dates, at one discount rate.
-  - **Inputs:** a valuation date, a discount rate (% p.a., may be negative), compounding (yearly by default, half-yearly, quarterly, monthly, daily, continuous or none), a day count basis (Actual/365 by default, Actual/360 or Actual/Actual) and a currency.
+  - **Inputs:** a valuation date, a discount rate (% p.a., may be negative), compounding (yearly by default, half-yearly, quarterly, monthly, daily, continuous or none) and a day count basis (Actual/365 by default, Actual/360 or Actual/Actual). Amounts are in HK$.
   - **Cash flows:** any number of date + amount rows with an optional description. A minus sign (or brackets) marks money paid out, so the total is a net present value. An amount dated before the valuation date is grown forward to it at the same rate, and the page says so.
   - **Repeating cash flows:** one row for an amount every month, quarter, half-year or year, from a first date, for up to 1,200 times (e.g. rent or instalments). It becomes a dated row for each time, e.g. "Rent (3 of 12)", keeping the first date's day of the month where the month has it (31 Jan, 28/29 Feb, 31 Mar, ...). The form shows the last date as you type.
   - **Solve for the rate (IRR):** instead of entering a rate, find the rate at which the cash flows are worth zero on the valuation date, under the compounding and day count chosen. It needs money paid out and money received, and looks from −99% to 1,000% p.a. With Actual/365 and yearly compounding it's Excel's `XIRR` (Microsoft's example gives 37.336253%, as Excel does). If more than one rate works (cash flows that switch between paid and received more than once), it shows the one closest to 0% and lists the others. Switching back to Present value starts from the rate found.
@@ -141,7 +141,7 @@ You can choose one of three rates:
 | `scripts/parse-cpi.mjs`, `update-cpi.mjs` | CPI download, checks and `site/cpi.json` writer, run by the daily update |
 | `site/pv.js`, `pv-app.js`, `pv-export.js` | Present value calculation, tab and downloads. `test/pv-export.test.mjs` runs the Excel formulas for every compounding and day count basis and checks they give the page's figures |
 | `site/shared.js`, `tabs.js` | Helpers shared by the tabs; tab switching |
-| `site/ui-motion.js`, `currency-control.js` | The sliding highlight on segmented controls and the open/close animation of collapsible sections (off with Reduce Motion); the HK$ / US$ / Others currency control used by the PV tab |
+| `site/ui-motion.js` | The sliding highlight on segmented controls and the open/close animation of collapsible sections (off with Reduce Motion) |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |
 | `site/us-prime-rates.json` | US prime rate changes since 2000 (Federal Reserve H.15) |
 | `scripts/fetch-rates.mjs` | Fetches and validates both sources, and rewrites a JSON file only when its rates change |

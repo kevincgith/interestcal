@@ -65,12 +65,12 @@ test('editing marks results out of date; Calculate updates the link; negative an
   await expect(page.locator('#pRows tr').nth(1).locator('td').nth(1)).toHaveText('Fee, paid today');
 });
 
-test('settings from a link: quarterly compounding, Act/Act, US$', async ({ page }) => {
+test('settings from a link: quarterly compounding, Act/Act; amounts in HK$ (an old cur= is ignored)', async ({ page }) => {
   await page.goto(`${LINK}&c=quarterly&b=aa&cur=USD`);
   await expect(page.locator('#pCompMode input[value="compound"]')).toBeChecked();
   await expect(page.locator('#pCompFreq')).toHaveValue('quarterly');
   await expect(page.locator('#pBasis input[value="act/act"]')).toBeChecked();
-  await expect(page.locator('#pTotal')).toHaveText(/^US\$/);
+  await expect(page.locator('#pTotal')).toHaveText(/^HK\$/);
   await expect(page.locator('#pRows tr').nth(2).locator('td').last()).toHaveText(
     '50,000.00 ÷ (1 + 5.000% ÷ 4)^(4 × (453 ÷ 365 + 278 ÷ 366))',
   );

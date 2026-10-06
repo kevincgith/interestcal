@@ -627,18 +627,6 @@
           </div>
           <span class="help-text" hidden>How days become years. Actual/365: days ÷ 365, as in Excel’s XNPV. Actual/360: days ÷ 360. Actual/Actual: the days in each calendar year ÷ 365 or 366 (leap year), added up.</span>
         </div>
-        <div class="field">
-          <span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
-          <div class="seg-stack">
-            <div class="seg" id="pCurrency" role="radiogroup" aria-label="Currency">
-              <label><input type="radio" name="pCurrency" value="HKD" checked><span>HK$</span></label>
-              <label><input type="radio" name="pCurrency" value="USD"><span>US$</span></label>
-              <label><input type="radio" name="pCurrency" value="other"><span>Others</span></label>
-            </div>
-            <input id="pCustomCur" type="text" maxlength="8" autocomplete="off" placeholder="e.g. S$ or SGD" aria-label="Currency symbol or code" hidden>
-          </div>
-          <span class="help-text" hidden>Only changes the symbol shown on the page and in downloads; the calculation is the same in any currency. Others: type any symbol or code.</span>
-        </div>
 
         <fieldset class="payments">
           <legend>Cash flows</legend>
@@ -691,11 +679,11 @@
         </div>
         <div class="tvm-examples">
           <span class="muted">Try:</span>
-          <button type="button" class="chip" data-example="loan">Loan payment</button>
-          <button type="button" class="chip" data-example="savings">Savings goal</button>
           <button type="button" class="chip" data-example="payoff">How long to repay</button>
           <button type="button" class="chip" data-example="rate">What rate?</button>
           <button type="button" class="chip" data-example="lump">A future sum today</button>
+          <button type="button" class="chip" data-example="loan">Loan payment</button>
+          <button type="button" class="chip" data-example="savings">Savings goal</button>
         </div>
         <fieldset class="source tvm-solve">
           <legend>Solve for</legend>
@@ -742,7 +730,7 @@
           <input id="tFv" type="text" inputmode="text" autocomplete="off" value="0.00">
         </label>
         <details id="tAdvanced" class="advanced">
-          <summary>Advanced settings <span class="muted">(compounding, payment timing, currency)</span></summary>
+          <summary>Advanced settings <span class="muted">(compounding, payment timing)</span></summary>
           <div class="advanced-body">
             <label for="tComp"><span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="When does compounding differ from payments?">?</button></span>
               <select id="tComp">
@@ -760,18 +748,6 @@
                 <label><input type="radio" name="tDue" value="end" checked><span>End of period</span></label>
                 <label><input type="radio" name="tDue" value="start"><span>Start of period</span></label>
               </div>
-            </div>
-            <div class="field">
-              <span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
-              <div class="seg-stack">
-                <div class="seg" id="tCurrency" role="radiogroup" aria-label="Currency">
-                  <label><input type="radio" name="tCurrency" value="HKD" checked><span>HK$</span></label>
-                  <label><input type="radio" name="tCurrency" value="USD"><span>US$</span></label>
-                  <label><input type="radio" name="tCurrency" value="other"><span>Others</span></label>
-                </div>
-                <input id="tCustomCur" type="text" maxlength="8" autocomplete="off" placeholder="e.g. S$ or SGD" aria-label="Currency symbol or code" hidden>
-              </div>
-              <span class="help-text" hidden>Only changes the symbol shown on the page and in downloads; the calculation is the same in any currency. Others: type any symbol or code.</span>
             </div>
           </div>
         </details>

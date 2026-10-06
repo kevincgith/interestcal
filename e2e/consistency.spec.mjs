@@ -8,7 +8,7 @@ const VIEWS = {
   pv: '?tab=pv',
   'pv by periods': '?tab=pv&tm=p&pl=quarter&cf=0,-100&cf=4,110',
   'mortgage, prime plan with another bank': '?tab=mortgage&mt=prime&pk=other:0.5',
-  'calculator, advanced': '?tab=pv&m=tvm&ts=pmt&py=12&n=30&r=5&pv=1000000&fv=0&due=1&cur=other:S%24',
+  'calculator, advanced': '?tab=pv&m=tvm&ts=pmt&py=12&n=30&r=5&pv=1000000&fv=0&due=1',
   calculator: '?tab=pv&m=tvm',
   inflation: '?tab=inflation',
 };
@@ -49,27 +49,16 @@ test('old links still set the converted controls', async ({ page }) => {
   }
   await page.goto('?tab=mortgage&mt=hibor&ht=3m');
   await expect(page.locator('#mTenor input[value="3m"]')).toBeChecked();
-  // A currency code from before (GBP) opens as Others with its symbol; simple compounding and day count come back too
+  // Simple compounding and the day count come back; the PV tab has no currency setting (amounts in HK$), so an old
+  // cur= is ignored
   await page.goto('?tab=pv&v=2026-10-05&r=5&c=simple&b=360&cur=GBP&cf=2027-10-05,1000');
-  await expect(page.locator('#pCurrency input[value="other"]')).toBeChecked();
-  await expect(page.locator('#pCustomCur')).toHaveValue('£');
   await expect(page.locator('#pCompMode input[value="simple"]')).toBeChecked();
   await expect(page.locator('#pCompFreq')).toBeHidden();
   await expect(page.locator('#pBasis input[value="act/360"]')).toBeChecked();
   await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
-  await expect(page.locator('#pTotal')).toContainText('£');
+  await expect(page.locator('#pTotal')).toContainText('HK$');
+  await expect(page).not.toHaveURL(/cur=/);
   await page.goto('?tab=pv&m=tvm&ts=pmt&py=12&n=30&r=5&pv=1000000&fv=0&due=1&cur=USD');
   await expect(page.locator('#tDue input[value="start"]')).toBeChecked();
-  await expect(page.locator('#tCurrency input[value="USD"]')).toBeChecked();
-});
-
-test('PV currency: Others with a typed symbol is used on the page and kept in the link', async ({ page }) => {
-  await page.goto('?tab=pv');
-  await page.locator('#pCurrency input[value="other"]').check();
-  await expect(page.locator('#pCustomCur')).toBeFocused();
-  await page.locator('#pCustomCur').fill('S$');
-  await expect(page.locator('#pFlowRows .pay-amount').first()).toHaveAttribute('placeholder', 'Amount (S$)');
-  await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
-  await expect(page.locator('#pTotal')).toContainText('S$');
-  await expect(page).toHaveURL(/cur=S%24/);
+  await expect(page.locator('#panel-pv').getByText('Currency', { exact: true })).toHaveCount(0);
 });
