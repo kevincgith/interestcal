@@ -10,7 +10,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
-  use: { baseURL: `http://127.0.0.1:${PORT}/` },
+  // Reduced motion: no animations to wait for (a click mid-animation can land on the wrong thing). The animation
+  // tests turn motion back on.
+  use: { baseURL: `http://127.0.0.1:${PORT}/`, contextOptions: { reducedMotion: 'reduce' } },
   projects: [
     { name: 'desktop-chrome', use: { ...devices['Desktop Chrome'] } },
     { name: 'iphone-safari', use: { ...devices['iPhone 13'] } },
