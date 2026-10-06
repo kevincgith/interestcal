@@ -457,7 +457,7 @@ label.radio:has(input[type="radio"]:focus-visible) { box-shadow: var(--ring); }
 .advanced summary { padding: 4px 0; }
 
 button { border-radius: 10px; padding: 10px 22px; transition: transform .1s, box-shadow .15s, background .15s, filter .15s; }
-button:not(.step):not(.help):not(.chip):not(.sort):not(.secondary):hover { filter: brightness(1.08); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent); }
+button:not(.step):not(.help):not(.chip):not(.sort):not(.secondary):not([role="tab"]):hover { filter: brightness(1.08); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent); }
 button:active { transform: translateY(1px); }
 button:focus-visible { outline: none; box-shadow: var(--ring); }
 button.secondary:hover { background: var(--accent-soft); }
