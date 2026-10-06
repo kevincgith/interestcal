@@ -32,9 +32,10 @@ for (const [name, query] of Object.entries(VIEWS)) {
     expect(boxes.length, 'segmented controls on this tab').toBeGreaterThan(0);
     for (const b of boxes) {
       expect(Math.round(b.h), `${b.label} height`).toBe(44);
-      // With 10px to spare: the Linux test machine's fonts are wider than a Mac's
-      if (!isMobile) expect(b.right, `${b.label} stays inside its field, with room to spare`).toBeLessThanOrEqual(b.cellRight - 10);
-      else expect(b.right, `${b.label} stays inside its field`).toBeLessThanOrEqual(b.cellRight + 0.5);
+      // Locally, with 10px to spare: fonts on the deploy's Linux machine (and on Windows) run wider than a Mac's, so a
+      // near-miss here would overflow there. On that machine (CI) it just has to fit.
+      const spare = !isMobile && !process.env.CI ? 10 : -0.5;
+      expect(b.right, `${b.label} stays inside its field${spare > 0 ? ', with room to spare' : ''}`).toBeLessThanOrEqual(b.cellRight - spare);
     }
     if (isMobile) {
       const width = page.viewportSize().width;
