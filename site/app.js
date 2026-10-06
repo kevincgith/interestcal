@@ -525,14 +525,15 @@ function showSourceFields() {
   $('switchFields').hidden = !$('switchOn').checked;
   $('spread2Field').hidden = !hasSpread(currentSource2());
   $('fixed2Field').hidden = currentSource2() !== 'fixed';
-  $('switchState').textContent = $('switchOn').checked ? 'Yes' : 'No';
   $('compoundType').hidden = !compoundOn();
   $('compoundDatesField').hidden = !PERIOD_NAME[$('compounding').value];
   if (!currencyChosen) $('currency').value = defaultCurrency(currentSource());
-  $('customCurField').hidden = $('currency').value !== 'other';
-  const cur = currentCurrency() || '¤';
+  $('customCur').hidden = $('currency').value !== 'other';
+  // Others with nothing typed yet: no symbol at all ("Principal", "Amount")
+  const cur = currentCurrency();
   document.querySelectorAll('#form .cur').forEach((el) => (el.textContent = cur));
-  document.querySelectorAll('#form .pay-amount').forEach((el) => (el.placeholder = `Amount (${cur})`));
+  document.querySelectorAll('#form .cur-wrap').forEach((el) => (el.hidden = !cur));
+  document.querySelectorAll('#form .pay-amount').forEach((el) => (el.placeholder = cur ? `Amount (${cur})` : 'Amount'));
 }
 
 const nextDay = (iso) => new Date(Date.parse(iso) + 864e5).toISOString().slice(0, 10);
@@ -572,7 +573,8 @@ document.querySelectorAll('form .help').forEach((btn) => { // both tabs' forms
   });
 });
 
-$('currency').addEventListener('change', () => {
+$('currency').addEventListener('change', (e) => {
+  if (e.target === $('customCur')) return; // the code box inside it (handled on input)
   currencyChosen = true;
   showSourceFields();
   if ($('currency').value === 'other') $('customCur').focus(); // type a symbol right away
@@ -616,7 +618,7 @@ window.addEventListener('afterprint', () => {
 });
 
 document.querySelectorAll('input[name="source2"]').forEach((el) => el.addEventListener('change', showSourceFields));
-$('switchOn').addEventListener('change', showSourceFields);
+$('switchSeg').addEventListener('change', showSourceFields);
 $('compounding').addEventListener('change', showSourceFields);
 
 // ---- Form ----

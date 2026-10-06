@@ -471,7 +471,7 @@ test('currency: HKD by default, USD for US prime, a chosen one sticks, and Other
   await expect(page).toHaveURL(/cur=other%3A%C2%A3/);
 
   // Other: whatever is typed
-  await expect(page.locator('#customCurField')).toBeVisible();
+  await expect(page.locator('#customCur')).toBeVisible();
   await page.locator('#customCur').fill('S$');
   await expect(principalLabel).toContainText('Principal (S$)');
   await page.locator('#form button[type="submit"]').click();
@@ -683,4 +683,36 @@ test('the summary and downloads state how days were counted', async ({ page }) =
     const [d] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
     expect(check(await fs.readFile(await d.path())), button).toBe(true);
   }
+});
+
+test('every segmented control is as tall as a text box; on a phone each fills its row', async ({ page, isMobile }) => {
+  await page.goto('?src=fixed&rate=8&comp=monthly&sw=2026-06-01&src2=prime&pay=2026-03-01:1000');
+  await expect(page.locator('#advanced')).toHaveAttribute('open', ''); // the link uses advanced settings
+  const field = Math.round((await page.locator('#principal').boundingBox()).height);
+  const segs = await page.locator('#form .seg:visible').evaluateAll((els) =>
+    els.map((s) => {
+      const r = s.getBoundingClientRect();
+      const row = s.closest('.seg-stack, .field, fieldset').parentElement.getBoundingClientRect();
+      return { h: Math.round(r.height), fills: Math.abs(r.width - row.width) < 2 || s.closest('.seg-stack, fieldset, .field').getBoundingClientRect().width - r.width < 2 };
+    }),
+  );
+  expect(segs.length).toBeGreaterThan(8);
+  for (const s of segs) expect(s.h).toBe(field);
+  if (isMobile) for (const s of segs) expect(s.fills).toBe(true);
+  // Change rate on a date is a No / Yes segmented control like the rest
+  await expect(page.locator('#switchSeg input[value="yes"]')).toBeChecked();
+  await page.locator('#switchSeg input[value="no"]').check();
+  await expect(page.locator('#switchFields')).toBeHidden();
+});
+
+test('Others with no symbol typed yet shows no currency sign', async ({ page }) => {
+  await page.goto('');
+  await page.locator('#advanced summary').click();
+  await page.locator('#currency input[value="other"]').check();
+  await expect(page.locator('#customCur')).toBeFocused();
+  const principal = page.locator('label', { hasText: 'Principal' }).first();
+  await expect(principal.locator('.cur-wrap')).toBeHidden(); // just "Principal", no "()" or "¤"
+  await expect(page.locator('#principal')).toBeVisible();
+  await page.locator('#customCur').fill('S$');
+  await expect(principal).toContainText('Principal (S$)');
 });

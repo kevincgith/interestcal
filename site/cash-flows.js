@@ -42,7 +42,7 @@ export function addEventRow(kind, date = '', amount = '', label = '') {
   const a = input('text', 'pay-amount', `${cfg.aria} amount`, amount === '' ? '' : money.format(amount));
   a.inputMode = 'decimal';
   a.autocomplete = 'off';
-  a.placeholder = `Amount (${hooks.currency() || '¤'})`;
+  a.placeholder = hooks.currency() ? `Amount (${hooks.currency()})` : 'Amount';
   a.addEventListener('blur', () => {
     const n = parseNumber(a.value);
     if (a.value.trim() && Number.isFinite(n)) a.value = money.format(n);

@@ -54,7 +54,7 @@
           <label><input type="radio" name="source" value="fixed"><span>Fixed</span></label>
         </div>
       </fieldset>
-      <label><span>Principal (<span class="cur">HK$</span>)</span>
+      <label><span>Principal<span class="cur-wrap"> (<span class="cur">HK$</span>)</span></span>
         <input id="principal" type="text" inputmode="decimal" autocomplete="off" required value="1,000,000.00" placeholder="1,000,000.00">
       </label>
       <label>Start date
@@ -113,8 +113,21 @@
             </div>
             <span class="help-text" hidden>Total: rows are added unrounded and only the total is rounded to cents (the original workbook’s method). Each Period: each row is rounded to cents first, which can change the total by a cent or two.</span>
           </div>
+          <div class="field" id="currency">
+            <span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
+            <div class="seg-stack">
+            <div class="seg" id="currencySeg" role="radiogroup" aria-label="Currency">
+              <label><input type="radio" name="currency" value="HKD" checked><span>HK$</span></label>
+              <label><input type="radio" name="currency" value="USD"><span>US$</span></label>
+              <label><input type="radio" name="currency" value="other"><span>Others</span></label>
+            </div>
+            <input id="customCur" type="text" maxlength="8" autocomplete="off" placeholder="e.g. S$ or SGD" aria-label="Currency symbol or code" hidden>
+            </div>
+            <span class="help-text" hidden>Only changes the symbol shown on the page and in downloads; the calculation is the same in any currency. HK$ by default, or US$ for the US prime rate. Others lists more currencies, or type your own symbol. Once you pick one, changing the rate won’t change it.</span>
+          </div>
           <div class="field" id="compounding">
             <span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="What is compounding?">?</button></span>
+            <div class="seg-stack">
             <div class="seg" id="compoundMode" role="radiogroup" aria-label="Compounding">
               <label><input type="radio" name="compoundMode" value="simple" checked><span>Simple</span></label>
               <label><input type="radio" name="compoundMode" value="compound"><span>Compound</span></label>
@@ -127,6 +140,7 @@
               <option value="daily">Daily</option>
               <option value="continuous">Continuous</option>
             </select>
+            </div>
             <span class="help-text" hidden>Simple (the default): interest never earns interest (the usual position for judgment debts). Compound: choose how often. Weekly, monthly, quarterly or yearly: unpaid interest is added to the principal at the end of each period and earns interest from then. Daily or continuous: compounded every day, or continuously.</span>
           </div>
           <div class="field" id="compoundDatesField" hidden>
@@ -137,10 +151,11 @@
             </div>
             <span class="help-text" hidden>From start (from the start date): every month, quarter or year counted from the start date (anniversaries). Calendar (calendar period ends): at each calendar month, quarter or year end.</span>
           </div>
-          <div class="field inline switch-toggle">
+          <div class="field" id="switchField">
             <span class="label-row">Change rate on a date <button type="button" class="help" aria-expanded="false" aria-label="What is a rate change?">?</button></span>
-            <div class="toggle-row">
-              <label class="toggle"><input type="checkbox" id="switchOn" aria-label="Change rate on a date"><span class="track" aria-hidden="true"></span><span id="switchState">No</span></label>
+            <div class="seg" id="switchSeg" role="radiogroup" aria-label="Change rate on a date">
+              <label><input type="radio" name="switchOn" value="no" checked><span>No</span></label>
+              <label><input type="radio" name="switchOn" id="switchOn" value="yes"><span>Yes</span></label>
             </div>
             <span class="help-text" hidden>Use one rate up to a date and another from that date, e.g. a contract rate (or prime + 1%) until judgment, then the judgment rate from the judgment date.</span>
           </div>
@@ -172,18 +187,6 @@
               </div>
             </label>
           </div>
-          <div class="field inline" id="currency">
-            <span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
-            <div class="seg" id="currencySeg" role="radiogroup" aria-label="Currency">
-              <label><input type="radio" name="currency" value="HKD" checked><span>HK$</span></label>
-              <label><input type="radio" name="currency" value="USD"><span>US$</span></label>
-              <label><input type="radio" name="currency" value="other"><span>Others</span></label>
-            </div>
-            <span class="help-text" hidden>Only changes the symbol shown on the page and in downloads; the calculation is the same in any currency. HK$ by default, or US$ for the US prime rate. Others lists more currencies, or type your own symbol. Once you pick one, changing the rate won’t change it.</span>
-          </div>
-          <label id="customCurField" hidden>Currency symbol or code
-            <input id="customCur" type="text" maxlength="8" autocomplete="off" placeholder="e.g. S$ or SGD">
-          </label>
         </div>
       </details>
       <details id="cashFlows" class="advanced">
