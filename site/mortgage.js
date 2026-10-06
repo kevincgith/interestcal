@@ -160,11 +160,17 @@ export function mortgageSummary(input, { stressAdd = 2, monthlyIncome = null } =
     stressAdd,
     stressedPayment: stressed.firstPayment,
     monthlyIncome,
-    // Debt-to-income ratio: first instalment / income (HK banks look at both the actual and the stressed ratio)
-    dti: monthlyIncome ? plan.firstPayment / monthlyIncome : null,
-    stressedDti: monthlyIncome ? stressed.firstPayment / monthlyIncome : null,
+    // Debt servicing ratio (DSR): first instalment / income. HK banks' usual limits: 50%, and 60% under the stress test
+    dsr: monthlyIncome ? plan.firstPayment / monthlyIncome : null,
+    stressedDsr: monthlyIncome ? stressed.firstPayment / monthlyIncome : null,
+    dsrLimit: DSR_LIMIT,
+    stressedDsrLimit: STRESSED_DSR_LIMIT,
+    dsrOver: monthlyIncome ? plan.firstPayment / monthlyIncome > DSR_LIMIT : false,
+    stressedDsrOver: monthlyIncome ? stressed.firstPayment / monthlyIncome > STRESSED_DSR_LIMIT : false,
   };
 }
+export const DSR_LIMIT = 0.5;
+export const STRESSED_DSR_LIMIT = 0.6;
 
 /**
  * Rate table for a mortgage, % p.a., oldest first.

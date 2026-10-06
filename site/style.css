@@ -589,3 +589,5 @@ form .stepper { max-width: 200px; }
 /* A three-option control is wider than a quarter-width column: it takes two (one column on a phone) */
 .field.wide { grid-column: span 2; }
 @media (max-width: 600px) { .field.wide { grid-column: auto; } }
+.summary .fail { border-color: var(--error); }
+.summary .fail dd > span { color: var(--error); }

@@ -56,14 +56,22 @@ test('a rate change recalculates the instalment for the months left', () => {
   assert.equal(s.rows.at(-1).balance, 0);
 });
 
-test('stress test and debt-to-income ratio', () => {
+test('stress test and debt servicing ratio (DSR) with its limits', () => {
   const m = mortgageSummary(
     { loan: 1_000_000, start: '2026-01-15', years: 30, rates: fixed(3) },
     { stressAdd: 2, monthlyIncome: 20_000 },
   );
   assert.equal(m.stressedPayment, instalment(1_000_000, 0.05, 360));
-  close(m.dti, 4216.04 / 20_000, 1e-9);
-  close(m.stressedDti, m.stressedPayment / 20_000, 1e-9);
+  close(m.dsr, 4216.04 / 20_000, 1e-9);
+  close(m.stressedDsr, m.stressedPayment / 20_000, 1e-9);
+  assert.equal(m.dsrOver, false); // 21.1% and 26.8%: within 50% and 60%
+  assert.equal(m.stressedDsrOver, false);
+  const tight = mortgageSummary({ loan: 1_000_000, start: '2026-01-15', years: 30, rates: fixed(3) }, { stressAdd: 2, monthlyIncome: 8_000 });
+  assert.equal(tight.dsrOver, true); // 52.7% > 50%
+  assert.equal(tight.stressedDsrOver, true); // 67.1% > 60%
+  const stressedOnly = mortgageSummary({ loan: 1_000_000, start: '2026-01-15', years: 30, rates: fixed(3) }, { stressAdd: 2, monthlyIncome: 8_800 });
+  assert.equal(stressedOnly.dsrOver, false); // 47.9%
+  assert.equal(stressedOnly.stressedDsrOver, true); // 61.0%
 });
 
 test('rate tables: P - x, fixed, and H + x capped at P - y', () => {

@@ -319,6 +319,18 @@ const duration = (months) => {
   return [y && `${y} yr${y === 1 ? '' : 's'}`, m && `${m} mth${m === 1 ? '' : 's'}`].filter(Boolean).join(' ') || '0 mths';
 };
 
+const pct1 = (x) => `${(x * 100).toFixed(1)}%`;
+const pct0 = (x) => `${Math.round(x * 100)}%`;
+// e.g. "DSR 59.9% is above the 50% limit, and 75.7% under the stress test is above the 60% limit: ..."
+function dsrWarning(m) {
+  if (!m.dsrOver && !m.stressedDsrOver) return '';
+  const parts = [
+    m.dsrOver && `DSR ${pct1(m.dsr)} is above the ${pct0(m.dsrLimit)} limit`,
+    m.stressedDsrOver && `${m.dsrOver ? '' : 'DSR '}${pct1(m.stressedDsr)} under the stress test is above the ${pct0(m.stressedDsrLimit)} limit`,
+  ].filter(Boolean);
+  return `${parts.join(', and ')}: banks would usually lend less, or need a higher income, for this loan.`;
+}
+
 function resultLines(m) {
   const { inputs } = m;
   const lines = {
@@ -333,10 +345,11 @@ function resultLines(m) {
     stress:
       `Stress test at +${m.stressAdd}% (${rate3(m.firstRate + m.stressAdd / 100)}): instalment HK$${money.format(m.stressedPayment)}` +
       ` (+HK$${money.format(m.stressedPayment - m.firstPayment)} a month).`,
-    dti: m.monthlyIncome
-      ? `Debt-to-income ratio: ${(m.dti * 100).toFixed(1)}% now, ${(m.stressedDti * 100).toFixed(1)}% under the stress test ` +
-        `(instalment ÷ monthly income of HK$${money.format(m.monthlyIncome)}). Banks compare these with their limits.`
+    dsr: m.monthlyIncome
+      ? `Debt servicing ratio (DSR): ${pct1(m.dsr)} now (limit ${pct0(m.dsrLimit)}), ${pct1(m.stressedDsr)} under the stress test ` +
+        `(limit ${pct0(m.stressedDsrLimit)}); DSR = instalment ÷ monthly income of HK$${money.format(m.monthlyIncome)}.`
       : '',
+    dsrWarning: dsrWarning(m),
     saved: m.totalExtra > 0
       ? `Extra repayments of HK$${money.format(m.totalExtra)} save HK$${money.format(m.interestSaved)} interest` +
         ` and end the loan ${duration(m.monthsSaved)} earlier.`
@@ -358,15 +371,19 @@ function render(m) {
   $('mEnds').textContent = `${fmtDate(m.payoffDate)} (${duration(m.monthsTaken)})`;
   const lines = resultLines(m);
   $('mRateLine').textContent = lines.rate;
-  // Stress test and debt-to-income ratio: tiles beside the instalment (the downloads keep the full sentences)
+  // Stress test and DSR: tiles beside the instalment (the downloads keep the full sentences); a DSR over its limit is
+  // red, with a warning
   $('mStressLabel').textContent = `Instalment at rate + ${m.stressAdd}%`;
   $('mStressPay').textContent = money.format(m.stressedPayment);
   $('mStressMore').textContent = `+${money.format(m.stressedPayment - m.firstPayment)} a month (${rate3(m.firstRate + m.stressAdd / 100)})`;
-  $('mDtiTile').hidden = !m.monthlyIncome;
+  $('mDsrTile').hidden = !m.monthlyIncome;
   if (m.monthlyIncome) {
-    $('mDti').textContent = `${(m.dti * 100).toFixed(1)}%`;
-    $('mDtiMore').textContent = `${(m.stressedDti * 100).toFixed(1)}% at rate + ${m.stressAdd}%`;
+    $('mDsr').textContent = pct1(m.dsr);
+    $('mDsrMore').textContent = `${pct1(m.stressedDsr)} at rate + ${m.stressAdd}% · limits ${pct0(m.dsrLimit)} / ${pct0(m.stressedDsrLimit)}`;
   }
+  $('mDsrTile').classList.toggle('fail', m.dsrOver || m.stressedDsrOver);
+  $('mDsrWarn').hidden = !lines.dsrWarning;
+  $('mDsrWarn').textContent = lines.dsrWarning;
   $('mSavedLine').hidden = !lines.saved && !lines.rebate;
   $('mSavedLine').textContent = [lines.rebate, lines.saved].filter(Boolean).join(' ');
   renderCompare(m);
@@ -709,7 +726,7 @@ $('mPdf').addEventListener('click', () => {
     const lines = resultLines(m);
     const doc = buildMortgagePdf(lib, m, {
       inputs: inputItems(m),
-      lines: [m.warning, lines.rate, lines.rebate, lines.stress, lines.dti, lines.saved].filter(Boolean),
+      lines: [m.warning, lines.rate, lines.rebate, lines.stress, lines.dsr, lines.dsrWarning, lines.saved].filter(Boolean),
       fmt: { money: (n) => money.format(n), date: fmtDate, rate: rate3, duration },
       planNames: TYPES,
       generatedOn: fmtDate(todayIso()),
@@ -726,7 +743,7 @@ $('mXlsx').addEventListener('click', () => {
     const lines = resultLines(m);
     const wb = buildMortgageWorkbook(XLSX, m, {
       inputs: inputItems(m),
-      lines: [m.warning, lines.rate, lines.rebate, lines.stress, lines.dti, lines.saved].filter(Boolean),
+      lines: [m.warning, lines.rate, lines.rebate, lines.stress, lines.dsr, lines.dsrWarning, lines.saved].filter(Boolean),
       planNames: TYPES,
       primeSource: m.inputs.type === 'fixed' ? null : prime?.source,
       hiborSource: m.inputs.type === 'hibor' ? hibor[m.inputs.rateParams.tenor]?.source : null,

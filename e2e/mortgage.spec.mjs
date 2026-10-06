@@ -65,26 +65,40 @@ test('loan-to-value defaults to 100%', async ({ page }) => {
   await expect(page.locator('#mLtv')).toHaveValue('100');
 });
 
-test('stress test and debt-to-income ratio: tiles beside the instalment, sentences in the downloads', async ({ page }) => {
+test('stress test and DSR: tiles beside the instalment, warning over the limits, sentences in the downloads', async ({ page }) => {
   await page.goto(FIXED);
   await expect(page.locator('#mStressLabel')).toHaveText('Instalment at rate + 2%');
   await expect(page.locator('#mStressPay')).toHaveText('5,368.22');
   await expect(page.locator('#mStressMore')).toHaveText('+1,152.18 a month (5.000%)');
-  await expect(page.locator('#mDtiTile')).toBeHidden(); // no income entered
+  await expect(page.locator('#mDsrTile')).toBeHidden(); // no income entered
   await page.locator('#mAdvanced summary').click();
+  // Within the limits: 21.1% and 26.8%
   await page.getByLabel('Monthly income (HK$, optional)').fill('20000');
+  await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#mDsrTile dt')).toHaveText('Debt servicing ratio (DSR)');
+  await expect(page.locator('#mDsr')).toHaveText('21.1%');
+  await expect(page.locator('#mDsrMore')).toHaveText('26.8% at rate + 2% · limits 50% / 60%');
+  await expect(page.locator('#mDsrTile')).not.toHaveClass(/fail/);
+  await expect(page.locator('#mDsrWarn')).toBeHidden();
+  // Only the stressed DSR over its limit: 47.9% and 61.0%
+  await page.getByLabel('Monthly income (HK$, optional)').fill('8800');
+  await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#mDsrTile')).toHaveClass(/fail/);
+  await expect(page.locator('#mDsrWarn')).toHaveText('DSR 61.0% under the stress test is above the 60% limit: banks would usually lend less, or need a higher income, for this loan.');
+  // Both over: 52.7% and 67.1%, with +3%
+  await page.getByLabel('Monthly income (HK$, optional)').fill('8000');
   await page.locator('#mStress input[value="3"]').check();
   await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
   await expect(page.locator('#mStressLabel')).toHaveText('Instalment at rate + 3%');
-  await expect(page.locator('#mDtiTile dt')).toHaveText('Debt-to-income ratio');
-  await expect(page.locator('#mDti')).toHaveText('21.1%');
-  await expect(page.locator('#mDtiMore')).toHaveText(/^\d+\.\d% at rate \+ 3%$/);
+  await expect(page.locator('#mDsrWarn')).toContainText('DSR 52.7% is above the 50% limit, and ');
+  await expect(page.locator('#mDsrWarn')).toContainText('under the stress test is above the 60% limit');
   const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#mXlsx').click()]);
   const XLSX = (await import('xlsx')).default;
   const wb = XLSX.read(await (await import('node:fs/promises')).readFile(await download.path()));
   const text = JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 }));
   expect(text).toContain('Stress test at +3%');
-  expect(text).toContain('Debt-to-income ratio: 21.1% now');
+  expect(text).toContain('Debt servicing ratio (DSR): 52.7% now (limit 50%)');
+  expect(text).toContain('is above the 50% limit');
 });
 
 test('mortgage downloads', async ({ page }) => {
