@@ -24,14 +24,17 @@ for (const [name, query] of Object.entries(VIEWS)) {
         .filter((s) => s.offsetParent)
         .map((s) => {
           const r = s.getBoundingClientRect();
-          const cell = s.closest('.field, fieldset, label, .series-ctl, .range-row, form, details, section').getBoundingClientRect();
+          // A control on one line with its label (.field.inline) is as wide as its contents: measure its section instead
+          const cell = (s.closest('.field.inline') ? s.closest('fieldset') : s.closest('.field, fieldset, label, .series-ctl, .range-row, form, details, section')).getBoundingClientRect();
           return { label: s.getAttribute('aria-label') ?? s.id, h: r.height, left: r.left, right: r.right, cellLeft: cell.left, cellRight: cell.right };
         }),
     );
     expect(boxes.length, 'segmented controls on this tab').toBeGreaterThan(0);
     for (const b of boxes) {
       expect(Math.round(b.h), `${b.label} height`).toBe(44);
-      expect(b.right, `${b.label} stays inside its field`).toBeLessThanOrEqual(b.cellRight + 0.5);
+      // With 10px to spare: the Linux test machine's fonts are wider than a Mac's
+      if (!isMobile) expect(b.right, `${b.label} stays inside its field, with room to spare`).toBeLessThanOrEqual(b.cellRight - 10);
+      else expect(b.right, `${b.label} stays inside its field`).toBeLessThanOrEqual(b.cellRight + 0.5);
     }
     if (isMobile) {
       const width = page.viewportSize().width;
