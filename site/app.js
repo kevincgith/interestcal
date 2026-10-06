@@ -36,7 +36,7 @@ Object.defineProperty($('compounding'), 'value', {
     if (v !== 'none') $('compoundType').value = v;
   },
 });
-for (const id of ['daysCounted', 'basis', 'rows', 'rounding']) {
+for (const id of ['daysCounted', 'basis', 'rows', 'rounding', 'compoundDates', 'allocation']) {
   const group = $(id);
   Object.defineProperty(group, 'value', {
     get: () => group.querySelector('input:checked').value,

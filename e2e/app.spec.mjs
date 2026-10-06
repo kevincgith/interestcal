@@ -133,7 +133,7 @@ test('payments can be added and removed in the form; nothing recalculates until 
   await page.getByRole('button', { name: '+ Add payment' }).click();
   await page.getByLabel('Payment date').fill('2026-07-01');
   await page.getByLabel('Payment amount').fill('10000');
-  await page.locator('#allocation').selectOption('principal');
+  await page.locator('#allocation input[value="principal"]').check();
   await expect(page.locator('#staleNote')).toBeVisible();
   await expect(total(page)).toHaveText('7,978.08');
 
@@ -291,7 +291,7 @@ test('a shared link with a non-default day count opens Advanced settings', async
 
 test('calendar compounding dates from a shared link', async ({ page }) => {
   await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-15&to=2026-04-15&comp=monthly&cdates=calendar&incl=0');
-  await expect(page.locator('#compoundDates')).toHaveValue('calendar');
+  await expect(page.locator('#compoundDates input:checked')).toHaveValue('calendar');
   await expect(page.locator('#periods tr td:first-child')).toHaveText([/^15-Jan-2026/, /^01-Feb-2026/, /^01-Mar-2026/, /^01-Apr-2026/]);
   await expect(page.locator('#compareLine')).toContainText('Compounded monthly (calendar month ends)');
   await expect(page).toHaveURL(/comp=monthly&cdates=calendar/);
