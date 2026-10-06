@@ -91,8 +91,8 @@ export const ALLOCATIONS = {
 };
 
 export const ROUNDINGS = {
-  total: 'Round the total only (periods added unrounded)',
-  period: 'Round each period to cents, then add',
+  total: 'Round the total only (rows added unrounded)',
+  period: 'Round each row to cents, then add',
 };
 
 export const SOURCES = {

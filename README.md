@@ -100,7 +100,7 @@ You can choose one of three rates:
 - **Recent calculations:** the last 5 calculations you ran (any tab) are kept automatically in a "Recent calculations" list, in your browser only; open one, save it to keep it, or clear the list ("Clear recent calculations"; saved calculations stay). The sample run when the page opens isn't recorded.
 - **Help:** a "?" next to each Advanced setting, "Apply payments to" and the End date shows a short explanation; tap again to hide it.
 - **Saved calculations:** **Save** (on either tab) keeps the calculation's link and a name in your browser's local storage, never uploaded. The **Saved calculations** card lists them, newest first: rename, open or delete. Up to 50 are kept.
-- **Rounding:** you can round only the total (periods are added unrounded) or round each period to cents first. The second option makes the rows add up exactly to the total.
+- **Rounding:** **Total** rounds only the total (rows are added unrounded); **Per row** rounds each row of the table to cents first. The second option makes the rows add up exactly to the total.
 
 ## How interest is calculated
 
