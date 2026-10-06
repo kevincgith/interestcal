@@ -12,6 +12,37 @@ import {
   isFixed, fmtPct, kindLabel, rateBasisLabel, DAYS_COUNTED, daysCountedText,
 } from './interest-text.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
+// Segmented radio groups (End date, Day count basis, Rounding) get a select-like .value
+// Currency: HK$ / US$ / Others (a list, shown only for Others); .value is the currency code, or 'other' for a typed symbol
+Object.defineProperty($('currency'), 'value', {
+  get: () => {
+    const v = $('currency').querySelector('input:checked').value;
+    return v === 'more' ? $('currencyMore').value : v;
+  },
+  set: (v) => {
+    const direct = $('currency').querySelector(`input[value="${v}"]`);
+    if (direct && v !== 'more') direct.checked = true;
+    else {
+      $('currency').querySelector('input[value="more"]').checked = true;
+      $('currencyMore').value = v;
+    }
+  },
+});
+// Compounding: a No/Yes toggle plus a frequency list shown only on Yes; .value is 'none' or the frequency
+Object.defineProperty($('compounding'), 'value', {
+  get: () => ($('compoundOn').checked ? $('compoundType').value : 'none'),
+  set: (v) => {
+    $('compoundOn').checked = v !== 'none';
+    if (v !== 'none') $('compoundType').value = v;
+  },
+});
+for (const id of ['daysCounted', 'basis', 'rows', 'rounding']) {
+  const group = $(id);
+  Object.defineProperty(group, 'value', {
+    get: () => group.querySelector('input:checked').value,
+    set: (v) => { group.querySelector(`input[value="${v}"]`).checked = true; },
+  });
+}
 let currencyChosen = false; // the user picked a currency themselves
 const currentCurrency = () =>
   $('currency').value === 'other' ? $('customCur').value.trim() : CURRENCIES[$('currency').value];
@@ -253,7 +284,7 @@ const printInputItems = (r) => [
   ['Day count basis', BASES[r.basis]],
   ['Days counted', DAYS_COUNTED[r.inclusive ? 'incl' : 'excl']],
   ['Rounding', ROUNDINGS[r.rounding]],
-  ...(r.rows === 'rate' ? [['Calculation rows', 'Combined (per rate period)']] : []),
+  ...(r.rows === 'rate' ? [['Table detail', 'Combined (per rate period)']] : []),
   ...(r.compounding !== 'none' ? [['Compounding', compoundingLabel(r)]] : []),
   ...(r.additions.length || r.ignoredAdditions.length
     ? [['Principal added later', String(r.additions.length + r.ignoredAdditions.length)]]
@@ -495,6 +526,10 @@ function showSourceFields() {
   $('switchFields').hidden = !$('switchOn').checked;
   $('spread2Field').hidden = !hasSpread(currentSource2());
   $('fixed2Field').hidden = currentSource2() !== 'fixed';
+  $('currencyMore').hidden = $('currency').querySelector('input:checked').value !== 'more';
+  $('switchState').textContent = $('switchOn').checked ? 'Yes' : 'No';
+  $('compoundType').hidden = !$('compoundOn').checked;
+  $('compoundState').textContent = $('compoundOn').checked ? 'Yes' : 'No';
   $('compoundDatesField').hidden = !PERIOD_NAME[$('compounding').value];
   if (!currencyChosen) $('currency').value = defaultCurrency(currentSource());
   $('customCurField').hidden = $('currency').value !== 'other';
@@ -530,7 +565,7 @@ document.querySelectorAll('[data-date]').forEach((btn) => {
 
 // "?" help: each button shows or hides the explanation next to it (the help-text in the same label, or right after it)
 document.querySelectorAll('form .help').forEach((btn) => { // both tabs' forms
-  const label = btn.closest('label');
+  const label = btn.closest('label, .field');
   const text = label.querySelector('.help-text') ?? label.nextElementSibling;
   btn.addEventListener('click', (e) => {
     e.preventDefault(); // inside a label: don't also toggle its checkbox or open its list

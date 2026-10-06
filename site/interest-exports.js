@@ -112,7 +112,7 @@ export function setupInterestExports({
       ['Rate Basis', rateBasisLabel(r)],
       ['Day Count Basis', BASES[r.basis]],
       ['Rounding', ROUNDINGS[r.rounding]],
-      ...(r.rows === 'rate' ? [['Calculation rows', 'Combined (per rate period)']] : []),
+      ...(r.rows === 'rate' ? [['Table detail', 'Combined (per rate period)']] : []),
       ...(r.compounding !== 'none'
         ? [
             ['Compounding', compoundingLabel(r)],
