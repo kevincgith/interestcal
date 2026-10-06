@@ -26,7 +26,15 @@ for (const [name, query] of Object.entries(VIEWS)) {
           const r = s.getBoundingClientRect();
           // A control on one line with its label (.field.inline) is as wide as its contents: measure its section instead
           const cell = (s.closest('.field.inline') ? s.closest('fieldset') : s.closest('.field, fieldset, label, .series-ctl, .range-row, form, details, section')).getBoundingClientRect();
-          return { label: s.getAttribute('aria-label') ?? s.id, h: r.height, left: r.left, right: r.right, cellLeft: cell.left, cellRight: cell.right };
+          // The width its options' text needs (text + 12px padding each side, 2px gaps, 3px track padding and borders),
+          // whether the control fits its text or is stretched to fill its field
+          const range = document.createRange();
+          const texts = [...s.querySelectorAll(':scope > label > span, :scope > button')].map((el) => {
+            range.selectNodeContents(el);
+            return range.getBoundingClientRect().width;
+          });
+          const needed = texts.reduce((a, w) => a + w + 24, 0) + 2 * (texts.length - 1) + 8;
+          return { label: s.getAttribute('aria-label') ?? s.id, h: r.height, left: r.left, right: r.right, width: r.width, needed, cellLeft: cell.left, cellRight: cell.right };
         }),
     );
     expect(boxes.length, 'segmented controls on this tab').toBeGreaterThan(0);
@@ -34,8 +42,13 @@ for (const [name, query] of Object.entries(VIEWS)) {
       expect(Math.round(b.h), `${b.label} height`).toBe(44);
       // Locally, with 10px to spare: fonts on the deploy's Linux machine (and on Windows) run wider than a Mac's, so a
       // near-miss here would overflow there. On that machine (CI) it just has to fit.
-      const spare = !isMobile && !process.env.CI ? 10 : -0.5;
-      expect(b.right, `${b.label} stays inside its field${spare > 0 ? ', with room to spare' : ''}`).toBeLessThanOrEqual(b.cellRight - spare);
+      expect(b.right, `${b.label} stays inside its field`).toBeLessThanOrEqual(b.cellRight + 0.5);
+      // Desktop: the space from the control's start to the end of its field, against what its text needs. Locally with
+      // 10px to spare: fonts on the deploy's Linux machine (and on Windows) run wider than a Mac's
+      if (!isMobile) {
+        const spare = process.env.CI ? 0 : 10;
+        expect(b.cellRight - b.left - b.needed, `${b.label}: its text fits${spare ? ' with room to spare' : ''}`).toBeGreaterThanOrEqual(spare - 0.5);
+      }
     }
     if (isMobile) {
       const width = page.viewportSize().width;
