@@ -310,10 +310,14 @@ tbody tr:hover td { background: var(--accent-soft); }
 .num { text-align: right; }
 .row-note { display: block; font-size: 0.78rem; color: var(--accent); white-space: nowrap; }
 td.formula { color: var(--muted); font-size: 0.9rem; white-space: normal; min-width: 170px; }
-/* Under the results: Word | PDF | Excel, Download; then Copy link and Save */
+/* Under the results: "Download  [Word | PDF | Excel]", each a one-click download; then [Copy link | Save]. Buttons
+   joined in one outline: a segmented control's shape, but no option is chosen, each one acts */
 .exports { display: grid; gap: 12px; justify-items: start; }
-.download-row, .share-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.download-row .download { height: 44px; padding-block: 0; } /* level with the format control */
+.action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.action-label { font-size: 0.9rem; font-weight: 600; }
+.btn-group { display: inline-flex; border: 1px solid var(--accent); border-radius: 10px; overflow: hidden; }
+.btn-group > button { height: 44px; padding: 0 18px; border: 0; border-radius: 0; }
+.btn-group > button + button { border-left: 1px solid var(--accent); }
 .filter { margin-top: 12px; }
 .rate-source p { margin: 10px 0 0; font-size: 0.9rem; overflow-wrap: anywhere; }
 .rate-source p.checked { color: var(--text); }
@@ -462,8 +466,9 @@ button.chip.i-swap { margin-left: auto; padding: 2px 10px; }
   .payment-row.with-label .pay-label { grid-column: 1; grid-row: 3; }
   .payment-row.with-label .repeat-line { grid-column: 1 / -1; grid-row: 4; }
   .event-rows { gap: 14px; }
-  .exports, .download-row { width: 100%; justify-items: stretch; }
-  .download-row .download { flex: 1 1 100%; }
+  .exports, .action-row, .btn-group { width: 100%; }
+  .exports { justify-items: stretch; }
+  .btn-group > button { flex: 1 1 0; min-width: 0; padding: 0 8px; }
   /* PV by periods: name on the left; amount, frequency (with its tag, no column heading) and description stacked */
   .cf-cols { display: none !important; }
   .cf-row { grid-template-columns: 64px minmax(0, 1fr) 44px; }

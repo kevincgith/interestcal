@@ -269,22 +269,19 @@
         </div>
       </section>
       <div class="exports">
-        <div class="download-row" data-tab="interest">
-          <div class="seg" role="radiogroup" aria-label="Download as">
-          <label><input type="radio" name="interestFormat" value="docx" data-format="docx" checked><span>Word</span></label>
-          <label><input type="radio" name="interestFormat" value="pdf" data-format="pdf"><span>PDF</span></label>
-          <label><input type="radio" name="interestFormat" value="xlsx" data-format="xlsx"><span>Excel</span></label>
+        <div class="action-row">
+          <span class="action-label">Download</span>
+          <div class="btn-group" role="group" aria-label="Download">
+            <button type="button" id="docx" class="secondary" aria-label="Download Word">Word</button>
+            <button type="button" id="pdf" class="secondary" aria-label="Download PDF">PDF</button>
+            <button type="button" id="xlsx" class="secondary" aria-label="Download Excel">Excel</button>
           </div>
-          <button type="button" class="download">Download</button>
-          <span class="download-targets" hidden>
-          <button type="button" id="docx" class="secondary">Download Word</button>
-          <button type="button" id="pdf" class="secondary">Download PDF</button>
-          <button type="button" id="xlsx" class="secondary">Download Excel</button>
-          </span>
         </div>
-        <div class="share-row">
-          <button type="button" id="share" class="secondary">Copy link</button>
-          <button type="button" id="save" class="secondary">Save</button>
+        <div class="action-row">
+          <div class="btn-group" role="group" aria-label="Link and save">
+            <button type="button" id="share" class="secondary">Copy link</button>
+            <button type="button" id="save" class="secondary">Save</button>
+          </div>
           <span id="shareStatus" class="muted" role="status"></span>
         </div>
       </div>
@@ -501,20 +498,18 @@
           </table>
         </div>
         <div class="exports">
-          <div class="download-row" data-tab="mortgage">
-            <div class="seg" role="radiogroup" aria-label="Download as">
-            <label><input type="radio" name="mortgageFormat" value="mPdf" data-format="pdf" checked><span>PDF</span></label>
-            <label><input type="radio" name="mortgageFormat" value="mXlsx" data-format="xlsx"><span>Excel</span></label>
+          <div class="action-row">
+            <span class="action-label">Download</span>
+            <div class="btn-group" role="group" aria-label="Download">
+              <button type="button" id="mPdf" class="secondary" aria-label="Download PDF">PDF</button>
+              <button type="button" id="mXlsx" class="secondary" aria-label="Download Excel">Excel</button>
             </div>
-            <button type="button" class="download">Download</button>
-            <span class="download-targets" hidden>
-            <button type="button" id="mPdf" class="secondary">Download PDF</button>
-            <button type="button" id="mXlsx" class="secondary">Download Excel</button>
-            </span>
           </div>
-          <div class="share-row">
-            <button type="button" id="mShare" class="secondary">Copy link</button>
-            <button type="button" id="mSave" class="secondary">Save</button>
+          <div class="action-row">
+            <div class="btn-group" role="group" aria-label="Link and save">
+              <button type="button" id="mShare" class="secondary">Copy link</button>
+              <button type="button" id="mSave" class="secondary">Save</button>
+            </div>
             <span id="mShareStatus" class="muted" role="status"></span>
           </div>
         </div>
@@ -685,20 +680,18 @@
           </table>
         </div>
         <div class="exports">
-          <div class="download-row" data-tab="pv">
-            <div class="seg" role="radiogroup" aria-label="Download as">
-            <label><input type="radio" name="pvFormat" value="pPdf" data-format="pdf" checked><span>PDF</span></label>
-            <label><input type="radio" name="pvFormat" value="pXlsx" data-format="xlsx"><span>Excel</span></label>
+          <div class="action-row">
+            <span class="action-label">Download</span>
+            <div class="btn-group" role="group" aria-label="Download">
+              <button type="button" id="pPdf" class="secondary" aria-label="Download PDF">PDF</button>
+              <button type="button" id="pXlsx" class="secondary" aria-label="Download Excel">Excel</button>
             </div>
-            <button type="button" class="download">Download</button>
-            <span class="download-targets" hidden>
-            <button type="button" id="pPdf" class="secondary">Download PDF</button>
-            <button type="button" id="pXlsx" class="secondary">Download Excel</button>
-            </span>
           </div>
-          <div class="share-row">
-            <button type="button" id="pShare" class="secondary">Copy link</button>
-            <button type="button" id="pSave" class="secondary">Save</button>
+          <div class="action-row">
+            <div class="btn-group" role="group" aria-label="Link and save">
+              <button type="button" id="pShare" class="secondary">Copy link</button>
+              <button type="button" id="pSave" class="secondary">Save</button>
+            </div>
             <span id="pShareStatus" class="muted" role="status"></span>
           </div>
         </div>
@@ -805,9 +798,13 @@
           </table>
         </div>
         <div class="exports">
-          <button type="button" id="tShare" class="secondary">Copy link</button>
-          <button type="button" id="tSave" class="secondary">Save</button>
-          <span id="tShareStatus" class="muted" role="status"></span>
+          <div class="action-row">
+            <div class="btn-group" role="group" aria-label="Link and save">
+              <button type="button" id="tShare" class="secondary">Copy link</button>
+              <button type="button" id="tSave" class="secondary">Save</button>
+            </div>
+            <span id="tShareStatus" class="muted" role="status"></span>
+          </div>
         </div>
       </section>
     </section>
@@ -884,9 +881,13 @@
         </dl>
         <p id="iSentence" class="verified"></p>
         <div class="exports">
-          <button type="button" id="iShare" class="secondary">Copy link</button>
-          <button type="button" id="iSave" class="secondary">Save</button>
-          <span id="iShareStatus" class="muted" role="status"></span>
+          <div class="action-row">
+            <div class="btn-group" role="group" aria-label="Link and save">
+              <button type="button" id="iShare" class="secondary">Copy link</button>
+              <button type="button" id="iSave" class="secondary">Save</button>
+            </div>
+            <span id="iShareStatus" class="muted" role="status"></span>
+          </div>
         </div>
       </section>
 

@@ -604,7 +604,7 @@ test('help opens only from the "?" itself, not by clicking the label text', asyn
 test('changed inputs turn off the downloads and Save until Calculate is pressed', async ({ page }) => {
   await page.goto('./');
   await expect(total(page)).not.toHaveText('');
-  const buttons = [page.locator('#panel-interest .download')]; // Download, whichever format is chosen
+  const buttons = ['Download Word', 'Download PDF', 'Download Excel'].map((name) => page.getByRole('button', { name }));
   buttons.push(page.getByRole('button', { name: 'Save', exact: true }));
   for (const b of buttons) await expect(b).toBeEnabled();
   await page.locator('#principal').fill('123456');

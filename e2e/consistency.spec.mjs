@@ -79,24 +79,23 @@ test('each tab highlights exactly one main figure', async ({ page }) => {
   }
 });
 
-test('downloads: choose Word, PDF or Excel, then Download; the choice is remembered; Copy link and Save on their own row', async ({ page }) => {
+test('downloads: one click each in Download [Word | PDF | Excel]; [Copy link | Save] on the line below; same on every tab', async ({ page }) => {
   await page.goto('./');
-  const row = page.locator('#panel-interest .download-row');
-  await expect(row.getByRole('radio')).toHaveCount(3);
-  await expect(row.locator('input:checked')).toHaveValue('docx'); // Word first on Interest
-  await row.getByRole('radio', { name: 'Excel', exact: true }).check();
-  await expect(row.locator('.download')).toHaveAccessibleName('Download Excel');
-  const [download] = await Promise.all([page.waitForEvent('download'), row.locator('.download').click()]);
+  const panel = page.locator('#panel-interest');
+  await expect(panel.locator('.btn-group').first().getByRole('button')).toHaveText(['Word', 'PDF', 'Excel']);
+  const [download] = await Promise.all([page.waitForEvent('download'), panel.getByRole('button', { name: 'Download Excel' }).click()]);
   expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
-  await page.reload();
-  await expect(row.locator('input:checked')).toHaveValue('xlsx'); // remembered
-  // Copy link and Save sit on the next line
-  const [dl, link] = await Promise.all([row.locator('.download').boundingBox(), page.locator('#share').boundingBox()]);
+  // Copy link and Save sit on the next line, joined the same way
+  const [dl, link] = await Promise.all([panel.getByRole('button', { name: 'Download Word' }).boundingBox(), page.locator('#share').boundingBox()]);
   expect(link.y).toBeGreaterThan(dl.y + dl.height - 1);
-  // Mortgage and PV: PDF | Excel
-  await page.goto('?tab=mortgage');
-  await expect(page.locator('#panel-mortgage .download-row').getByRole('radio')).toHaveCount(2);
-  await page.goto('?tab=pv');
-  await expect(page.locator('#panel-pv .download-row').getByRole('radio')).toHaveCount(2);
+  await expect(panel.locator('.btn-group').nth(1).getByRole('button')).toHaveText(['Copy link', 'Save']);
+  // Mortgage and PV: PDF | Excel; the calculator and Inflation: only Copy link | Save
+  for (const [query, panelId, files] of [['?tab=mortgage', 'mortgage', ['PDF', 'Excel']], ['?tab=pv', 'pv', ['PDF', 'Excel']],
+    ['?tab=pv&m=tvm', 'pv', null], ['?tab=inflation', 'inflation', null]]) {
+    await page.goto(query);
+    const groups = page.locator(`#panel-${panelId} .exports:visible .btn-group`);
+    if (files) await expect(groups.first().getByRole('button')).toHaveText(files);
+    await expect(groups.last().getByRole('button')).toHaveText(['Copy link', 'Save']);
+  }
 });
 

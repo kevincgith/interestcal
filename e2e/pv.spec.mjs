@@ -131,9 +131,9 @@ test('downloads: PDF and Excel, off while inputs have changed', async ({ page })
   await expect(page.locator('#pError')).toBeHidden();
 
   await page.locator('#pRate').fill('6');
-  for (const id of ['#panel-pv .download', '#pPdf', '#pXlsx', '#pSave']) await expect(page.locator(id)).toBeDisabled();
+  for (const id of ['#pPdf', '#pXlsx', '#pSave']) await expect(page.locator(id)).toBeDisabled();
   await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
-  for (const id of ['#panel-pv .download', '#pPdf', '#pXlsx', '#pSave']) await expect(page.locator(id)).toBeEnabled();
+  for (const id of ['#pPdf', '#pXlsx', '#pSave']) await expect(page.locator(id)).toBeEnabled();
 });
 
 test('repeating cash flow: added from the form, expanded into dated rows, kept in the link', async ({ page }) => {

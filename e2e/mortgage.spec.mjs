@@ -378,7 +378,7 @@ test('Prime (P): big P and another bank’s P sit above small P; the discount an
 test('mortgage: changed inputs turn off the downloads and Save until Calculate is pressed', async ({ page }) => {
   await page.goto('?tab=mortgage');
   await expect(page.locator('#mPayment')).not.toHaveText('');
-  const ids = ['#panel-mortgage .download', '#mPdf', '#mXlsx', '#mSave'];
+  const ids = ['#mPdf', '#mXlsx', '#mSave'];
   for (const id of ids) await expect(page.locator(id)).toBeEnabled();
   await page.locator('#mPrice').fill('6000000');
   for (const id of ids) await expect(page.locator(id)).toBeDisabled();
