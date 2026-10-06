@@ -748,23 +748,30 @@ test.describe('animations', () => {
   test('collapsible sections open and close with a height animation', async ({ page }) => {
     await page.goto('./');
     const adv = page.locator('#advanced');
-    // Click the heading and read the section's height every 10ms for 400ms (on a timer, not per frame: CI's WebKit can
-    // draw only a couple of frames in that time)
-    const sample = () => adv.evaluate((d) => new Promise((resolve) => {
-      const hs = [];
+    // Click the heading: the section's height is animated (checked from the animation itself, since a slow browser may
+    // draw no frames in between), and it ends fully open or closed
+    const clickAndRead = () => adv.evaluate((d) => {
       d.querySelector('summary').click();
-      const timer = setInterval(() => hs.push(d.offsetHeight), 10);
-      setTimeout(() => { clearInterval(timer); resolve(hs); }, 400);
-    }));
+      const a = d.getAnimations().find((x) => x.effect.getKeyframes().some((k) => k.height)); // not the border colour
+      const frames = a?.effect.getKeyframes().map((k) => parseFloat(k.height));
+      return { frames, openDuring: d.open };
+    });
     const closed = (await adv.boundingBox()).height;
-    const opening = await sample();
+    const opening = await clickAndRead();
+    expect(opening.openDuring).toBe(true);
     await expect(adv).toHaveAttribute('open', '');
+    const settled = () => expect.poll(() => adv.evaluate((d) => d.getAnimations().some((x) => x.effect.getKeyframes().some((k) => k.height)))).toBe(false);
+    await settled();
     const full = (await adv.boundingBox()).height;
     expect(full).toBeGreaterThan(closed + 100);
-    expect(opening.some((h) => h > closed + 1 && h < full - 1), `heights ${opening}`).toBe(true);
-    const closing = await sample();
-    expect(closing.some((h) => h > closed + 1 && h < full - 1), `heights ${closing}`).toBe(true);
+    expect(Math.round(opening.frames[0])).toBe(Math.round(closed));
+    expect(Math.round(opening.frames.at(-1))).toBe(Math.round(full));
+    const closing = await clickAndRead();
+    expect(closing.openDuring, 'stays open while it shrinks').toBe(true);
+    expect(Math.round(closing.frames[0])).toBe(Math.round(full));
+    expect(Math.round(closing.frames.at(-1))).toBe(Math.round(closed));
     await expect(adv).not.toHaveAttribute('open', '');
+    await settled();
     expect(Math.round((await adv.boundingBox()).height)).toBe(Math.round(closed));
   });
 });
