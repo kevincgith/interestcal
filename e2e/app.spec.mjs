@@ -133,7 +133,7 @@ test('payments can be added and removed in the form; nothing recalculates until 
   await page.getByRole('button', { name: '+ Add payment' }).click();
   await page.getByLabel('Payment date').fill('2026-07-01');
   await page.getByLabel('Payment amount').fill('10000');
-  await page.locator('#allocation').selectOption('principal');
+  await page.locator('#allocation input[value="principal"]').check();
   await expect(page.locator('#staleNote')).toBeVisible();
   await expect(total(page)).toHaveText('7,978.08');
 
@@ -260,7 +260,7 @@ test('switch from prime + 1% to the judgment rate on a date', async ({ page }) =
   await page.goto('?src=prime&p=100000&from=2026-01-01&to=2026-12-31&spread=1&incl=0');
   await page.locator('#advanced summary').click();
   await page.locator('#switchOn').check();
-  await page.getByLabel('Switch date (new rate applies from this day)').fill('2026-07-01');
+  await page.getByLabel('New rate effective date').fill('2026-07-01');
   await page.getByRole('button', { name: 'Calculate' }).click();
 
   await expect(total(page)).toHaveText('6,986.30');
@@ -291,7 +291,7 @@ test('a shared link with a non-default day count opens Advanced settings', async
 
 test('calendar compounding dates from a shared link', async ({ page }) => {
   await page.goto('?src=fixed&rate=8&p=100000&from=2026-01-15&to=2026-04-15&comp=monthly&cdates=calendar&incl=0');
-  await expect(page.locator('#compoundDates')).toHaveValue('calendar');
+  await expect(page.locator('#compoundDates input:checked')).toHaveValue('calendar');
   await expect(page.locator('#periods tr td:first-child')).toHaveText([/^15-Jan-2026/, /^01-Feb-2026/, /^01-Mar-2026/, /^01-Apr-2026/]);
   await expect(page.locator('#compareLine')).toContainText('Compounded monthly (calendar month ends)');
   await expect(page).toHaveURL(/comp=monthly&cdates=calendar/);
@@ -462,16 +462,15 @@ test('currency: HKD by default, USD for US prime, a chosen one sticks, and Other
 
   // A currency the user picks stays when the rate changes, and goes in the link
   await page.locator('#advanced summary').click();
-  await page.locator('#currency input[value="more"]').check();
-  await page.locator('#currencyMore').selectOption('GBP');
+  await page.locator('#currency input[value="other"]').check();
+  await page.locator('#customCur').fill('£');
   await page.locator('input[name="source"][value="usprime"]').check();
-  await expect(page.locator('#currencyMore')).toHaveValue('GBP');
+  await expect(page.locator('#customCur')).toHaveValue('£');
   await expect(principalLabel).toContainText('Principal (£)');
   await page.locator('#form button[type="submit"]').click();
-  await expect(page).toHaveURL(/cur=GBP/);
+  await expect(page).toHaveURL(/cur=other%3A%C2%A3/);
 
   // Other: whatever is typed
-  await page.locator('#currencyMore').selectOption('other');
   await expect(page.locator('#customCurField')).toBeVisible();
   await page.locator('#customCur').fill('S$');
   await expect(principalLabel).toContainText('Principal (S$)');
@@ -483,7 +482,7 @@ test('currency: HKD by default, USD for US prime, a chosen one sticks, and Other
 
   // The link reopens with it; Reset goes back to HKD
   await page.reload();
-  await expect(page.locator('#currencyMore')).toHaveValue('other');
+  await expect(page.locator('#currency input:checked')).toHaveValue('other');
   await expect(page.locator('#customCur')).toHaveValue('S$');
   await page.locator('#clear').click();
   await expect(page.locator('#currency input:checked')).toHaveValue('HKD');

@@ -503,5 +503,28 @@ label.toggle input { position: absolute; z-index: 1; opacity: 0; inset: 0; width
 .toggle input:focus-visible + .track { box-shadow: var(--ring); }
 .field > select { width: auto; max-width: 240px; }
 .switch-toggle { grid-column: 1 / -1; }
-#compoundDatesField { grid-column: span 2; }
-@media (max-width: 600px) { #compoundDatesField { grid-column: auto; } }
+
+/* Coherence pass: plain checkbox, toggles and currency on one line, stronger control borders */
+:root { --ctl-border: color-mix(in srgb, var(--border) 65%, var(--text)); }
+label.check { display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 0.95rem; cursor: pointer; }
+label.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.field.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; min-height: 44px; }
+.field.inline > .label-row { min-width: 8.5em; }
+.field.inline > .toggle-row { min-height: 0; }
+.field.inline > .help-text { flex-basis: 100%; }
+.field.inline > select { flex: 0 1 200px; }
+#compounding.inline { grid-column: span 2; }
+label.radio, .seg { border-color: var(--ctl-border); }
+.seg label + label { border-left-color: var(--ctl-border); }
+.seg span { color: color-mix(in srgb, var(--muted) 55%, var(--text)); }
+.toggle .track { background: var(--ctl-border); }
+@media (max-width: 600px) { #compounding.inline { grid-column: auto; } .field.inline > .label-row { min-width: 0; } }
+
+#daysField .seg { min-height: 44px; }
+#daysField .seg label { display: flex; }
+#daysField .seg span { display: flex; align-items: center; padding: 0 16px; font-size: 0.9rem; }
+.field.inline > .toggle-row { flex-wrap: nowrap; }
+.field.inline > .toggle-row select { flex: 0 1 160px; min-width: 0; }
+#compounding.inline, #currency.inline { grid-column: span 2; }
+@media (max-width: 600px) { #compounding.inline, #currency.inline { grid-column: auto; } }
+.field.inline > .toggle-row select { margin-left: 8px; }
