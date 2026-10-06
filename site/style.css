@@ -465,9 +465,9 @@ button.secondary:hover { background: var(--accent-soft); }
 
 /* Result tiles */
 .summary { gap: 14px; }
-.summary div { border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+.summary div { border-radius: var(--radius); box-shadow: var(--shadow); }
 .summary dt { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.72rem; font-weight: 600; }
-.summary dd { font-size: 1.5rem; letter-spacing: -0.01em; }
+.summary dd { letter-spacing: -0.01em; }
 .summary div:nth-child(3) { background: linear-gradient(135deg, var(--accent-soft), transparent), var(--surface); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
 .summary div:nth-child(3) dd { color: var(--accent); }
 
