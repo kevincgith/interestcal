@@ -528,3 +528,9 @@ label.radio, .seg { border-color: var(--ctl-border); }
 #compounding.inline, #currency.inline { grid-column: span 2; }
 @media (max-width: 600px) { #compounding.inline, #currency.inline { grid-column: auto; } }
 .field.inline > .toggle-row select { margin-left: 8px; }
+
+/* Rate source: a segmented control that fills the row on a phone */
+.source .seg { display: flex; width: 100%; max-width: 480px; }
+.source .seg label { flex: 1; }
+.source .seg span { padding: 10px 14px; font-size: 0.95rem; text-align: center; }
+@media (max-width: 600px) { .source .seg span { padding: 10px 6px; font-size: 0.85rem; } }
