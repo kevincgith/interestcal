@@ -384,3 +384,15 @@ test('mortgage: changed inputs turn off the downloads and Save until Calculate i
   await page.locator('#mform button[type="submit"]').click();
   for (const id of ids) await expect(page.locator(id)).toBeEnabled();
 });
+
+test('cash rebate sits in Advanced settings, which a link with a rebate opens', async ({ page }) => {
+  await page.goto('?tab=mortgage');
+  await expect(page.locator('#mAdvanced')).not.toHaveAttribute('open', '');
+  await expect(page.locator('#mRebateHField')).toBeHidden();
+  await page.locator('#mAdvanced summary').click();
+  await expect(page.locator('#mRebateHField')).toBeVisible();
+  await page.goto('?tab=mortgage&mt=hibor&rbh=1');
+  await expect(page.locator('#mAdvanced')).toHaveAttribute('open', '');
+  await expect(page.locator('#mRebateH')).toHaveValue('1');
+});
+

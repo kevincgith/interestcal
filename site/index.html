@@ -379,31 +379,10 @@
             <button type="button" class="step" data-step="0.25" aria-label="Increase mortgage fixed rate by 0.25%">+</button>
           </div>
         </label>
-        <label id="mRebateHField" for="mRebateH">Cash rebate (% of loan)
-          <div class="stepper">
-            <button type="button" class="step" data-step="-0.1" aria-label="Decrease HIBOR plan cash rebate by 0.1%">−</button>
-            <input id="mRebateH" type="text" inputmode="decimal" autocomplete="off" value="0" data-min="0">
-            <button type="button" class="step" data-step="0.1" aria-label="Increase HIBOR plan cash rebate by 0.1%">+</button>
-          </div>
-        </label>
-        <label id="mRebatePField" for="mRebateP" hidden>Cash rebate (% of loan)
-          <div class="stepper">
-            <button type="button" class="step" data-step="-0.1" aria-label="Decrease prime plan cash rebate by 0.1%">−</button>
-            <input id="mRebateP" type="text" inputmode="decimal" autocomplete="off" value="0" data-min="0">
-            <button type="button" class="step" data-step="0.1" aria-label="Increase prime plan cash rebate by 0.1%">+</button>
-          </div>
-        </label>
-        <label id="mRebateFField" for="mRebateF" hidden>Cash rebate (% of loan)
-          <div class="stepper">
-            <button type="button" class="step" data-step="-0.1" aria-label="Decrease fixed plan cash rebate by 0.1%">−</button>
-            <input id="mRebateF" type="text" inputmode="decimal" autocomplete="off" value="0" data-min="0">
-            <button type="button" class="step" data-step="0.1" aria-label="Increase fixed plan cash rebate by 0.1%">+</button>
-          </div>
-        </label>
         <p id="mRateHint" class="loan-line"></p>
 
         <details id="mAdvanced" class="advanced">
-          <summary>Advanced settings <span class="muted">(interest method, stress test, income)</span></summary>
+          <summary>Advanced settings <span class="muted">(interest method, stress test, income, cash rebate)</span></summary>
           <div class="advanced-body">
             <div class="field">
               <span class="label-row">Interest method <button type="button" class="help" aria-expanded="false" aria-label="What is the interest method?">?</button></span>
@@ -423,6 +402,27 @@
             </div>
             <label>Monthly income (HK$, optional)
               <input id="mIncome" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 60,000">
+            </label>
+            <label id="mRebateHField" for="mRebateH">Cash rebate (% of loan)
+              <div class="stepper">
+                <button type="button" class="step" data-step="-0.1" aria-label="Decrease HIBOR plan cash rebate by 0.1%">−</button>
+                <input id="mRebateH" type="text" inputmode="decimal" autocomplete="off" value="0" data-min="0">
+                <button type="button" class="step" data-step="0.1" aria-label="Increase HIBOR plan cash rebate by 0.1%">+</button>
+              </div>
+            </label>
+            <label id="mRebatePField" for="mRebateP" hidden>Cash rebate (% of loan)
+              <div class="stepper">
+                <button type="button" class="step" data-step="-0.1" aria-label="Decrease prime plan cash rebate by 0.1%">−</button>
+                <input id="mRebateP" type="text" inputmode="decimal" autocomplete="off" value="0" data-min="0">
+                <button type="button" class="step" data-step="0.1" aria-label="Increase prime plan cash rebate by 0.1%">+</button>
+              </div>
+            </label>
+            <label id="mRebateFField" for="mRebateF" hidden>Cash rebate (% of loan)
+              <div class="stepper">
+                <button type="button" class="step" data-step="-0.1" aria-label="Decrease fixed plan cash rebate by 0.1%">−</button>
+                <input id="mRebateF" type="text" inputmode="decimal" autocomplete="off" value="0" data-min="0">
+                <button type="button" class="step" data-step="0.1" aria-label="Increase fixed plan cash rebate by 0.1%">+</button>
+              </div>
             </label>
           </div>
         </details>
@@ -624,8 +624,8 @@
         </div>
 
         <fieldset class="payments">
-          <legend>Cash flows</legend>
-          <p class="help-text pv-flows-note"><span class="dates-only">Each amount on its date.</span><span class="periods-only">As on a BA II Plus: CF0 is now (T0), then C01, C02, … follow period by period, each repeated for its frequency (the number of periods in a row). Use 0 for a period with no cash flow.</span> Use a minus sign for money paid out (e.g. −100,000) to get a net present value.<span class="dates-only"> An amount dated before the valuation date is grown forward to it at the same rate. A repeating cash flow (e.g. rent each month) starts on its date and keeps that day of the month.</span></p>
+          <legend><span class="label-row">Cash flows <button type="button" class="help" aria-expanded="false" aria-label="How do cash flows work?">?</button></span></legend>
+          <p class="help-text pv-flows-note" hidden><span class="dates-only">Each amount on its date.</span><span class="periods-only">As on a BA II Plus: CF0 is now (T0), then C01, C02, … follow period by period, each repeated for its frequency (the number of periods in a row). Use 0 for a period with no cash flow.</span> Use a minus sign for money paid out (e.g. −100,000) to get a net present value.<span class="dates-only"> An amount dated before the valuation date is grown forward to it at the same rate. A repeating cash flow (e.g. rent each month) starts on its date and keeps that day of the month.</span></p>
           <div id="pFlowRows" class="event-rows dates-only"></div>
           <div class="cf-cols periods-only" aria-hidden="true"><span></span><span>Amount</span><span>Frequency</span><span>Description</span><span></span></div>
           <div id="pCfRows" class="event-rows periods-only"></div>

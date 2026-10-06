@@ -199,7 +199,11 @@ test('periods timing: Excel\'s NPV example, T+n rows, fields that don\'t apply h
   await page.locator('#pTiming input[value="periods"]').check();
   for (const id of ['#pValField', '#pCompField', '#pBasisField']) await expect(page.locator(id)).toBeHidden();
   await expect(page.locator('#pPeriodField')).toBeVisible();
+  // The explanation is behind the "?" next to Cash flows, and speaks of periods
+  await expect(page.locator('.pv-flows-note')).toBeHidden();
+  await page.getByRole('button', { name: 'How do cash flows work?' }).click();
   await expect(page.locator('.pv-flows-note .periods-only').first()).toBeVisible();
+  await expect(page.locator('.pv-flows-note .dates-only').first()).toBeHidden();
   // BA II rows instead of dates: the dated rows moved to the nearest whole year (2027-10-05 -> T+1, 2028-10-05 -> T+2)
   await expect(page.locator('#pFlowRows')).toBeHidden();
   await expect(page.getByRole('button', { name: '+ Add repeating cash flow' })).toBeHidden();

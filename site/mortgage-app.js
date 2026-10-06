@@ -679,7 +679,8 @@ function readQuery() {
     const [date, amount] = pair.split(':');
     if (isIsoDate(date) && Number(amount) > 0) addExtraRow(date, Number(amount));
   }
-  if (q.get('stress') === '3' || q.has('inc') || q.get('meth') === 'monthly') $('mAdvanced').open = true;
+  const rebate = ['rbh', 'rbp', 'rbf'].some((k) => Number(q.get(k)) > 0);
+  if (q.get('stress') === '3' || q.has('inc') || q.get('meth') === 'monthly' || rebate) $('mAdvanced').open = true;
 }
 
 $('mPrimeKind').addEventListener('change', updateHints);

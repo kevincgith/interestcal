@@ -564,7 +564,7 @@ document.querySelectorAll('[data-date]').forEach((btn) => {
 
 // "?" help: each button shows or hides the explanation next to it (the help-text in the same label, or right after it)
 document.querySelectorAll('form .help').forEach((btn) => { // both tabs' forms
-  const label = btn.closest('label, .field');
+  const label = btn.closest('label, .field, fieldset');
   const text = label.querySelector('.help-text') ?? label.nextElementSibling;
   btn.addEventListener('click', (e) => {
     e.preventDefault(); // inside a label: don't also toggle its checkbox or open its list
