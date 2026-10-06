@@ -1,3 +1,9 @@
+/* HK Interest Calc: one stylesheet for every tab. Each rule appears once, grouped by what it styles:
+   tokens, page, header and tabs, cards, form fields, segmented controls, buttons, help, cash flow rows, results
+   (tiles, tables, stale note), each tab's own bits, animations, phones, print. */
+
+/* ---- Tokens: light, then dark ---- */
+
 :root {
   --bg: #f7f7f5;
   --surface: #ffffff;
@@ -9,9 +15,15 @@
   --warn-bg: #fff4d6;
   --warn-text: #6b4b00;
   --error: #b3261e;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(20, 30, 40, .05), 0 6px 20px rgba(20, 30, 40, .06);
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+  --ctl-border: color-mix(in srgb, var(--border) 65%, var(--text)); /* segmented controls: a stronger edge */
+  --ctl-text: color-mix(in srgb, var(--muted) 55%, var(--text)); /* their options not chosen */
+  --chosen: color-mix(in srgb, var(--accent) 24%, var(--surface)); /* the chosen option */
   color-scheme: light dark;
 }
-
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #161615;
@@ -24,308 +36,286 @@
     --warn-bg: #3a300f;
     --warn-text: #f2d98a;
     --error: #f2847c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
   }
 }
+
+/* ---- Page ---- */
 
 * { box-sizing: border-box; }
 /* No double-tap to zoom (taps on buttons and segments act at once); pinch to zoom still works */
 html { touch-action: manipulation; }
 [hidden] { display: none !important; } /* the hidden attribute always wins over layout rules */
-
 body {
   margin: 0;
-  background: var(--bg);
+  background: radial-gradient(1200px 400px at 50% -120px, var(--accent-soft), transparent 70%), var(--bg);
+  background-repeat: no-repeat;
   color: var(--text);
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
-
 main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
-h1 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 1.6rem; }
+h1 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 1.75rem; letter-spacing: -0.02em; }
 h1 .logo { flex: none; width: 36px; height: 36px; }
-.as-at { margin: 0 0 8px; font-size: 0.9rem; font-weight: 600; color: var(--accent); }
-.latest-rates { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: -2px 0 10px; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
-.latest-rate { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
-.latest-rate .latest-name, .latest-rate .latest-date { color: var(--muted); }
-.latest-rate .latest-date { font-size: 0.8rem; }
-/* The rates strip at the top of the open tab's panel (tabs.js moves it there), showing only the rates that tab uses:
-   Interest (judgment, HSBC and US prime), Mortgage (HSBC prime, HIBOR), Inflation (HK inflation); PV uses none.
-   It reads as the top of the panel's first card: same surface and border, attached to the tab bar. */
+a { color: var(--accent); }
+.muted { color: var(--muted); font-size: 0.9rem; font-weight: normal; }
 .tagline { margin: 0 0 4px; max-width: 70ch; font-size: 0.95rem; color: var(--muted); }
-.header-rates { display: flow-root; background: var(--surface); border: 1px solid var(--border); border-bottom: 0;
-  border-radius: 0 10px 0 0; padding: 14px 20px 0; }
-.header-rates:not([data-tab="pv"]) + .card { margin-top: 0; border-top: 0; border-radius: 0 0 10px 10px; }
+.print-only { display: none; }
+
+/* ---- Rates strip: at the top of the open tab's panel (tabs.js moves it there), showing only the rates that tab uses:
+   Interest (judgment, HSBC and US prime), Mortgage (HSBC prime, HIBOR), Inflation (HK inflation); PV uses none.
+   It reads as the top of the panel's first card: same surface and border, attached to the tab bar. ---- */
+
+.header-rates {
+  display: flow-root; background: var(--surface); border: 1px solid var(--border); border-bottom: 0;
+  border-radius: 0 var(--radius) 0 0; padding: 14px 20px 0; box-shadow: var(--shadow);
+}
+.header-rates:not([data-tab="pv"]) + .card { margin-top: 0; border-top: 0; border-radius: 0 0 var(--radius) var(--radius); }
 .header-rates[data-tab="pv"] { display: none; }
 .header-rates[data-tab="interest"] .latest-rate[data-tabs]:not([data-tabs~="interest"]),
 .header-rates[data-tab="mortgage"] .latest-rate[data-tabs]:not([data-tabs~="mortgage"]) { display: none; }
 .header-rates[data-tab="inflation"] :is(.as-at, .latest-rates:not(.latest-cpi)),
 .header-rates:not([data-tab="inflation"]) .latest-cpi { display: none; }
+.as-at { margin: 0 0 8px; font-size: 0.9rem; font-weight: 600; color: var(--accent); }
+.header-rates .as-at { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); font-size: 0.8rem; }
+.latest-rates { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: -2px 0 10px; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
 .header-rates .latest-rates { margin-bottom: 4px; }
-a { color: var(--accent); }
-.muted { color: var(--muted); font-size: 0.9rem; font-weight: normal; }
+.latest-rate { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.latest-rate .latest-name, .latest-rate .latest-date { color: var(--muted); }
+.latest-rate .latest-date { font-size: 0.8rem; }
+
+/* ---- Tabs ---- */
+
+.tabs { display: flex; gap: 4px; margin: 16px 0 0; border-bottom: 1px solid transparent; }
+.tabs [role="tab"] {
+  background: transparent; color: var(--muted); border: 1px solid transparent; border-bottom: 0;
+  border-radius: 10px 10px 0 0; padding: 10px 20px; margin-bottom: -1px; white-space: nowrap; font-weight: 600;
+  transition: color .15s, background .15s;
+}
+.tabs [role="tab"]:hover { color: var(--accent); }
+.tabs [role="tab"][aria-selected="true"] {
+  color: var(--text); background: var(--surface); border-color: var(--border); box-shadow: 0 -2px 0 var(--accent) inset;
+}
+.tabs [role="tab"][aria-selected="true"]:hover { color: var(--text); }
+/* Each tab's form card attaches to the tab bar the same way (every panel, not just the first); the PV tab's calculator
+   form sits after the (hidden) cash flows form, so it attaches the same way */
+[role="tabpanel"] > .card:first-child, [role="tabpanel"] > form.card { margin-top: 0; border-top-left-radius: 0; }
+
+/* ---- Cards and collapsible sections ---- */
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 20px;
-  margin: 24px 0;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin: 24px 0;
+  box-shadow: var(--shadow);
 }
+details summary { cursor: pointer; font-weight: 600; }
+.advanced {
+  grid-column: 1 / -1; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px;
+  background: color-mix(in srgb, var(--bg) 60%, transparent); transition: border-color .15s;
+}
+.advanced:hover, .advanced[open] { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+.advanced summary { font-size: 0.95rem; padding: 4px 0; }
+.advanced-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 14px; }
+.cash-flows-body { display: grid; gap: 16px; margin-top: 14px; }
 
-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+/* ---- Form fields: a label above every control; every control 44px tall ---- */
+
+form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+label { display: grid; gap: 6px; align-content: start; font-size: 0.9rem; font-weight: 600; min-width: 0; letter-spacing: 0.01em; }
+/* A control that isn't a <label> (a segmented control and what it opens): the same label gap, so boxes in a row line up */
+.field { display: grid; gap: 6px; align-content: start; min-width: 0; font-size: 0.9rem; font-weight: 600; }
+.field .help-text { grid-column: auto; }
+/* A three-option control is wider than a quarter-width column: it takes two (one column on a phone) */
+.field.wide { grid-column: span 2; }
+/* Label and control on one line (Apply payments first to) */
+.field.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; min-height: 44px; }
+.field.inline > .label-row { min-width: 8.5em; }
+.field.inline > .help-text { flex-basis: 100%; }
+label.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+label.inline select { width: auto; }
+.label-row { display: flex; align-items: center; gap: 6px; }
+fieldset.source, .payments { border: 0; padding: 0; margin: 0; min-width: 0; }
+.source { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.source.field { display: grid; gap: 6px; } /* a .source that is also a .field (Mortgage rate) lays out as a field */
+.source legend, .payments legend { font-size: 0.9rem; font-weight: 600; padding: 0; }
+.source legend { margin-bottom: 8px; }
+.payments legend { margin-bottom: 6px; }
+.payments { grid-column: 1 / -1; }
+.actions { grid-column: 1 / -1; display: flex; gap: 12px; }
+.error { grid-column: 1 / -1; color: var(--error); margin: 0; }
+.loan-line { grid-column: 1 / -1; margin: -4px 0 0; font-size: 0.9rem; color: var(--muted); }
+.loan-line:empty { display: none; }
+.rate-hint { display: block; font-size: 0.82rem; font-weight: normal; color: var(--muted); min-height: 0; }
+.rate-hint:empty { display: none; }
+
+input, select {
+  font: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text);
+  transition: border-color .15s, box-shadow .15s;
 }
-label { display: grid; gap: 6px; align-content: start; font-size: 0.9rem; font-weight: 600; min-width: 0; }
 input[type="text"], input[type="date"], select {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
+  display: block; width: 100%; min-width: 0; max-width: 100%; margin: 0;
   height: 44px; /* one height for every field; iOS otherwise sizes date and select boxes natively */
-  margin: 0;
 }
+input:hover, select:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+input:focus-visible, select:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
 /* iOS Safari: drop the native date styling (centred text, extra height and width) so it matches text inputs */
 input[type="date"] { -webkit-appearance: none; appearance: none; text-align: left; }
 input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
 input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.7; }
-input, select {
-  font: inherit;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-}
+label.check { display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 0.95rem; cursor: pointer; }
+label.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+
+/* Number with − and + (rates, spreads, years): no wider than the number needs */
 .stepper {
-  display: flex;
-  height: 44px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  overflow: hidden;
+  display: flex; height: 44px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); overflow: hidden;
 }
-.stepper:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; }
+form .stepper { max-width: 200px; }
+.stepper:focus-within { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
 .stepper input { height: 100%; border: 0; border-radius: 0; background: transparent; text-align: center; outline: none; }
 .stepper .step {
-  flex: none;
-  width: 40px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--accent);
-  font-size: 1.25rem;
-  line-height: 1;
+  flex: none; width: 40px; padding: 0; border: 0; border-radius: 0; background: transparent;
+  color: var(--accent); font-size: 1.25rem; line-height: 1;
 }
 .stepper .step:hover { background: var(--surface); }
-.source { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; }
-.source legend { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; padding: 0; }
-label[hidden] { display: none; }
-.actions { grid-column: 1 / -1; display: flex; gap: 12px; }
-.advanced { grid-column: 1 / -1; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
-.advanced summary { cursor: pointer; font-weight: 600; font-size: 0.95rem; }
-.advanced-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 14px; }
-.switch-toggle { grid-column: 1 / -1; }
-.switch-fields { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.payments { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; min-width: 0; }
-.payments legend { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; padding: 0; }
-.event-rows { display: grid; gap: 8px; margin-bottom: 8px; }
-.event-rows:empty { margin: 0; }
-.payment-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; gap: 8px; }
-.payment-row.with-label { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 44px; }
-.payment-row .remove { width: 44px; height: 44px; padding: 0; font-size: 1.2rem; line-height: 1; }
-.payments-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
-label.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-label.inline select { width: auto; }
-#additionsResult h2, #paymentsResult h2 { font-size: 1.05rem; margin: 8px 0 4px; }
+
+/* ---- Segmented controls (radios in .seg, or toggle buttons with aria-pressed): as tall as a text box; the chosen
+   option is a rounded "thumb" inset in the track, which ui-motion.js slides to a new choice; on a phone each fills the
+   row with equal parts, like the iOS segmented control ---- */
+
+.seg {
+  position: relative; display: inline-flex; justify-self: start; gap: 2px; padding: 3px;
+  border: 1px solid var(--ctl-border); border-radius: 10px; background: var(--bg); overflow: hidden;
+}
+.source .seg, .pv-mode.seg { display: flex; width: 100%; max-width: 480px; }
+.seg label { position: relative; z-index: 1; display: flex; flex: 1 1 auto; font-weight: 500; cursor: pointer; }
+.source .seg label, .pv-mode.seg > button { flex: 1 1 0; }
+.seg input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.seg span, .seg > button {
+  display: flex; flex: 1; align-items: center; justify-content: center; min-height: 36px; padding: 0 12px;
+  border-radius: 7px; font-size: 0.9rem; text-align: center; white-space: nowrap; color: var(--ctl-text); transition: color .2s;
+}
+.seg > button { position: relative; z-index: 1; flex: 1 1 auto; border: 0; background: transparent; font-weight: 500; box-shadow: none; }
+.seg label:hover span, .seg > button:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--accent); }
+.seg label:has(input:checked) span { background: var(--chosen); color: var(--accent); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, .18); }
+.seg > button[aria-pressed="true"] { background: var(--chosen); color: var(--accent); font-weight: 600; }
+/* With the sliding thumb in place, the option itself has no background */
+.seg-thumb {
+  position: absolute; top: 0; left: 0; z-index: 0; border-radius: 7px; pointer-events: none;
+  background: var(--chosen); box-shadow: 0 1px 2px rgba(0, 0, 0, .18);
+}
+.seg:not(.has-thumb) .seg-thumb { display: none; }
+.seg.has-thumb label:has(input:checked) span, .seg.has-thumb > button[aria-pressed="true"] { background: transparent; box-shadow: none; }
+.seg label:has(input:focus-visible) span, .seg > button:focus-visible { box-shadow: var(--ring); }
+/* A segmented control with what it opens directly under it, at the same width: a frequency list, a symbol box */
+.seg-stack { display: grid; gap: 6px; justify-self: start; min-width: 0; }
+.seg-stack > .seg { display: flex; }
+.seg-stack > select, .seg-stack > input { width: 100%; max-width: none; }
+.view-seg { margin: 12px 0 8px; }
+.range-row .view-seg { margin: 0; }
+
+/* ---- Buttons ---- */
 
 button {
-  font: inherit;
-  font-weight: 600;
-  padding: 8px 18px;
-  border-radius: 6px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-text);
-  cursor: pointer;
+  font: inherit; font-weight: 600; padding: 10px 22px; border-radius: 10px; border: 1px solid var(--accent);
+  background: var(--accent); color: var(--accent-text); cursor: pointer;
+  transition: transform .1s, box-shadow .15s, background .15s, filter .15s;
 }
-button.secondary { background: transparent; color: var(--accent); }
-
-.error { grid-column: 1 / -1; color: var(--error); margin: 0; }
-.warning {
-  background: var(--warn-bg);
-  color: var(--warn-text);
-  padding: 10px 14px;
-  border-radius: 6px;
-  margin: 0 0 12px;
+/* The solid buttons (Calculate) brighten and glow on hover; others don't */
+button:not(.step):not(.help):not(.chip):not(.sort):not(.secondary):not([role="tab"]):not(.seg > button):hover {
+  filter: brightness(1.08); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent);
 }
-
-.summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  margin: 0 0 20px;
-}
-.summary div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
-.summary dt { color: var(--muted); font-size: 0.85rem; }
-.summary dd { margin: 4px 0 0; font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-
-.table-wrap { overflow-x: auto; margin-bottom: 16px; }
-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
-th { font-size: 0.85rem; color: var(--muted); }
-.exports { display: flex; flex-wrap: wrap; gap: 12px; }
+button:active { transform: translateY(1px); }
+button:focus-visible { outline: none; box-shadow: var(--ring); }
 button:disabled { opacity: 0.6; cursor: progress; }
 button:disabled[title] { cursor: not-allowed; } /* out-of-date results: press Calculate first */
-.row-note { display: block; font-size: 0.78rem; color: var(--accent); white-space: nowrap; }
-td.formula { color: var(--muted); font-size: 0.9rem; white-space: normal; min-width: 170px; }
-.num { text-align: right; }
-
-.tabs { display: flex; gap: 4px; margin: 16px 0 0; border-bottom: 1px solid var(--border); }
-.tabs [role="tab"] {
-  background: transparent;
-  color: var(--muted);
-  border: 1px solid transparent;
-  border-bottom: 0;
-  border-radius: 8px 8px 0 0;
-  padding: 10px 20px;
-  margin-bottom: -1px;
-  white-space: nowrap;
+button.secondary { background: transparent; color: var(--accent); }
+button.secondary:hover { background: var(--accent-soft); }
+.actions button[type="submit"] { padding-inline: 28px; }
+/* Small rounded quick-fill buttons (years ago, examples, Swap) */
+button.chip {
+  height: auto; min-height: 0; padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px;
+  background: transparent; color: var(--muted); font-size: 0.78rem; font-weight: 500; line-height: 1.3; cursor: pointer;
 }
-/* Three tabs on a phone: tighter spacing so "Present value" stays on one line, even with wider fonts (Linux); on the
-   narrowest screens a label may wrap rather than push the page sideways */
-@media (max-width: 420px) {
-  .tabs { gap: 2px; }
-  .tabs [role="tab"] { padding: 10px 9px; }
-}
-@media (max-width: 359px) {
-  .tabs [role="tab"] { white-space: normal; }
-}
-.tabs [role="tab"][aria-selected="true"] { color: var(--text); background: var(--surface); border-color: var(--border); }
-.tabs [role="tab"]:hover { color: var(--accent); }
-/* Each tab's form card attaches to the tab bar the same way (every panel, not just the first) */
-[role="tabpanel"] > .card:first-child { margin-top: 0; border-top-left-radius: 0; }
-/* The PV tab's calculator form sits after the (hidden) cash flows form: attach it the same way */
-[role="tabpanel"] > form.card { margin-top: 0; border-top-left-radius: 0; }
-.tabs [role="tab"][aria-selected="true"]:hover { color: var(--text); }
-.loan-line { grid-column: 1 / -1; margin: -4px 0 0; font-size: 0.9rem; color: var(--muted); }
-.loan-line:empty { display: none; }
-.schedule-wrap { max-height: 520px; overflow: auto; }
-.schedule-wrap thead th { position: sticky; top: 0; background: var(--bg); }
-details summary { cursor: pointer; font-weight: 600; }
-button.sort {
-  all: unset;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-}
+button.chip:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
+button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.sort { all: unset; cursor: pointer; font: inherit; color: inherit; }
 button.sort:hover, button.sort:focus-visible { color: var(--accent); }
 button.sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .arrow { display: inline-block; min-width: 1em; font-size: 0.75em; }
-.filter { margin-top: 12px; }
-details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
+
+/* ---- "?" help next to a setting, and the explanation it shows ---- */
+
+button.help {
+  width: 20px; height: 20px; min-height: 0; padding: 0; border-radius: 50%; flex: none;
+  font-size: 0.75rem; font-weight: 700; line-height: 1; border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+}
+button.help[aria-expanded="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.help-text { display: block; font-size: 0.82rem; font-weight: normal; line-height: 1.45; color: var(--muted); }
+.help-text[hidden] { display: none; }
+
+/* ---- Cash flow rows (Interest, Mortgage, PV by dates): date, amount, description, and a quiet remove (red on hover) ---- */
+
+.event-rows { display: grid; gap: 8px; margin-bottom: 8px; }
+.event-rows:empty { margin: 0; }
+.payments-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.payment-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; gap: 8px; }
+.payment-row.with-label { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 44px; }
+.payment-row .remove, .cf-row .remove {
+  width: 44px; height: 44px; padding: 0; font-size: 1.2rem; line-height: 1; border-color: transparent; background: transparent; color: var(--muted);
+}
+.payment-row .remove:hover, .cf-row .remove:hover { border-color: transparent; background: color-mix(in srgb, var(--error) 12%, transparent); color: var(--error); }
+.payment-row .repeat-line { grid-column: 1 / -2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 0.9rem; color: var(--muted); }
+.repeat-line select { width: auto; }
+.repeat-line .repeat-count { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.repeat-line .repeat-times { width: 4.2em; text-align: center; }
+
+/* ---- Results ---- */
 
 .stale-note {
-  position: sticky;
-  top: 8px;
-  z-index: 1;
-  margin: 0 0 12px;
-  padding: 10px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--accent);
-  background: var(--surface);
-  font-size: 0.95rem;
+  position: sticky; top: 8px; z-index: 1; margin: 0 0 12px; padding: 10px 14px; border-radius: 6px;
+  border: 1px solid var(--accent); background: var(--surface); font-size: 0.95rem;
 }
-#results.stale > :not(.stale-note) { opacity: 0.45; }
+:is(#results, #pResults, #tResults, #iResults).stale > :not(.stale-note) { opacity: 0.45; }
+.warning { background: var(--warn-bg); color: var(--warn-text); padding: 10px 14px; border-radius: 10px; margin: 0 0 12px; }
 .verified { margin: -8px 0 16px; font-size: 0.9rem; color: var(--muted); overflow-wrap: anywhere; }
-.about { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.9rem; }
-.about p { margin: 0; }
-.about .disclaimer { margin-top: 12px; font-size: 0.85rem; }
-.about .license { margin-top: 12px; font-size: 0.85rem; }
-.terms { max-width: 760px; }
-.terms h2 { font-size: 1.1rem; margin: 28px 0 6px; }
-.terms p { margin: 0 0 10px; }
-.about .license a { white-space: nowrap; }
-.rate-source p.checked { color: var(--text); }
+
+/* Tiles: each tab's main figure (class "answer") stands out; a figure over a limit (class "fail") is red */
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 0 0 20px; }
+.summary div { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+.summary dt { color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.72rem; font-weight: 600; }
+.summary dd { margin: 4px 0 0; font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.summary dd small { display: block; font-size: 0.8rem; font-weight: normal; color: var(--muted); margin-top: 2px; }
+.summary .answer { background: linear-gradient(135deg, var(--accent-soft), transparent), var(--surface); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.summary .answer dd { color: var(--accent); }
+.summary .fail { border-color: var(--error); }
+.summary .fail dd > span { color: var(--error); }
+/* Daily interest under Actual/Actual: one line per year length */
+.per-diem-line { display: block; white-space: nowrap; }
+.per-diem-basis { font-size: 0.58em; /* relative to the figure, so shrink-to-fit scales it too */ font-weight: normal; color: var(--muted); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; margin-bottom: 16px; }
+details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
+/* Interest results wider than the screen: a shadow at the edge that has more to scroll to */
+#results .table-wrap {
+  background:
+    linear-gradient(to right, var(--bg) 30%, transparent) left / 32px 100% no-repeat local,
+    linear-gradient(to left, var(--bg) 30%, transparent) right / 32px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--text) 30%, transparent), transparent) left / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--text) 30%, transparent), transparent) right / 12px 100% no-repeat scroll;
+}
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+th { color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; }
+tbody tr:hover td { background: var(--accent-soft); }
+.num { text-align: right; }
+.row-note { display: block; font-size: 0.78rem; color: var(--accent); white-space: nowrap; }
+td.formula { color: var(--muted); font-size: 0.9rem; white-space: normal; min-width: 170px; }
+.exports { display: flex; flex-wrap: wrap; gap: 12px; }
+.filter { margin-top: 12px; }
 .rate-source p { margin: 10px 0 0; font-size: 0.9rem; overflow-wrap: anywhere; }
-.print-only { display: none; }
+.rate-source p.checked { color: var(--text); }
 
-/* Save as PDF / print: results only, light colours, everything expanded */
-@media print {
-  :root {
-    --bg: #fff;
-    --surface: #fff;
-    --text: #000;
-    --muted: #444;
-    --border: #bbb;
-    --accent: #000;
-    --warn-bg: #fff4d6;
-    --warn-text: #000;
-    color-scheme: light;
-  }
-  @page { margin: 14mm; }
-  body { font-size: 11pt; background: #fff; }
-  main { max-width: none; padding: 0; }
-  .tagline, .header-rates .latest-rates, .about, form, .exports, label.filter, .stale-note, details summary::marker { display: none; }
-  .header-rates { border: 0; padding: 0; background: none; }
-  .print-only { display: grid; }
-  .inputs-list {
-    grid-template-columns: max-content 1fr;
-    gap: 4px 16px;
-    margin: 0 0 16px;
-  }
-  .inputs-list div { display: contents; }
-  .inputs-list dt { color: var(--muted); }
-  .inputs-list dd { margin: 0; overflow-wrap: anywhere; }
-  .summary { grid-template-columns: repeat(4, 1fr); }
-  .summary dd { font-size: 1.1rem; }
-  .table-wrap, details .table-wrap { overflow: visible; max-height: none; }
-  th, td { padding: 4px 6px; }
-  td.formula, th { white-space: normal; }
-  tr { break-inside: avoid; }
-  .card { border: 0; padding: 0; margin: 16px 0 0; }
-  details summary { list-style: none; font-size: 1rem; margin-bottom: 4px; }
-  a { color: inherit; text-decoration: none; }
-  .warning { border: 1px solid #d8b24a; }
-}
-.no-extra .m-extra-col, .no-cap .m-cap-col { display: none; }
-
-/* Mortgage: comparison, yearly view, chart */
-.m-section { font-size: 1.05rem; margin: 28px 0 4px; }
-.m-note { margin: 0 0 8px; }
-.compare th { white-space: normal; vertical-align: bottom; }
-.compare tr.selected td { background: var(--surface); font-weight: 600; }
-.compare .badge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; background: var(--accent); color: var(--accent-text); }
-td.applied { font-weight: 700; color: var(--text); }
-td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
-.chart { position: relative; margin: 8px 0; }
-.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-.chart .legend { display: flex; gap: 16px; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
-.chart .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
-.chart .tip {
-  position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 6px; padding: 6px 10px; font-size: 0.82rem; box-shadow: 0 4px 14px rgba(0,0,0,.12); white-space: nowrap;
-}
-.chart .tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-#hiborChart svg { touch-action: pan-y; }
-.series-ctls { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px 20px; margin: 4px 0 12px; }
-.series-ctl { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.series-ctl .swatch, .chart-card .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
-.chart .legend { flex-wrap: wrap; row-gap: 4px; }
-.range-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 12px 0 8px; }
-.range-row label.inline { font-weight: normal; }
-.chart, .chart-card { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --grid: #e4e4df; }
-@media (prefers-color-scheme: dark) {
-  .chart, .chart-card { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --grid: #34342f; }
-}
-/* Wide mortgage tables (comparison; 10-column HIBOR schedule): compact so they fit on laptop screens with any font */
-.compare th, .compare td, .schedule-wrap th, .schedule-wrap td, #mYearlyWrap th, #mYearlyWrap td {
-  padding: 6px 7px;
-  font-size: 0.88rem;
-}
-
-/* Saved calculations */
+/* Saved and recent calculations */
 .saved-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
 .saved-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 0; border-top: 1px solid var(--border); }
 .saved-list .saved-name { flex: 1 1 260px; width: auto; height: 36px; font-weight: 600; }
@@ -334,202 +324,134 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 .saved-list .remove { margin-left: auto; }
 .saved-actions { margin-top: 12px; }
 
-/* Daily interest under Actual/Actual: one line per year length */
-.per-diem-line { display: block; white-space: nowrap; }
-.per-diem-basis { font-size: 0.58em; /* relative to the figure, so shrink-to-fit scales it too */ font-weight: normal; color: var(--muted); }
+/* ---- Interest tab ---- */
 
-/* Cash flows (principal added later, payments received): collapsible like Advanced settings */
-.cash-flows-body { display: grid; gap: 16px; margin-top: 14px; }
+#additionsResult h2, #paymentsResult h2 { font-size: 1.05rem; margin: 8px 0 4px; }
+.switch-fields { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+/* Rate change from a date: the new rate's fields indented under it */
+#switchFields { padding-left: 14px; border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); }
 
-/* "?" help next to a setting, and the explanation it shows */
-.label-row { display: flex; align-items: center; gap: 6px; }
-button.help {
-  width: 20px; height: 20px; min-height: 0; padding: 0; border-radius: 50%; flex: none;
-  font-size: 0.75rem; font-weight: 700; line-height: 1; border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+/* ---- Mortgage tab: comparison, schedule, chart and rate history ---- */
+
+.no-extra .m-extra-col, .no-cap .m-cap-col { display: none; }
+.m-section { font-size: 1.05rem; margin: 28px 0 4px; }
+.m-note { margin: 0 0 8px; }
+.compare th { white-space: normal; vertical-align: bottom; }
+.compare tr.selected td { background: var(--surface); font-weight: 600; }
+.compare .badge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; background: var(--accent); color: var(--accent-text); }
+td.applied { font-weight: 700; color: var(--text); }
+td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
+.schedule-wrap { max-height: 520px; overflow: auto; }
+.schedule-wrap thead th { position: sticky; top: 0; background: var(--bg); }
+/* Wide mortgage tables (comparison; 10-column HIBOR schedule): compact so they fit on laptop screens with any font */
+.compare th, .compare td, .schedule-wrap th, .schedule-wrap td, #mYearlyWrap th, #mYearlyWrap td { padding: 6px 7px; font-size: 0.88rem; }
+
+/* Charts (Mortgage rate history, Inflation) */
+.chart, .chart-card { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --grid: #e4e4df; }
+@media (prefers-color-scheme: dark) {
+  .chart, .chart-card { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --grid: #34342f; }
 }
-button.help[aria-expanded="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-.help-text { display: block; font-size: 0.82rem; font-weight: normal; line-height: 1.45; color: var(--muted); }
-.help-text[hidden] { display: none; }
-.switch-help { grid-column: 1 / -1; margin-top: -8px; }
-label.inline .help-text { flex-basis: 100%; }
-
-/* Date shortcuts: small rounded chips under the start and end dates */
-.date-shortcuts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; max-width: 320px; }
-button.chip {
-  height: auto; min-height: 0; padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px;
-  background: transparent; color: var(--muted); font-size: 0.78rem; font-weight: 500; line-height: 1.3; cursor: pointer;
+.chart { position: relative; margin: 8px 0; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+.chart .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.chart .tip {
+  position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 10px; font-size: 0.82rem; box-shadow: 0 4px 14px rgba(0,0,0,.12); white-space: nowrap;
 }
-button.chip:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
-button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chart .tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+#hiborChart svg { touch-action: pan-y; }
+.range-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 12px 0 8px; }
+.range-row label.inline { font-weight: normal; }
+.range-row input[type="date"] { width: auto; }
+/* Rate history: a checkbox per line, then its spread or HIBOR choice */
+.series-ctls { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px 20px; margin: 4px 0 12px; }
+.series-ctl { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 8px; }
+.series-ctl .stepper { flex: none; width: 132px; }
+.series-ctl .seg { flex: none; }
+.series-ctl .swatch, .chart-card .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
 
-/* Present value tab */
+/* ---- PV tab: cash flows (by dates, or BA II rows by periods) or the N, I/Y, PV, PMT, FV calculator ---- */
+
+.pv-mode { grid-column: 1 / -1; margin: 12px 0 8px; }
 .pv-flows-note { margin: 0 0 8px; }
-#pResults.stale > :not(.stale-note) { opacity: 0.45; }
+#pform:not(.periods) .periods-only, #pform.periods .dates-only { display: none !important; }
+#pTable.periods .col-days { display: none; }
 #pRows .working { white-space: nowrap; color: var(--muted); font-size: 0.85rem; }
 #pRows .before { color: var(--muted); font-size: 0.8rem; display: block; }
 #pFoot td { font-weight: 700; border-top: 2px solid var(--border); }
-.payment-row .repeat-line { grid-column: 1 / -2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 0.9rem; color: var(--muted); }
-.repeat-line select { width: auto; }
-.repeat-line .repeat-count { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-.repeat-line .repeat-times { width: 4.2em; text-align: center; }
-/* Periods timing: a period number instead of the date, repeats every period, no Days column */
-#pform:not(.periods) .periods-only, #pform.periods .dates-only { display: none !important; }
-#pTable.periods .col-days { display: none; }
-.rate-hint { display: block; font-size: 0.82rem; font-weight: normal; color: var(--muted); min-height: 0; }
-.rate-hint:empty { display: none; }
-/* PV tab: cash flows or the N, I/Y, PV, PMT, FV calculator */
-.pv-mode { grid-column: 1 / -1; margin: 0 0 4px; }
+/* By periods: CF0, C01 + frequency, ..., with the periods each covers under its name */
+.cf-row, .cf-cols { display: grid; grid-template-columns: 84px minmax(0, 1fr) 120px minmax(0, 1.4fr) 44px; gap: 8px; align-items: center; }
+.cf-cols { margin-bottom: -2px; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+.cf-head-cell { display: grid; line-height: 1.2; }
+.cf-name { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cf-when { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+.cf-freq { text-align: center; }
+.cf-freq-field { display: block; min-width: 0; }
+.cf-freq-tag { display: none; }
+.cf-row.cf0 .cf-freq-field, .cf-row.cf0 .remove { visibility: hidden; }
+/* Calculator */
 .tvm-examples { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .tvm-solve { grid-column: 1 / -1; }
 .tvm-n { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .tvm-n select { width: auto; }
 #tform label.solved input:not([type="radio"]) { border-style: dashed; color: var(--accent); font-weight: 700; }
-#tResults.stale > :not(.stale-note), #iResults.stale > :not(.stale-note) { opacity: 0.45; }
-.summary dd small { display: block; font-size: 0.8rem; font-weight: normal; color: var(--muted); margin-top: 2px; }
-/* Inflation tab: "In" and "Worth in" are each a year and a month side by side ("Now" has no month) */
+
+/* ---- Inflation tab: Now / Year, then the year (and month); Swap next to "Worth in"; years-ago shortcuts ---- */
+
+.i-when { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.i-when .stepper { flex: 1 1 150px; min-width: 150px; max-width: 200px; }
+.i-when select { flex: 1 1 150px; min-width: 0; max-width: 200px; }
 .i-pick { display: flex; gap: 8px; min-width: 0; }
 .i-pick select { flex: 1; min-width: 0; }
-.i-shortcuts { display: flex; flex-wrap: wrap; gap: 6px; }
+.i-shortcuts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.i-shortcuts .chip { min-width: 34px; }
 .i-shortcuts .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+button.chip.i-swap { margin-left: auto; padding: 2px 10px; }
+#iWorthField .label-row { width: 100%; }
+/* "Start (= 100)" above its year and month, like any field */
+.i-rebase { display: grid; gap: 6px; max-width: 360px; margin: 12px 0 8px; }
 
-/* Modern look: softer surfaces, depth, pill radios, clearer focus, bolder results */
-:root {
-  --radius: 14px;
-  --shadow: 0 1px 2px rgba(20, 30, 40, .05), 0 6px 20px rgba(20, 30, 40, .06);
-  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
-  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+/* ---- Footer and terms page ---- */
+
+.about { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.9rem; }
+.about p { margin: 0; }
+.about .disclaimer, .about .license { margin-top: 12px; font-size: 0.85rem; }
+.about .license a { white-space: nowrap; }
+.terms { max-width: 760px; }
+.terms h2 { font-size: 1.1rem; margin: 28px 0 6px; }
+.terms p { margin: 0 0 10px; }
+
+/* ---- Animations (ui-motion.js); off with Reduce Motion ---- */
+
+.seg.thumb-ready .seg-thumb { transition: transform .25s cubic-bezier(.2, .7, .3, 1), width .25s cubic-bezier(.2, .7, .3, 1); }
+@media (prefers-reduced-motion: reduce) { .seg.thumb-ready .seg-thumb { transition: none; } }
+
+/* ---- Phones ---- */
+
+/* Four tabs on a phone: tighter spacing so the labels stay on one line, even with wider fonts (Linux); on the narrowest
+   screens a label may wrap rather than push the page sideways */
+@media (max-width: 420px) {
+  .tabs { gap: 2px; }
+  .tabs [role="tab"] { padding: 10px 9px; }
 }
-@media (prefers-color-scheme: dark) { :root { --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25); } }
-body { background: radial-gradient(1200px 400px at 50% -120px, var(--accent-soft), transparent 70%), var(--bg); background-repeat: no-repeat; -webkit-font-smoothing: antialiased; }
-h1 { font-size: 1.75rem; letter-spacing: -0.02em; }
-.card, .header-rates { box-shadow: var(--shadow); }
-.card { border-radius: var(--radius); padding: 24px; }
-.header-rates { border-radius: 0 var(--radius) 0 0; }
-.header-rates:not([data-tab="pv"]) + .card { border-radius: 0 0 var(--radius) var(--radius); }
-.header-rates .as-at { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); font-size: 0.8rem; }
-
-.tabs { border-bottom-color: transparent; }
-.tabs [role="tab"] { border-radius: 10px 10px 0 0; font-weight: 600; transition: color .15s, background .15s; }
-.tabs [role="tab"][aria-selected="true"] { box-shadow: 0 -2px 0 var(--accent) inset; }
-
-input, select { border-radius: 10px; transition: border-color .15s, box-shadow .15s; }
-input:hover, select:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
-input:focus-visible, select:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
-.stepper { border-radius: 10px; }
-.stepper:focus-within { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
-label { letter-spacing: 0.01em; }
-
-/* Radio groups become segmented pills */
-.source { gap: 8px; }
-.source legend { margin-bottom: 8px; }
-
-.advanced { border-radius: 12px; background: color-mix(in srgb, var(--bg) 60%, transparent); transition: border-color .15s; }
-.advanced:hover, .advanced[open] { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
-.advanced summary { padding: 4px 0; }
-
-button { border-radius: 10px; padding: 10px 22px; transition: transform .1s, box-shadow .15s, background .15s, filter .15s; }
-button:not(.step):not(.help):not(.chip):not(.sort):not(.secondary):not([role="tab"]):not(.seg > button):hover { filter: brightness(1.08); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent); }
-button:active { transform: translateY(1px); }
-button:focus-visible { outline: none; box-shadow: var(--ring); }
-button.secondary:hover { background: var(--accent-soft); }
-.actions button[type="submit"] { padding-inline: 28px; }
-
-/* Result tiles: each tab's main figure (class "answer") stands out */
-.summary { gap: 14px; }
-.summary div { border-radius: var(--radius); box-shadow: var(--shadow); }
-.summary dt { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.72rem; font-weight: 600; }
-.summary dd { letter-spacing: -0.01em; }
-.summary .answer { background: linear-gradient(135deg, var(--accent-soft), transparent), var(--surface); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
-.summary .answer dd { color: var(--accent); }
-
-th { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; }
-tbody tr:hover td { background: var(--accent-soft); }
-.warning { border-radius: 10px; }
-
-@media (max-width: 600px) { .card { padding: 16px; } }
-@media print { .card, .header-rates, .summary div { box-shadow: none; } body { background: #fff; } .summary .answer { background: none; } }
-
-/* End date: Included / Excluded segmented control (replaces the Days counted dropdown) */
-.field, .end-field { display: grid; gap: 6px; /* same as a plain label, so boxes in a row line up */ align-content: start; min-width: 0; }
-.field { font-size: 0.9rem; font-weight: 600; }
-.field .help-text { grid-column: auto; }
-.seg { display: inline-flex; justify-self: start; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); overflow: hidden; }
-.seg label { display: block; position: relative; font-weight: 500; cursor: pointer; }
-.seg label + label { border-left: 1px solid var(--border); }
-.seg input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-.seg span { display: block; padding: 6px 14px; font-size: 0.85rem; color: var(--muted); transition: background .15s, color .15s; }
-.seg label:hover span { color: var(--accent); }
-.seg label:has(input:checked) span { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-.seg label:has(input:focus-visible) { box-shadow: var(--ring) inset; }
-
-/* Toggle switch (No / Yes) */
-.toggle-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; min-height: 44px; }
-.toggle-row select { width: auto; flex: 1 1 140px; max-width: 220px; }
-label.toggle { display: inline-flex; flex-direction: row; align-items: center; gap: 10px; position: relative; cursor: pointer; font-weight: 500; font-size: 0.95rem; }
-label.toggle input { position: absolute; z-index: 1; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-.toggle .track { position: relative; flex: none; width: 40px; height: 22px; border-radius: 999px; background: var(--border); transition: background .15s; }
-.toggle .track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
-.toggle input:checked + .track { background: var(--accent); }
-.toggle input:checked + .track::after { transform: translateX(18px); }
-.toggle input:focus-visible + .track { box-shadow: var(--ring); }
-.field > select { width: auto; max-width: 240px; }
-.switch-toggle { grid-column: 1 / -1; }
-
-/* Coherence pass: plain checkbox, toggles and currency on one line, stronger control borders */
-:root { --ctl-border: color-mix(in srgb, var(--border) 65%, var(--text)); }
-label.check { display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 0.95rem; cursor: pointer; }
-label.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
-.field.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; min-height: 44px; }
-.field.inline > .label-row { min-width: 8.5em; }
-.field.inline > .toggle-row { min-height: 0; }
-.field.inline > .help-text { flex-basis: 100%; }
-.field.inline > select { flex: 0 1 200px; }
-#compounding.inline { grid-column: span 2; }
-.seg { border-color: var(--ctl-border); }
-.seg label + label { border-left-color: var(--ctl-border); }
-.seg span { color: color-mix(in srgb, var(--muted) 55%, var(--text)); }
-.toggle .track { background: var(--ctl-border); }
-@media (max-width: 600px) { #compounding.inline { grid-column: auto; } .field.inline > .label-row { min-width: 0; } }
-
-.field.inline > .toggle-row { flex-wrap: nowrap; }
-.field.inline > .toggle-row select { flex: 0 1 160px; min-width: 0; }
-.field.inline > .toggle-row select { margin-left: 8px; }
-
-/* One control size: every segmented control is as tall as a text box (44px, Apple's minimum tap size), with the same
-   text size; on a phone each one fills the row with equal parts, like the iOS segmented control */
-.seg label { display: flex; flex: 1 1 auto; }
-.source .seg label { flex: 1 1 0; }
-/* iOS-style: the chosen option is a rounded "thumb" inset in the track, so its corners follow the outer ones */
-.seg { padding: 3px; gap: 2px; }
-.seg label + label { border-left: 0; }
-.seg span { display: flex; flex: 1; align-items: center; justify-content: center; min-height: 36px; padding: 0 12px;
-  border-radius: 7px; font-size: 0.9rem; text-align: center; white-space: nowrap; }
-.seg label:hover span { background: color-mix(in srgb, var(--accent) 8%, transparent); }
-.seg label:has(input:checked) span { background: color-mix(in srgb, var(--accent) 24%, var(--surface)); color: var(--accent);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .18); }
-.seg label:has(input:focus-visible) { box-shadow: none; }
-.seg label:has(input:focus-visible) span { box-shadow: var(--ring); }
-.source .seg { display: flex; width: 100%; max-width: 480px; }
-/* A segmented control with what it opens directly under it, at the same width: Compound's frequency list,
-   Others' symbol or code box */
-.seg-stack { display: grid; gap: 6px; justify-self: start; min-width: 0; }
-.seg-stack > .seg { display: flex; }
-.seg-stack > select, .seg-stack > input { width: 100%; max-width: none; }
-/* Fixed rate and spread steppers: no wider than the number needs */
-form .stepper { max-width: 200px; }
-/* Removing a cash flow row: a quiet icon button, red on hover */
-.payment-row .remove { border-color: transparent; background: transparent; color: var(--muted); }
-.payment-row .remove:hover { border-color: transparent; background: color-mix(in srgb, var(--error) 12%, transparent); color: var(--error); }
+@media (max-width: 359px) {
+  .tabs [role="tab"] { white-space: normal; }
+}
 @media (max-width: 600px) {
+  .card { padding: 16px; }
+  .field.wide { grid-column: auto; }
+  .field.inline > .label-row { min-width: 0; }
+  form .stepper, .i-when .stepper { max-width: none; }
+  /* Segmented controls fill the row with equal parts */
   .seg, .seg-stack, .source .seg { display: flex; width: 100%; max-width: none; justify-self: stretch; }
   .seg-stack { display: grid; }
-  .seg label { flex: 1 1 0; min-width: 0; }
-  .seg span { padding: 0 6px; }
-  .seg span { min-width: 0; }
+  .seg label, .seg > button { flex: 1 1 0; min-width: 0; }
+  .seg span, .seg > button { padding: 0 6px; min-width: 0; }
   .source .seg span { padding: 0 2px; font-size: 0.82rem; } /* four options: Judgment / HK Prime / US Prime / Fixed */
-  form .stepper { max-width: none; }
-  /* Cash flow rows (every tab): date (or period), then amount, then description, each the full width, with remove
-     beside the date; a repeating row's "Every ..." line last */
+  .series-ctl .seg { width: auto; margin-left: auto; }
+  /* Cash flow rows: date, then amount, then description, each the full width, with remove beside the date; a
+     repeating row's "Every ..." line last */
   .payment-row, .payment-row.with-label { grid-template-columns: minmax(0, 1fr) 44px; }
   .payment-row .pay-date { grid-column: 1; grid-row: 1; }
   .payment-row .remove { grid-column: 2; grid-row: 1; }
@@ -537,76 +459,7 @@ form .stepper { max-width: 200px; }
   .payment-row.with-label .pay-label { grid-column: 1; grid-row: 3; }
   .payment-row.with-label .repeat-line { grid-column: 1 / -1; grid-row: 4; }
   .event-rows { gap: 14px; }
-}
-/* Results tables that are wider than the screen: a shadow at the edge that has more to scroll to */
-#results .table-wrap {
-  background:
-    linear-gradient(to right, var(--bg) 30%, transparent) left / 32px 100% no-repeat local,
-    linear-gradient(to left, var(--bg) 30%, transparent) right / 32px 100% no-repeat local,
-    radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--text) 30%, transparent), transparent) left / 12px 100% no-repeat scroll,
-    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--text) 30%, transparent), transparent) right / 12px 100% no-repeat scroll;
-}
-@media print { #results .table-wrap { background: none; } }
-
-
-/* Sliding thumb (ui-motion.js): one highlight under the chosen option that moves to the new one; the option itself
-   then has no background of its own */
-.seg { position: relative; }
-.seg-thumb { position: absolute; top: 0; left: 0; z-index: 0; border-radius: 7px; pointer-events: none;
-  background: color-mix(in srgb, var(--accent) 24%, var(--surface)); box-shadow: 0 1px 2px rgba(0, 0, 0, .18); }
-.seg:not(.has-thumb) .seg-thumb { display: none; }
-.seg label { z-index: 1; }
-.seg.has-thumb label:has(input:checked) span { background: transparent; box-shadow: none; }
-.seg.has-thumb label:has(input:focus-visible) span { box-shadow: var(--ring); }
-.seg.thumb-ready .seg-thumb { transition: transform .25s cubic-bezier(.2, .7, .3, 1), width .25s cubic-bezier(.2, .7, .3, 1); }
-.seg span { transition: color .2s; }
-@media (prefers-reduced-motion: reduce) { .seg.thumb-ready .seg-thumb { transition: none; } }
-
-/* Change rate on a date (No / Yes): with Yes, the new rate's fields open on their own row, indented under it */
-#switchFields { padding-left: 14px; border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); }
-
-/* Toggle buttons (schedule view, chart ranges, the PV tab's Cash flows | Time Value of Money): the segmented control's
-   look, with the same sliding highlight; a pressed button is the chosen one */
-.seg > button { position: relative; z-index: 1; flex: 1 1 auto; min-height: 36px; padding: 0 12px; border: 0; border-radius: 7px;
-  background: transparent; color: color-mix(in srgb, var(--muted) 55%, var(--text)); font-size: 0.9rem; font-weight: 500;
-  white-space: nowrap; box-shadow: none; transition: color .2s; }
-.seg > button:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--accent); filter: none; box-shadow: none; }
-.seg > button[aria-pressed="true"] { color: var(--accent); font-weight: 600; background: color-mix(in srgb, var(--accent) 24%, var(--surface)); }
-.seg.has-thumb > button[aria-pressed="true"] { background: transparent; }
-.seg > button:focus-visible { box-shadow: var(--ring); }
-.view-seg { margin: 12px 0 8px; }
-.range-row .view-seg { margin: 0; }
-.pv-mode.seg { display: flex; width: 100%; max-width: 480px; }
-.pv-mode.seg > button { flex: 1 1 0; }
-@media (max-width: 600px) { .seg > button { flex: 1 1 0; min-width: 0; padding: 0 6px; } }
-/* Rate history: a checkbox per line, then its spread or HIBOR choice */
-.series-ctl .stepper { flex: none; width: 132px; }
-.series-ctl { flex-wrap: wrap; row-gap: 6px; }
-.series-ctl .seg { flex: none; }
-@media (max-width: 600px) { .series-ctl .seg { width: auto; margin-left: auto; } }
-.range-row input[type="date"] { width: auto; }
-/* Inflation: "Start (= 100)" above its year and month, like any field */
-.i-rebase { display: grid; gap: 6px; max-width: 360px; margin: 12px 0 8px; }
-
-/* A three-option control is wider than a quarter-width column: it takes two (one column on a phone) */
-.field.wide { grid-column: span 2; }
-@media (max-width: 600px) { .field.wide { grid-column: auto; } }
-.summary .fail { border-color: var(--error); }
-.summary .fail dd > span { color: var(--error); }
-
-/* PV by periods: BA II rows (CF0, C01 + frequency, ...), with the periods each covers under its name */
-.cf-row, .cf-cols { display: grid; grid-template-columns: 84px minmax(0, 1fr) 120px minmax(0, 1.4fr) 44px; gap: 8px; align-items: center; }
-.cf-cols { margin-bottom: -2px; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
-.cf-head-cell { display: grid; line-height: 1.2; }
-.cf-name { font-weight: 700; font-variant-numeric: tabular-nums; }
-.cf-when { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
-.cf-freq { text-align: center; }
-.cf-row.cf0 .cf-freq-field, .cf-row.cf0 .remove { visibility: hidden; }
-.cf-freq-field { display: block; min-width: 0; }
-.cf-freq-tag { display: none; }
-.cf-row .remove { width: 44px; height: 44px; padding: 0; font-size: 1.2rem; line-height: 1; border-color: transparent; background: transparent; color: var(--muted); }
-.cf-row .remove:hover { background: color-mix(in srgb, var(--error) 12%, transparent); color: var(--error); }
-@media (max-width: 600px) {
+  /* PV by periods: name on the left; amount, frequency (with its tag, no column heading) and description stacked */
   .cf-cols { display: none !important; }
   .cf-row { grid-template-columns: 64px minmax(0, 1fr) 44px; }
   .cf-row .cf-head-cell { grid-row: 1 / span 3; align-self: start; padding-top: 10px; }
@@ -619,12 +472,35 @@ form .stepper { max-width: 200px; }
   .cf-row.cf0 .cf-freq-field { display: none; }
 }
 
-/* Inflation: Now / Year, then the year (and month) beside it; Swap next to "Worth in"; years-ago shortcuts in one row */
-.i-when { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
-.i-when .stepper { flex: 1 1 150px; min-width: 150px; max-width: 200px; }
-.i-when select { flex: 1 1 150px; min-width: 0; max-width: 200px; }
-.i-shortcuts { align-items: center; }
-.i-shortcuts .chip { min-width: 34px; }
-button.chip.i-swap { margin-left: auto; padding: 2px 10px; }
-#iWorthField .label-row { width: 100%; }
-@media (max-width: 600px) { .i-when .stepper { max-width: none; } }
+/* ---- Save as PDF / print: results only, light colours, everything expanded ---- */
+
+@media print {
+  :root {
+    --bg: #fff; --surface: #fff; --text: #000; --muted: #444; --border: #bbb; --accent: #000;
+    --warn-bg: #fff4d6; --warn-text: #000;
+    color-scheme: light;
+  }
+  @page { margin: 14mm; }
+  body { font-size: 11pt; background: #fff; }
+  main { max-width: none; padding: 0; }
+  .tagline, .header-rates .latest-rates, .about, form, .exports, label.filter, .stale-note, details summary::marker { display: none; }
+  .header-rates { border: 0; padding: 0; background: none; }
+  .print-only { display: grid; }
+  .inputs-list { grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0 0 16px; }
+  .inputs-list div { display: contents; }
+  .inputs-list dt { color: var(--muted); }
+  .inputs-list dd { margin: 0; overflow-wrap: anywhere; }
+  .card, .header-rates, .summary div { box-shadow: none; }
+  .summary { grid-template-columns: repeat(4, 1fr); }
+  .summary dd { font-size: 1.1rem; }
+  .summary .answer { background: none; }
+  .table-wrap, details .table-wrap { overflow: visible; max-height: none; }
+  #results .table-wrap { background: none; }
+  th, td { padding: 4px 6px; }
+  td.formula, th { white-space: normal; }
+  tr { break-inside: avoid; }
+  .card { border: 0; padding: 0; margin: 16px 0 0; }
+  details summary { list-style: none; font-size: 1rem; margin-bottom: 4px; }
+  a { color: inherit; text-decoration: none; }
+  .warning { border: 1px solid #d8b24a; }
+}
