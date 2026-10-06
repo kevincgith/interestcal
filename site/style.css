@@ -457,6 +457,10 @@ button.chip.i-swap { padding: 2px 10px; }
 }
 @media (max-width: 600px) {
   .card { padding: 16px; }
+  /* Rates strip: one line per rate in three columns (name, rate right-aligned so the decimal points line up, date) */
+  .latest-rates { display: grid; grid-template-columns: max-content max-content 1fr; align-items: baseline; gap: 2px 10px; }
+  .latest-rate { display: contents; }
+  .latest-rate strong { text-align: right; }
   .field.wide { grid-column: auto; }
   .field.inline > .label-row { min-width: 0; }
   form .stepper { max-width: none; }
