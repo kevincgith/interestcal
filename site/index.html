@@ -113,19 +113,21 @@
             </div>
             <span class="help-text" hidden>Total: rows are added unrounded and only the total is rounded to cents (the original workbook’s method). Each Period: each row is rounded to cents first, which can change the total by a cent or two.</span>
           </div>
-          <div class="field inline" id="compounding">
+          <div class="field" id="compounding">
             <span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="What is compounding?">?</button></span>
-            <div class="toggle-row">
-              <label class="toggle"><input type="checkbox" id="compoundOn"><span class="track" aria-hidden="true"></span><span id="compoundState">No</span></label>
-              <select id="compoundType" aria-label="Compounding frequency" hidden>
-                <option value="monthly" selected>Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="yearly">Yearly</option>
-                <option value="daily">Daily</option>
-                <option value="continuous">Continuous</option>
-              </select>
+            <div class="seg" id="compoundMode" role="radiogroup" aria-label="Compounding">
+              <label><input type="radio" name="compoundMode" value="simple" checked><span>Simple</span></label>
+              <label><input type="radio" name="compoundMode" value="compound"><span>Compound</span></label>
             </div>
-            <span class="help-text" hidden>No (the default): simple interest, so interest never earns interest (the usual position for judgment debts). Yes: choose how often. Monthly, quarterly or yearly: unpaid interest is added to the principal at the end of each period and earns interest from then. Daily or continuous: compounded every day, or continuously.</span>
+            <select id="compoundType" aria-label="Compounding frequency" hidden>
+              <option value="yearly">Yearly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="monthly" selected>Monthly</option>
+              <option value="weekly">Weekly</option>
+              <option value="daily">Daily</option>
+              <option value="continuous">Continuous</option>
+            </select>
+            <span class="help-text" hidden>Simple (the default): interest never earns interest (the usual position for judgment debts). Compound: choose how often. Weekly, monthly, quarterly or yearly: unpaid interest is added to the principal at the end of each period and earns interest from then. Daily or continuous: compounded every day, or continuously.</span>
           </div>
           <div class="field" id="compoundDatesField" hidden>
             <span class="label-row">Compounding dates <button type="button" class="help" aria-expanded="false" aria-label="What is compounding dates?">?</button></span>
