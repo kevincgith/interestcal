@@ -6,9 +6,9 @@
   <title>HK Interest Calc</title>
   <meta name="description" content="Hong Kong finance calculators: interest at the judgment debt rate, HSBC or US prime or a fixed rate; HIBOR and prime mortgages; present value, IRR and time value of money; and inflation by the official CPI. Rates updated daily.">
   <meta name="theme-color" content="#1f5f8b">
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" href="favicon.svg?v=__BUILD__" type="image/svg+xml">
+  <link rel="icon" href="favicon-32.png?v=__BUILD__" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=__BUILD__">
   <!-- Link previews (WhatsApp, email, Slack, social) -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="HK Interest Calc">
@@ -25,7 +25,7 @@
 <body>
   <main>
     <header>
-      <h1><img class="logo" src="favicon.svg" alt="" width="36" height="36">HK Interest Calc</h1>
+      <h1><img class="logo" src="favicon.svg?v=__BUILD__" alt="" width="36" height="36">HK Interest Calc</h1>
       <p class="tagline">Interest, mortgage, PV and inflation calculators for Hong Kong, with rates updated daily.</p>
     </header>
 
@@ -577,12 +577,6 @@
         </div>
         <label id="pValField">Valuation date
           <input id="pValuation" type="date" required>
-          <span class="date-shortcuts">
-            <button type="button" class="chip" data-date="today" data-target="pValuation" data-field="Valuation date">Today</button>
-            <button type="button" class="chip" data-date="month" data-target="pValuation" data-field="Valuation date">Month end</button>
-            <button type="button" class="chip" data-date="quarter" data-target="pValuation" data-field="Valuation date">Quarter end</button>
-            <button type="button" class="chip" data-date="year" data-target="pValuation" data-field="Valuation date">Year end</button>
-          </span>
         </label>
         <div class="field wide">
           <span class="label-row">Solve for <button type="button" class="help" aria-expanded="false" aria-label="What can it solve for?">?</button></span>
@@ -631,11 +625,13 @@
 
         <fieldset class="payments">
           <legend>Cash flows</legend>
-          <p class="help-text pv-flows-note"><span class="dates-only">Each amount on its date.</span><span class="periods-only">Each amount at its period: 0 = now (T0), 1 = T+1, and so on.</span> Use a minus sign for money paid out (e.g. −100,000) to get a net present value.<span class="dates-only"> An amount dated before the valuation date is grown forward to it at the same rate. A repeating cash flow (e.g. rent each month) starts on its date and keeps that day of the month.</span><span class="periods-only"> A repeating cash flow comes once a period from its first period.</span></p>
-          <div id="pFlowRows" class="event-rows"></div>
+          <p class="help-text pv-flows-note"><span class="dates-only">Each amount on its date.</span><span class="periods-only">As on a BA II Plus: CF0 is now (T0), then C01, C02, … follow period by period, each repeated for its frequency (the number of periods in a row). Use 0 for a period with no cash flow.</span> Use a minus sign for money paid out (e.g. −100,000) to get a net present value.<span class="dates-only"> An amount dated before the valuation date is grown forward to it at the same rate. A repeating cash flow (e.g. rent each month) starts on its date and keeps that day of the month.</span></p>
+          <div id="pFlowRows" class="event-rows dates-only"></div>
+          <div class="cf-cols periods-only" aria-hidden="true"><span></span><span>Amount</span><span>Frequency</span><span>Description</span><span></span></div>
+          <div id="pCfRows" class="event-rows periods-only"></div>
           <div class="payments-actions">
             <button type="button" id="pAddFlow" class="secondary">+ Add cash flow</button>
-            <button type="button" id="pAddRepeat" class="secondary">+ Add repeating cash flow</button>
+            <button type="button" id="pAddRepeat" class="secondary dates-only">+ Add repeating cash flow</button>
           </div>
         </fieldset>
         <div class="actions">

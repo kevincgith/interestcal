@@ -371,7 +371,7 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1p
 .repeat-line .repeat-count { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .repeat-line .repeat-times { width: 4.2em; text-align: center; }
 /* Periods timing: a period number instead of the date, repeats every period, no Days column */
-#pform:not(.periods) .pay-period, #pform.periods .pay-date, #pform:not(.periods) .periods-only, #pform.periods .dates-only, #pform:not(.periods) .repeat-period, #pform.periods .repeat-every { display: none; }
+#pform:not(.periods) .periods-only, #pform.periods .dates-only { display: none !important; }
 #pTable.periods .col-days { display: none; }
 .rate-hint { display: block; font-size: 0.82rem; font-weight: normal; color: var(--muted); min-height: 0; }
 .rate-hint:empty { display: none; }
@@ -529,7 +529,7 @@ form .stepper { max-width: 200px; }
   /* Cash flow rows (every tab): date (or period), then amount, then description, each the full width, with remove
      beside the date; a repeating row's "Every ..." line last */
   .payment-row, .payment-row.with-label { grid-template-columns: minmax(0, 1fr) 44px; }
-  .payment-row :is(.pay-date, .pay-period) { grid-column: 1; grid-row: 1; }
+  .payment-row .pay-date { grid-column: 1; grid-row: 1; }
   .payment-row .remove { grid-column: 2; grid-row: 1; }
   .payment-row .pay-amount { grid-column: 1; grid-row: 2; }
   .payment-row.with-label .pay-label { grid-column: 1; grid-row: 3; }
@@ -591,3 +591,28 @@ form .stepper { max-width: 200px; }
 @media (max-width: 600px) { .field.wide { grid-column: auto; } }
 .summary .fail { border-color: var(--error); }
 .summary .fail dd > span { color: var(--error); }
+
+/* PV by periods: BA II rows (CF0, C01 + frequency, ...), with the periods each covers under its name */
+.cf-row, .cf-cols { display: grid; grid-template-columns: 84px minmax(0, 1fr) 120px minmax(0, 1.4fr) 44px; gap: 8px; align-items: center; }
+.cf-cols { margin-bottom: -2px; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+.cf-head-cell { display: grid; line-height: 1.2; }
+.cf-name { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cf-when { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+.cf-freq { text-align: center; }
+.cf-row.cf0 .cf-freq-field, .cf-row.cf0 .remove { visibility: hidden; }
+.cf-freq-field { display: block; min-width: 0; }
+.cf-freq-tag { display: none; }
+.cf-row .remove { width: 44px; height: 44px; padding: 0; font-size: 1.2rem; line-height: 1; border-color: transparent; background: transparent; color: var(--muted); }
+.cf-row .remove:hover { background: color-mix(in srgb, var(--error) 12%, transparent); color: var(--error); }
+@media (max-width: 600px) {
+  .cf-cols { display: none !important; }
+  .cf-row { grid-template-columns: 64px minmax(0, 1fr) 44px; }
+  .cf-row .cf-head-cell { grid-row: 1 / span 3; align-self: start; padding-top: 10px; }
+  .cf-row .cf-amount { grid-column: 2; grid-row: 1; }
+  .cf-row .remove { grid-column: 3; grid-row: 1; }
+  .cf-row .cf-freq-field { grid-column: 2; grid-row: 2; display: flex; align-items: center; gap: 10px; }
+  .cf-freq-tag { display: inline; font-size: 0.85rem; color: var(--muted); }
+  .cf-freq-field .cf-freq { width: 96px; flex: none; }
+  .cf-row .cf-label { grid-column: 2; grid-row: 3; }
+  .cf-row.cf0 .cf-freq-field { display: none; }
+}

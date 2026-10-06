@@ -200,18 +200,21 @@ test('periods timing: Excel\'s NPV example, T+n rows, fields that don\'t apply h
   for (const id of ['#pValField', '#pCompField', '#pBasisField']) await expect(page.locator(id)).toBeHidden();
   await expect(page.locator('#pPeriodField')).toBeVisible();
   await expect(page.locator('.pv-flows-note .periods-only').first()).toBeVisible();
-  // The rows with dates got the nearest whole year: 2027-10-05 -> 1, 2028-10-05 -> 2; the one before stays empty
-  await expect(page.getByLabel('Cash flow period').nth(0)).toHaveValue('1');
+  // BA II rows instead of dates: the dated rows moved to the nearest whole year (2027-10-05 -> T+1, 2028-10-05 -> T+2)
+  await expect(page.locator('#pFlowRows')).toBeHidden();
+  await expect(page.getByRole('button', { name: '+ Add repeating cash flow' })).toBeHidden();
+  await expect(page.locator('#pCfRows .cf-name')).toHaveText(['CF0', 'C01', 'C02']);
+  await expect(page.locator('#pCfRows .cf-when')).toHaveText(['T0', 'T+1', 'T+2']);
 
-  // Excel: NPV(10%, -10000, 3000, 4200, 6800) = 1,188.44, the first value at T+1
-  const removes = page.getByRole('button', { name: 'Remove cash flow' });
+  // Excel: NPV(10%, -10000, 3000, 4200, 6800) = 1,188.44, the first value at T+1: CF0 0, then C01 to C04
+  const removes = page.locator('#pCfRows .cf-row:not(.cf0) .remove');
   while (await removes.count()) await removes.first().click();
-  for (const [period, amount] of [[1, -10000], [2, 3000], [3, 4200], [4, 6800]]) {
+  await page.getByLabel('CF0 amount').fill('0');
+  for (const amount of [-10000, 3000, 4200, 6800]) {
     await page.getByRole('button', { name: '+ Add cash flow' }).click();
-    const row = page.locator('#pFlowRows .payment-row').last();
-    await row.getByLabel('Cash flow period').fill(String(period));
-    await row.getByLabel('Cash flow amount').fill(String(amount));
+    await page.locator('#pCfRows .cf-amount').last().fill(String(amount));
   }
+  await expect(page.locator('#pCfRows .cf-name').last()).toHaveText('C04');
   await page.locator('#pRate').fill('10');
   await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
   await expect(page.locator('#pTotal')).toHaveText('HK$1,188.44');
@@ -226,12 +229,48 @@ test('periods timing: Excel\'s NPV example, T+n rows, fields that don\'t apply h
 test('periods timing: quarterly IRR of a bond at par is the coupon rate; rate a period shown', async ({ page }) => {
   await page.goto('?tab=pv&tm=p&pl=quarter&r=5&cf=0,-1000,Buy&rf=1,30,p,8,Coupon&cf=8,1000,Back');
   await expect(page.locator('#pRateHint')).toHaveText('= 1.250% a quarter');
-  await expect(page.locator('#pFlowRows .repeat-last')).toHaveText('· last at T+8');
+  // As BA II rows: CF0 −1,000; C01 30 for 7 periods; C02 1,030 at T+8 (the last coupon and the 1,000 back)
+  await expect(page.locator('#pCfRows .cf-name')).toHaveText(['CF0', 'C01', 'C02']);
+  await expect(page.getByLabel('F01 frequency')).toHaveValue('7');
+  await expect(page.locator('#pCfRows .cf-when')).toHaveText(['T0', 'T+1–T+7', 'T+8']);
+  await expect(page.getByLabel('C02 amount')).toHaveValue('1,030.00');
   await page.locator('#pSolve input[value="irr"]').check();
   await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
   await expect(page.locator('#pIrr')).toHaveText('12.000% p.a. = 3.000% a quarter');
   await expect(page.locator('#pRateLine')).toContainText('(12.550881% a year with compounding)');
-  await expect(page.locator('#pRows tr')).toHaveCount(10);
+  await expect(page.locator('#pRows tr')).toHaveCount(9);
   const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#pXlsx').click()]);
-  expect(download.suggestedFilename()).toBe('present_value_quarters_10_cash_flows.xlsx');
+  expect(download.suggestedFilename()).toBe('present_value_quarters_9_cash_flows.xlsx');
 });
+
+test('periods timing works like a BA II Plus: CF0, then C01, C02 ... each with a frequency; 0 for a gap', async ({ page }) => {
+  await page.goto('?tab=pv&tm=p&pl=year');
+  await expect(page.locator('#pCfRows .cf-name')).toHaveText(['CF0', 'C01']); // nothing now, 1,000,000 at T+1
+  await expect(page.getByLabel('C01 amount')).toHaveValue('1,000,000.00');
+  await expect(page.locator('#pCfRows .cf0 .cf-freq')).toBeHidden(); // CF0 has no frequency
+  await page.getByLabel('CF0 amount').fill('-10000');
+  await page.getByLabel('C01 amount').fill('3000');
+  await page.getByLabel('F01 frequency').fill('3');
+  await page.getByRole('button', { name: '+ Add cash flow' }).click();
+  await page.getByLabel('C02 amount').fill('0');
+  await page.getByLabel('F02 frequency').fill('4');
+  await page.getByRole('button', { name: '+ Add cash flow' }).click();
+  await page.getByLabel('C03 amount').fill('2000');
+  await expect(page.locator('#pCfRows .cf-when')).toHaveText(['T0', 'T+1–T+3', 'T+4–T+7', 'T+8']);
+  await page.locator('#pRate').fill('5');
+  await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
+  // −10,000 + 3,000 × (1.05^−1 + 1.05^−2 + 1.05^−3) + 2,000 × 1.05^−8
+  const expected = -10000 + 3000 * (1 / 1.05 + 1 / 1.05 ** 2 + 1 / 1.05 ** 3) + 2000 / 1.05 ** 8;
+  await expect(page.locator('#pTotal')).toHaveText(`−HK$${Math.abs(expected).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+  await expect(page.locator('#pRows tr')).toHaveCount(5); // T0, T+1, T+2, T+3, T+8: the 0s add nothing
+  await expect(page).toHaveURL(/cf=0%2C-10000&rf=1%2C3000%2Cp%2C3&cf=8%2C2000|rf=1%2C3000%2Cp%2C3/);
+  // The link opens the same rows
+  await page.reload();
+  await expect(page.locator('#pCfRows .cf-when')).toHaveText(['T0', 'T+1–T+3', 'T+4–T+7', 'T+8']);
+  await expect(page.getByLabel('F02 frequency')).toHaveValue('4');
+  // A frequency must be a whole number
+  await page.getByLabel('F01 frequency').fill('2.5');
+  await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#pError')).toHaveText('F01: the frequency must be a whole number from 1 to 1,200.');
+});
+

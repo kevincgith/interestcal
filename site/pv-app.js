@@ -63,17 +63,11 @@ const amountPlaceholder = () => 'Amount (HK$)';
 const REPEAT_NAMES = { month: 'month', quarter: 'quarter', 'half-year': 'half-year', year: 'year' };
 
 /** @param {{every: string, times: number} | null} [repeat]  a repeating row (every month by default when {}) */
-function addFlowRow(date = '', amount = '', label = '', repeat = null, period = '') {
+function addFlowRow(date = '', amount = '', label = '', repeat = null) {
   const r = document.createElement('div');
   r.className = repeat ? 'payment-row with-label repeat' : 'payment-row with-label';
   const d = Object.assign(document.createElement('input'), { type: 'date', className: 'pay-date', value: date });
   d.setAttribute('aria-label', 'Cash flow date');
-  // Periods timing: a whole period number instead of the date (CSS shows one or the other)
-  const pd = Object.assign(document.createElement('input'), {
-    type: 'text', className: 'pay-period', inputMode: 'numeric', autocomplete: 'off', placeholder: 'Period (0 = now)',
-    value: period === '' ? '' : String(period),
-  });
-  pd.setAttribute('aria-label', 'Cash flow period');
   const a = Object.assign(document.createElement('input'), {
     type: 'text', className: 'pay-amount', placeholder: amountPlaceholder(), inputMode: 'text', autocomplete: 'off',
     value: amount === '' ? '' : signed(amount),
@@ -93,14 +87,14 @@ function addFlowRow(date = '', amount = '', label = '', repeat = null, period = 
     r.remove();
     markStale();
   });
-  r.append(d, pd, a, l, remove);
-  if (repeat) r.append(repeatLine(d, pd, repeat));
+  r.append(d, a, l, remove);
+  if (repeat) r.append(repeatLine(d, repeat));
   $('pFlowRows').append(r);
   return r;
 }
 
 // "Every [month] for [12] times · last on 31-Dec-2027"
-function repeatLine(dateInput, periodInput, { every = 'month', times = 12 }) {
+function repeatLine(dateInput, { every = 'month', times = 12 }) {
   const line = Object.assign(document.createElement('div'), { className: 'repeat-line' });
   const sel = document.createElement('select');
   sel.className = 'repeat-every';
@@ -115,19 +109,15 @@ function repeatLine(dateInput, periodInput, { every = 'month', times = 12 }) {
   const update = () => {
     const k = Number(n.value);
     const ok = Number.isInteger(k) && k >= 1 && k <= MAX_REPEATS;
-    const p = Number(periodInput.value);
-    if (byPeriods()) lastOn.textContent = ok && periodInput.value.trim() && Number.isInteger(p) && p >= 0 ? `· last at ${periodName(p + k - 1)}` : '';
-    else lastOn.textContent = ok && isIsoDate(dateInput.value) ? `· last on ${fmtDate(addMonths(dateInput.value, (k - 1) * REPEAT_MONTHS[sel.value]))}` : '';
+    lastOn.textContent = ok && isIsoDate(dateInput.value) ? `· last on ${fmtDate(addMonths(dateInput.value, (k - 1) * REPEAT_MONTHS[sel.value]))}` : '';
   };
-  for (const el of [sel, n, dateInput, periodInput]) el.addEventListener('input', update);
+  for (const el of [sel, n, dateInput]) el.addEventListener('input', update);
   sel.addEventListener('change', update);
   line.update = update;
   // "for [12] times" stays together when the line wraps on a phone
   const count = Object.assign(document.createElement('span'), { className: 'repeat-count' });
   count.append('for', n, 'times');
-  // Periods timing repeats every period: the "every" list gives way to the word "period"
-  const periodWord = Object.assign(document.createElement('span'), { className: 'repeat-period', textContent: 'period' });
-  line.append('Every', sel, periodWord, count, lastOn);
+  line.append('Every', sel, count, lastOn);
   update();
   return line;
 }
@@ -141,35 +131,133 @@ function readAmount(s) {
 }
 
 function readFlows() {
+  if (byPeriods()) return readCfRows();
   const out = [];
-  const periods = byPeriods();
   [...$('pFlowRows').children].forEach((r, i) => {
     const date = r.querySelector('.pay-date').value;
-    const periodRaw = r.querySelector('.pay-period').value.trim();
     const raw = r.querySelector('.pay-amount').value.trim();
     const label = r.querySelector('.pay-label').value.trim();
-    const when = periods ? periodRaw : date;
-    if (!when && !raw && !label) return;
+    if (!date && !raw && !label) return;
     const amount = readAmount(raw);
-    if (!when || !raw || !Number.isFinite(amount) || amount === 0) {
-      throw new Error(`Cash flow ${i + 1}: enter ${periods ? 'a period (0 for now)' : 'a date'} and an amount other than 0.`);
-    }
-    const at = periods ? { period: Number(periodRaw) } : { date };
-    if (periods && !(Number.isInteger(at.period) && at.period >= 0)) {
-      throw new Error(`Cash flow ${i + 1}: the period must be a whole number, 0 for now, 1 for T+1, and so on.`);
+    if (!date || !raw || !Number.isFinite(amount) || amount === 0) {
+      throw new Error(`Cash flow ${i + 1}: enter a date and an amount other than 0.`);
     }
     if (!r.classList.contains('repeat')) {
-      out.push({ ...at, amount, label });
+      out.push({ date, amount, label });
       return;
     }
     const times = Number(r.querySelector('.repeat-times').value.trim());
     if (!Number.isInteger(times) || times < 1 || times > MAX_REPEATS) {
       throw new Error(`Cash flow ${i + 1}: enter how many times, a whole number from 1 to ${MAX_REPEATS.toLocaleString('en')}.`);
     }
-    out.push(periods ? { ...at, amount, label, times } : { ...at, amount, label, every: r.querySelector('.repeat-every').value, times });
+    out.push({ date, amount, label, every: r.querySelector('.repeat-every').value, times });
   });
   if (!out.length) throw new Error('Add at least one cash flow with a date and an amount.');
   return out;
+}
+
+// ---- Periods timing: cash flows as on a BA II Plus. CF0 is now (T0); C01, C02, ... follow in order, each repeated
+// for its frequency (F01, F02, ...) of consecutive periods; a period with no cash flow is a 0 ----
+
+const cfName = (i) => (i === 0 ? 'CF0' : `C${String(i).padStart(2, '0')}`);
+const freqName = (i) => `F${String(i).padStart(2, '0')}`;
+
+function addCfRow(amount = '', freq = 1, label = '') {
+  const r = Object.assign(document.createElement('div'), { className: 'cf-row' });
+  const head = Object.assign(document.createElement('span'), { className: 'cf-head-cell' });
+  head.append(
+    Object.assign(document.createElement('span'), { className: 'cf-name' }),
+    Object.assign(document.createElement('span'), { className: 'cf-when' }),
+  );
+  const a = Object.assign(document.createElement('input'), {
+    type: 'text', className: 'cf-amount', placeholder: 'Amount (HK$)', inputMode: 'text', autocomplete: 'off',
+    value: amount === '' ? '' : signed(amount),
+  });
+  a.addEventListener('blur', () => {
+    const n = readAmount(a.value);
+    if (a.value.trim() && Number.isFinite(n)) a.value = signed(n);
+  });
+  const f = Object.assign(document.createElement('input'), {
+    type: 'text', className: 'cf-freq', placeholder: 'Frequency', inputMode: 'numeric', autocomplete: 'off', value: String(freq),
+  });
+  const l = Object.assign(document.createElement('input'), {
+    type: 'text', className: 'cf-label', placeholder: 'Description (optional)', autocomplete: 'off', value: label,
+  });
+  const remove = Object.assign(document.createElement('button'), { type: 'button', className: 'secondary remove', textContent: '×' });
+  remove.addEventListener('click', () => {
+    r.remove();
+    renumberCf();
+    markStale();
+  });
+  // On a phone there's no column heading, so the frequency box has its own tag
+  const fField = Object.assign(document.createElement('span'), { className: 'cf-freq-field' });
+  fField.append(Object.assign(document.createElement('span'), { className: 'cf-freq-tag', textContent: 'Frequency' }), f);
+  r.append(head, a, fField, l, remove);
+  $('pCfRows').append(r);
+  renumberCf();
+  return r;
+}
+
+// Names (CF0, C01 / F01, ...) and the periods each row covers, e.g. "T+1–T+3"
+function renumberCf() {
+  let p = 0;
+  [...$('pCfRows').children].forEach((r, i) => {
+    r.classList.toggle('cf0', i === 0); // CF0 has no frequency and stays
+    r.querySelector('.cf-name').textContent = cfName(i);
+    r.querySelector('.cf-amount').setAttribute('aria-label', `${cfName(i)} amount`);
+    r.querySelector('.cf-freq').setAttribute('aria-label', `${freqName(i)} frequency`);
+    r.querySelector('.cf-label').setAttribute('aria-label', `${cfName(i)} description`);
+    r.querySelector('.remove').setAttribute('aria-label', `Remove ${cfName(i)}`);
+    const f = i === 0 ? 1 : Number(r.querySelector('.cf-freq').value);
+    const ok = Number.isInteger(f) && f >= 1;
+    r.querySelector('.cf-when').textContent = !ok ? '' : f === 1 ? periodName(p) : `${periodName(p)}–${periodName(p + f - 1)}`;
+    p += ok ? f : 1;
+  });
+}
+
+function readCfRows() {
+  const out = [];
+  let p = 0;
+  [...$('pCfRows').children].forEach((r, i) => {
+    const raw = r.querySelector('.cf-amount').value.trim();
+    const label = r.querySelector('.cf-label').value.trim();
+    const amount = raw ? readAmount(raw) : 0; // empty is 0, as on the calculator
+    if (!Number.isFinite(amount)) throw new Error(`${cfName(i)}: enter an amount, or 0 for no cash flow.`);
+    const freq = i === 0 ? 1 : Number(r.querySelector('.cf-freq').value.trim());
+    if (!Number.isInteger(freq) || freq < 1 || freq > MAX_REPEATS) {
+      throw new Error(`${freqName(i)}: the frequency must be a whole number from 1 to ${MAX_REPEATS.toLocaleString('en')}.`);
+    }
+    if (amount !== 0) out.push(freq === 1 ? { period: p, amount, label } : { period: p, amount, label, times: freq });
+    p += freq;
+  });
+  if (!out.length) throw new Error('Enter at least one cash flow other than 0.');
+  return out;
+}
+
+// Cash flows at periods (from a link, or the date rows when switching to periods) as BA II rows: the amount at each
+// period, then runs of the same amount (and description) become one row with that frequency; gaps are 0
+function setCfRows(flows) {
+  const at = new Map();
+  const labels = new Map();
+  for (const f of flows) {
+    for (let k = 0; k < (f.times ?? 1); k++) {
+      const p = f.period + k;
+      at.set(p, (at.get(p) ?? 0) + f.amount);
+      const label = f.label ?? '';
+      labels.set(p, labels.has(p) && labels.get(p) !== label ? '' : label);
+    }
+  }
+  $('pCfRows').replaceChildren();
+  const last = Math.max(1, ...at.keys());
+  addCfRow(at.get(0) ?? '', 1, labels.get(0) ?? '');
+  for (let p = 1; p <= last;) {
+    const amount = at.get(p) ?? 0;
+    const label = labels.get(p) ?? '';
+    let n = 1;
+    while (p + n <= last && (at.get(p + n) ?? 0) === amount && (labels.get(p + n) ?? '') === label) n++;
+    addCfRow(amount, n, label);
+    p += n;
+  }
 }
 
 // ---- Stale results: only Calculate updates them ----
@@ -189,15 +277,16 @@ const markStale = () => {
 $('pform').addEventListener('input', markStale);
 $('pform').addEventListener('change', markStale);
 wireSteppers($('pform'), markStale);
-const whenInput = (r) => r.querySelector(byPeriods() ? '.pay-period' : '.pay-date');
 $('pAddFlow').addEventListener('click', () => {
-  whenInput(addFlowRow()).focus();
+  if (byPeriods()) addCfRow().querySelector('.cf-amount').focus();
+  else addFlowRow().querySelector('.pay-date').focus();
   markStale();
 });
 $('pAddRepeat').addEventListener('click', () => {
-  whenInput(addFlowRow('', '', '', {})).focus();
+  addFlowRow('', '', '', {}).querySelector('.pay-date').focus();
   markStale();
 });
+$('pCfRows').addEventListener('input', renumberCf);
 // Rate (IRR) finds the rate, so the rate box is only for Present value
 const solving = () => $('pSolve').value === 'irr';
 const showSolveFields = () => ($('pRateField').hidden = solving());
@@ -209,10 +298,15 @@ const byPeriods = () => $('pTiming').value === 'periods';
 const perYear = () => PERIOD_LENGTHS[$('pPeriod').value];
 function showTimingFields() {
   const periods = byPeriods();
+  if (periods && !$('pCfRows').children.length) {
+    addCfRow();
+    addCfRow();
+  }
   $('pform').classList.toggle('periods', periods);
   for (const id of ['pValField', 'pCompField', 'pBasisField']) $(id).hidden = periods;
   $('pPeriodField').hidden = !periods;
   document.querySelectorAll('#pFlowRows .repeat-line').forEach((l) => l.update());
+  renumberCf();
   updateRateHint();
 }
 // Periods: the rate a period, e.g. "= 2.000% a quarter", so nobody has to divide by 4 themselves
@@ -225,13 +319,17 @@ function updateRateHint() {
 }
 // Switching to periods: rows with a date but no period get the nearest whole period from the valuation date
 $('pTiming').addEventListener('change', () => {
-  if (byPeriods() && isIsoDate($('pValuation').value)) {
-    const v = toDay($('pValuation').value);
+  if (byPeriods() && !$('pCfRows').children.length) {
+    const v = isIsoDate($('pValuation').value) ? toDay($('pValuation').value) : null;
+    const flows = [];
     for (const r of $('pFlowRows').children) {
       const date = r.querySelector('.pay-date').value;
-      const p = r.querySelector('.pay-period');
-      if (!p.value.trim() && isIsoDate(date) && toDay(date) >= v) p.value = String(Math.round(((toDay(date) - v) / 365.25) * perYear()));
+      const amount = readAmount(r.querySelector('.pay-amount').value);
+      if (v == null || !isIsoDate(date) || toDay(date) < v || !Number.isFinite(amount) || amount === 0) continue;
+      const times = r.classList.contains('repeat') ? Number(r.querySelector('.repeat-times').value) || 1 : 1;
+      flows.push({ period: Math.round(((toDay(date) - v) / 365.25) * perYear()), amount, label: r.querySelector('.pay-label').value.trim(), times });
     }
+    setCfRows(flows);
   }
   showTimingFields();
 });
@@ -394,10 +492,11 @@ function readQuery() {
   const okWhen = (x) => (periods ? isPeriod(x) : isIsoDate(x));
   const okAmount = (x) => Number.isFinite(Number(x)) && Number(x) !== 0;
   let any = false;
+  const periodFlows = []; // periods: shown as BA II rows (CF0, C01 with F01, ...)
   for (const cf of q.getAll('cf')) {
     const [when, amount, ...label] = cf.split(',');
     if (okWhen(when) && okAmount(amount)) {
-      if (periods) addFlowRow('', Number(amount), label.join(','), null, Number(when));
+      if (periods) periodFlows.push({ period: Number(when), amount: Number(amount), label: label.join(',') });
       else addFlowRow(when, Number(amount), label.join(','));
       any = true;
     }
@@ -405,11 +504,12 @@ function readQuery() {
   for (const rf of q.getAll('rf')) {
     const [when, amount, every, times, ...label] = rf.split(',');
     if (!okWhen(when) || !okAmount(amount) || !(periods || every in REPEAT_MONTHS)) continue;
-    const repeat = { every: periods ? 'month' : every, times: Number(times) || 12 };
-    if (periods) addFlowRow('', Number(amount), label.join(','), repeat, Number(when));
-    else addFlowRow(when, Number(amount), label.join(','), repeat);
+    const n = Math.min(Math.max(Number(times) || 12, 1), MAX_REPEATS);
+    if (periods) periodFlows.push({ period: Number(when), amount: Number(amount), label: label.join(','), times: n });
+    else addFlowRow(when, Number(amount), label.join(','), { every, times: n });
     any = true;
   }
+  if (periodFlows.length) setCfRows(periodFlows);
   showTimingFields();
   if (q.get('s') === 'irr') $('pSolve').value = 'irr';
   showSolveFields();
@@ -418,11 +518,14 @@ function readQuery() {
 
 // ---- Defaults, reset, share and save ----
 
-// One cash flow of 1,000,000 a year after the valuation date
+// One cash flow of 1,000,000 a year after the valuation date (or at T+1)
 function setDefaults(valuation = todayIso()) {
   $('pValuation').value = valuation;
   $('pFlowRows').replaceChildren();
+  $('pCfRows').replaceChildren();
   addFlowRow(addMonths(valuation, 12), 1000000);
+  // By periods, the same: nothing now (CF0) and 1,000,000 at T+1 (C01)
+  if (byPeriods()) setCfRows([{ period: 1, amount: 1000000 }]);
 }
 
 $('pReset').addEventListener('click', () => {
