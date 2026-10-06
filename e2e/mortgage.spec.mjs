@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { downloadAs } from './helpers.mjs';
 
 const FIXED = '?tab=mortgage&mt=fixed&fx=3&price=1000000&ltv=100&yrs=30&from=2026-01-15';
 
@@ -92,7 +93,7 @@ test('stress test and DSR: tiles beside the instalment, warning over the limits,
   await expect(page.locator('#mStressLabel')).toHaveText('Instalment at rate + 3%');
   await expect(page.locator('#mDsrWarn')).toContainText('DSR 52.7% is above the 50% limit, and ');
   await expect(page.locator('#mDsrWarn')).toContainText('under the stress test is above the 60% limit');
-  const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#mXlsx').click()]);
+  const [download] = await Promise.all([page.waitForEvent('download'), downloadAs(page, '#mXlsx')]);
   const XLSX = (await import('xlsx')).default;
   const wb = XLSX.read(await (await import('node:fs/promises')).readFile(await download.path()));
   const text = JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 }));
@@ -105,7 +106,7 @@ test('mortgage downloads', async ({ page }) => {
   await page.goto(FIXED);
   await expect(page.locator('#mPayment')).toHaveText('4,216.04');
   for (const [button, ext] of [['Download PDF', 'pdf'], ['Download Excel', 'xlsx']]) {
-    const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#panel-mortgage').getByRole('button', { name: button }).click()]);
+    const [download] = await Promise.all([page.waitForEvent('download'), downloadAs(page, button)]);
     expect(download.suggestedFilename()).toBe(`mortgage_fixed_1000000_30y_2026-01-15.${ext}`);
   }
   await expect(page.locator('#mError')).toBeHidden();
@@ -377,7 +378,7 @@ test('Prime (P): big P and another bank’s P sit above small P; the discount an
 test('mortgage: changed inputs turn off the downloads and Save until Calculate is pressed', async ({ page }) => {
   await page.goto('?tab=mortgage');
   await expect(page.locator('#mPayment')).not.toHaveText('');
-  const ids = ['#mPdf', '#mXlsx', '#mSave'];
+  const ids = ['#panel-mortgage .download', '#mPdf', '#mXlsx', '#mSave'];
   for (const id of ids) await expect(page.locator(id)).toBeEnabled();
   await page.locator('#mPrice').fill('6000000');
   for (const id of ids) await expect(page.locator(id)).toBeDisabled();

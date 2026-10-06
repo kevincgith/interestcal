@@ -13,6 +13,7 @@ import {
 } from './interest-text.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 import { setupSegments, setupDetails } from './ui-motion.js?v=__BUILD__';
+import { setupDownloadRows } from './download-row.js?v=__BUILD__';
 // Segmented radio groups (End date, Day count basis, Rounding) get a select-like .value
 // Currency: HK$ / US$ / Others (type a symbol or code); .value is 'HKD', 'USD' or 'other'. A code from an older link
 // (GBP, EUR...) opens as Others with its symbol filled in.
@@ -795,6 +796,7 @@ $('clear').addEventListener('click', () => {
 
 setupInterestExports({ getResult: () => lastResult, rateData, publishedKinds, usedRatesFor, sortRates, asAt, latestRateLine, printInputItems, showError });
 
+setupDownloadRows(); // before the segments, so a remembered format gets its highlight
 setupSegments();
 setupDetails();
 setDefaultDates();

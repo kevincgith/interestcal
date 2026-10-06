@@ -310,7 +310,10 @@ tbody tr:hover td { background: var(--accent-soft); }
 .num { text-align: right; }
 .row-note { display: block; font-size: 0.78rem; color: var(--accent); white-space: nowrap; }
 td.formula { color: var(--muted); font-size: 0.9rem; white-space: normal; min-width: 170px; }
-.exports { display: flex; flex-wrap: wrap; gap: 12px; }
+/* Under the results: Word | PDF | Excel, Download; then Copy link and Save */
+.exports { display: grid; gap: 12px; justify-items: start; }
+.download-row, .share-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.download-row .download { height: 44px; padding-block: 0; } /* level with the format control */
 .filter { margin-top: 12px; }
 .rate-source p { margin: 10px 0 0; font-size: 0.9rem; overflow-wrap: anywhere; }
 .rate-source p.checked { color: var(--text); }
@@ -459,6 +462,8 @@ button.chip.i-swap { margin-left: auto; padding: 2px 10px; }
   .payment-row.with-label .pay-label { grid-column: 1; grid-row: 3; }
   .payment-row.with-label .repeat-line { grid-column: 1 / -1; grid-row: 4; }
   .event-rows { gap: 14px; }
+  .exports, .download-row { width: 100%; justify-items: stretch; }
+  .download-row .download { flex: 1 1 100%; }
   /* PV by periods: name on the left; amount, frequency (with its tag, no column heading) and description stacked */
   .cf-cols { display: none !important; }
   .cf-row { grid-template-columns: 64px minmax(0, 1fr) 44px; }

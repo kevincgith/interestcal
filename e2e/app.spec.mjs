@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { downloadAs } from './helpers.mjs';
 
 const WORKBOOK = '?src=judgment&p=135436.48&from=2025-11-24&to=2026-04-20&basis=act%2Fact&round=total&incl=0';
 
@@ -92,7 +93,7 @@ test('PDF, Excel and Word download with the right names (no CSV); exports omit t
   const name = 'interest_judgment_actact_2025-11-24_2026-04-20';
 
   for (const [button, ext] of [['Download PDF', 'pdf'], ['Download Excel', 'xlsx'], ['Download Word', 'docx']]) {
-    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
+    const [download] = await Promise.all([page.waitForEvent('download'), downloadAs(page, button)]);
     expect(download.suggestedFilename()).toBe(`${name}.${ext}`);
     const path = await download.path();
     const bytes = await (await import('node:fs/promises')).readFile(path);
@@ -270,7 +271,7 @@ test('downloads work with compounding and a rate switch', async ({ page }) => {
   await page.goto('?src=prime&p=100000&from=2026-01-01&to=2026-12-31&spread=1&comp=daily&sw=2026-07-01&src2=judgment&incl=0');
   await expect(total(page)).not.toHaveText('');
   for (const button of ['Download PDF', 'Download Excel']) {
-    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
+    const [download] = await Promise.all([page.waitForEvent('download'), downloadAs(page, button)]);
     const bytes = await (await import('node:fs/promises')).readFile(await download.path());
     expect(bytes.length, button).toBeGreaterThan(500);
   }
@@ -329,7 +330,7 @@ test('US prime rate: spread applies, latest rate line and rate table use the Fed
   await expect(page).toHaveURL(/src=usprime.*spread=2/);
   // Amounts switch to US dollars, and back to HK dollars for a Hong Kong rate
   await expect(page.locator('label', { hasText: 'Principal (' }).first()).toContainText('Principal (US$)');
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download Word' }).click()]);
+  const [download] = await Promise.all([page.waitForEvent('download'), downloadAs(page, 'Download Word')]);
   const doc = (await (await import('node:fs/promises')).readFile(await download.path())).toString('utf8');
   expect(doc).toContain('Interest on the Debt of US$1,000,000.00');
   expect(doc).toContain('Source of rates: Federal Reserve H.15: bank prime loan rate (as at ');
@@ -470,7 +471,7 @@ test('currency: HKD by default, USD for US prime, a chosen one sticks, and Other
   await expect(principalLabel).toContainText('Principal (S$)');
   await page.locator('#form button[type="submit"]').click();
   await expect(page).toHaveURL(/cur=other%3AS%24/);
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download Word' }).click()]);
+  const [download] = await Promise.all([page.waitForEvent('download'), downloadAs(page, 'Download Word')]);
   const doc = (await (await import('node:fs/promises')).readFile(await download.path())).toString('utf8');
   expect(doc).toContain('Interest on the Debt of S$1,000,000.00');
 
@@ -487,7 +488,7 @@ test('Word download always starts with the calculation inputs', async ({ page })
   await page.goto('./');
   await expect(total(page)).not.toHaveText('');
   await expect(page.locator('#wordInputs')).toHaveCount(0); // no longer a setting
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download Word' }).click()]);
+  const [download] = await Promise.all([page.waitForEvent('download'), downloadAs(page, 'Download Word')]);
   const doc = (await (await import('node:fs/promises')).readFile(await download.path())).toString('utf8');
   expect(doc).toContain('Calculation inputs');
   expect(doc).toContain('Day count basis');
@@ -603,7 +604,7 @@ test('help opens only from the "?" itself, not by clicking the label text', asyn
 test('changed inputs turn off the downloads and Save until Calculate is pressed', async ({ page }) => {
   await page.goto('./');
   await expect(total(page)).not.toHaveText('');
-  const buttons = ['Download Word', 'Download PDF', 'Download Excel'].map((name) => page.getByRole('button', { name }));
+  const buttons = [page.locator('#panel-interest .download')]; // Download, whichever format is chosen
   buttons.push(page.getByRole('button', { name: 'Save', exact: true }));
   for (const b of buttons) await expect(b).toBeEnabled();
   await page.locator('#principal').fill('123456');
@@ -653,12 +654,12 @@ test('days counted: both start and end dates count, on the page, in the link and
   await page.locator('#end').fill('2026-03-31');
   await page.locator('#form button[type="submit"]').click();
   const fs = await import('node:fs/promises');
-  const [word] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download Word' }).click()]);
+  const [word] = await Promise.all([page.waitForEvent('download'), downloadAs(page, 'Download Word')]);
   const doc = (await fs.readFile(await word.path())).toString('utf8');
   expect(doc).toContain('from 1 January 2026 to 31 March 2026 (90 days)');
   expect(doc).toContain('Total amount due as at 31 March 2026');
   expect(doc).toContain('Daily interest from 1 April 2026 until payment');
-  const [xlsx] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download Excel' }).click()]);
+  const [xlsx] = await Promise.all([page.waitForEvent('download'), downloadAs(page, 'Download Excel')]);
   expect(xlsx.suggestedFilename()).toContain('2026-01-01_2026-03-31');
 });
 
@@ -673,7 +674,7 @@ test('the summary and downloads state how days were counted', async ({ page }) =
   for (const [button, check] of [
     ['Download Word', (b) => b.toString('utf8').includes('End date included')],
   ]) {
-    const [d] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
+    const [d] = await Promise.all([page.waitForEvent('download'), downloadAs(page, button)]);
     expect(check(await fs.readFile(await d.path())), button).toBe(true);
   }
 });

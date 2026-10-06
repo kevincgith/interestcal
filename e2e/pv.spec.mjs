@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { downloadAs } from './helpers.mjs';
 
 // 100,000 a year out, 20,000 paid a year before (grown forward), 50,000 in 731 days; 5% yearly, Act/365
 const LINK = '?tab=pv&v=2026-10-05&r=5&cf=2027-10-05,100000,Settlement&cf=2025-10-05,-20000,Paid%20earlier&cf=2028-10-05,50000';
@@ -124,15 +125,15 @@ test('downloads: PDF and Excel, off while inputs have changed', async ({ page })
   await page.goto(LINK);
   await expect(page.locator('#pTotal')).toHaveText('119,583.51');
   for (const [button, ext] of [['Download PDF', 'pdf'], ['Download Excel', 'xlsx']]) {
-    const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#panel-pv').getByRole('button', { name: button }).click()]);
+    const [download] = await Promise.all([page.waitForEvent('download'), downloadAs(page, button)]);
     expect(download.suggestedFilename()).toBe(`present_value_2026-10-05_3_cash_flows.${ext}`);
   }
   await expect(page.locator('#pError')).toBeHidden();
 
   await page.locator('#pRate').fill('6');
-  for (const id of ['#pPdf', '#pXlsx', '#pSave']) await expect(page.locator(id)).toBeDisabled();
+  for (const id of ['#panel-pv .download', '#pPdf', '#pXlsx', '#pSave']) await expect(page.locator(id)).toBeDisabled();
   await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
-  for (const id of ['#pPdf', '#pXlsx', '#pSave']) await expect(page.locator(id)).toBeEnabled();
+  for (const id of ['#panel-pv .download', '#pPdf', '#pXlsx', '#pSave']) await expect(page.locator(id)).toBeEnabled();
 });
 
 test('repeating cash flow: added from the form, expanded into dated rows, kept in the link', async ({ page }) => {
@@ -243,7 +244,7 @@ test('periods timing: quarterly IRR of a bond at par is the coupon rate; rate a 
   await expect(page.locator('#pIrr')).toHaveText('12.000% p.a. = 3.000% a quarter');
   await expect(page.locator('#pRateLine')).toContainText('(12.550881% a year with compounding)');
   await expect(page.locator('#pRows tr')).toHaveCount(9);
-  const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#pXlsx').click()]);
+  const [download] = await Promise.all([page.waitForEvent('download'), downloadAs(page, '#pXlsx')]);
   expect(download.suggestedFilename()).toBe('present_value_quarters_9_cash_flows.xlsx');
 });
 

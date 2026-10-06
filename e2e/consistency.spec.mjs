@@ -74,3 +74,25 @@ test('each tab highlights exactly one main figure', async ({ page }) => {
     if (tile) await expect(answers.locator('dt')).toContainText(tile);
   }
 });
+
+test('downloads: choose Word, PDF or Excel, then Download; the choice is remembered; Copy link and Save on their own row', async ({ page }) => {
+  await page.goto('./');
+  const row = page.locator('#panel-interest .download-row');
+  await expect(row.getByRole('radio')).toHaveCount(3);
+  await expect(row.locator('input:checked')).toHaveValue('docx'); // Word first on Interest
+  await row.getByRole('radio', { name: 'Excel', exact: true }).check();
+  await expect(row.locator('.download')).toHaveAccessibleName('Download Excel');
+  const [download] = await Promise.all([page.waitForEvent('download'), row.locator('.download').click()]);
+  expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
+  await page.reload();
+  await expect(row.locator('input:checked')).toHaveValue('xlsx'); // remembered
+  // Copy link and Save sit on the next line
+  const [dl, link] = await Promise.all([row.locator('.download').boundingBox(), page.locator('#share').boundingBox()]);
+  expect(link.y).toBeGreaterThan(dl.y + dl.height - 1);
+  // Mortgage and PV: PDF | Excel
+  await page.goto('?tab=mortgage');
+  await expect(page.locator('#panel-mortgage .download-row').getByRole('radio')).toHaveCount(2);
+  await page.goto('?tab=pv');
+  await expect(page.locator('#panel-pv .download-row').getByRole('radio')).toHaveCount(2);
+});
+

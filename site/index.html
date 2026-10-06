@@ -269,12 +269,24 @@
         </div>
       </section>
       <div class="exports">
-        <button type="button" id="docx" class="secondary">Download Word</button>
-        <button type="button" id="pdf" class="secondary">Download PDF</button>
-        <button type="button" id="xlsx" class="secondary">Download Excel</button>
-        <button type="button" id="share" class="secondary">Copy link</button>
-        <button type="button" id="save" class="secondary">Save</button>
-        <span id="shareStatus" class="muted" role="status"></span>
+        <div class="download-row" data-tab="interest">
+          <div class="seg" role="radiogroup" aria-label="Download as">
+          <label><input type="radio" name="interestFormat" value="docx" data-format="docx" checked><span>Word</span></label>
+          <label><input type="radio" name="interestFormat" value="pdf" data-format="pdf"><span>PDF</span></label>
+          <label><input type="radio" name="interestFormat" value="xlsx" data-format="xlsx"><span>Excel</span></label>
+          </div>
+          <button type="button" class="download">Download</button>
+          <span class="download-targets" hidden>
+          <button type="button" id="docx" class="secondary">Download Word</button>
+          <button type="button" id="pdf" class="secondary">Download PDF</button>
+          <button type="button" id="xlsx" class="secondary">Download Excel</button>
+          </span>
+        </div>
+        <div class="share-row">
+          <button type="button" id="share" class="secondary">Copy link</button>
+          <button type="button" id="save" class="secondary">Save</button>
+          <span id="shareStatus" class="muted" role="status"></span>
+        </div>
       </div>
     </section>
 
@@ -489,11 +501,22 @@
           </table>
         </div>
         <div class="exports">
-          <button type="button" id="mPdf" class="secondary">Download PDF</button>
-          <button type="button" id="mXlsx" class="secondary">Download Excel</button>
-          <button type="button" id="mShare" class="secondary">Copy link</button>
-          <button type="button" id="mSave" class="secondary">Save</button>
-          <span id="mShareStatus" class="muted" role="status"></span>
+          <div class="download-row" data-tab="mortgage">
+            <div class="seg" role="radiogroup" aria-label="Download as">
+            <label><input type="radio" name="mortgageFormat" value="mPdf" data-format="pdf" checked><span>PDF</span></label>
+            <label><input type="radio" name="mortgageFormat" value="mXlsx" data-format="xlsx"><span>Excel</span></label>
+            </div>
+            <button type="button" class="download">Download</button>
+            <span class="download-targets" hidden>
+            <button type="button" id="mPdf" class="secondary">Download PDF</button>
+            <button type="button" id="mXlsx" class="secondary">Download Excel</button>
+            </span>
+          </div>
+          <div class="share-row">
+            <button type="button" id="mShare" class="secondary">Copy link</button>
+            <button type="button" id="mSave" class="secondary">Save</button>
+            <span id="mShareStatus" class="muted" role="status"></span>
+          </div>
         </div>
       </section>
 
@@ -662,11 +685,22 @@
           </table>
         </div>
         <div class="exports">
-          <button type="button" id="pPdf" class="secondary">Download PDF</button>
-          <button type="button" id="pXlsx" class="secondary">Download Excel</button>
-          <button type="button" id="pShare" class="secondary">Copy link</button>
-          <button type="button" id="pSave" class="secondary">Save</button>
-          <span id="pShareStatus" class="muted" role="status"></span>
+          <div class="download-row" data-tab="pv">
+            <div class="seg" role="radiogroup" aria-label="Download as">
+            <label><input type="radio" name="pvFormat" value="pPdf" data-format="pdf" checked><span>PDF</span></label>
+            <label><input type="radio" name="pvFormat" value="pXlsx" data-format="xlsx"><span>Excel</span></label>
+            </div>
+            <button type="button" class="download">Download</button>
+            <span class="download-targets" hidden>
+            <button type="button" id="pPdf" class="secondary">Download PDF</button>
+            <button type="button" id="pXlsx" class="secondary">Download Excel</button>
+            </span>
+          </div>
+          <div class="share-row">
+            <button type="button" id="pShare" class="secondary">Copy link</button>
+            <button type="button" id="pSave" class="secondary">Save</button>
+            <span id="pShareStatus" class="muted" role="status"></span>
+          </div>
         </div>
       </section>
       <form id="tform" class="card" novalidate hidden>
