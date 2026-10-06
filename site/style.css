@@ -575,3 +575,22 @@ label.radio, .seg { border-color: var(--ctl-border); }
 }
 @media print { #results .table-wrap { background: none; } }
 
+
+/* Sliding thumb (ui-motion.js): one highlight under the chosen option that moves to the new one; the option itself
+   then has no background of its own */
+.seg { position: relative; }
+.seg-thumb { position: absolute; top: 0; left: 0; z-index: 0; border-radius: 7px; pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 24%, var(--surface)); box-shadow: 0 1px 2px rgba(0, 0, 0, .18); }
+.seg:not(.has-thumb) .seg-thumb { display: none; }
+.seg label { z-index: 1; }
+.seg.has-thumb label:has(input:checked) span { background: transparent; box-shadow: none; }
+.seg.has-thumb label:has(input:focus-visible) span { box-shadow: var(--ring); }
+.seg.thumb-ready .seg-thumb { transition: transform .25s cubic-bezier(.2, .7, .3, 1), width .25s cubic-bezier(.2, .7, .3, 1); }
+.seg span { transition: color .2s; }
+@media (prefers-reduced-motion: reduce) { .seg.thumb-ready .seg-thumb { transition: none; } }
+
+/* Change rate on a date: an opt-in checkbox on its own row; the new rate's fields open under it */
+#switchField { grid-column: 1 / -1; }
+#switchField label.check { min-height: 32px; font-weight: 600; font-size: 0.9rem; }
+@media (max-width: 600px) { #switchField label.check { min-height: 44px; } }
+#switchFields { margin-top: -6px; padding-left: 14px; border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); }

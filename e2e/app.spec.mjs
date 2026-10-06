@@ -697,9 +697,9 @@ test('every segmented control is as tall as a text box; on a phone each fills it
     const [end, days] = await Promise.all([page.locator('#end').boundingBox(), page.locator('#daysCounted').boundingBox()]);
     expect(Math.abs(end.y - days.y)).toBeLessThan(0.5);
   }
-  // Change rate on a date is a No / Yes segmented control like the rest
-  await expect(page.locator('#switchSeg input[value="yes"]')).toBeChecked();
-  await page.locator('#switchSeg input[value="no"]').check();
+  // Change rate on a date is an opt-in checkbox that opens the new rate's fields
+  await expect(page.locator('#switchOn')).toBeChecked();
+  await page.locator('#switchOn').uncheck();
   await expect(page.locator('#switchFields')).toBeHidden();
 });
 
@@ -713,4 +713,58 @@ test('Others with no symbol typed yet shows no currency sign', async ({ page }) 
   await expect(page.locator('#principal')).toBeVisible();
   await page.locator('#customCur').fill('S$');
   await expect(principal).toContainText('Principal (S$)');
+});
+
+test('segmented controls: the highlight slides to the chosen option', async ({ page }) => {
+  await page.goto('./');
+  const seg = page.locator('#form > .source .seg');
+  const thumbOn = async (value) => {
+    const [t, s] = await Promise.all([
+      seg.locator('.seg-thumb').boundingBox(),
+      seg.locator(`input[value="${value}"] + span`).boundingBox(),
+    ]);
+    return Math.abs(t.x - s.x) < 1 && Math.abs(t.width - s.width) < 1 && Math.abs(t.y - s.y) < 1;
+  };
+  await expect.poll(() => thumbOn('judgment')).toBe(true);
+  await seg.locator('input[value="usprime"]').check();
+  const midway = await seg.locator('.seg-thumb').evaluate((t) => getComputedStyle(t).transitionDuration);
+  expect(midway).not.toBe('0s');
+  await expect.poll(() => thumbOn('usprime')).toBe(true);
+  // A choice made from code (Reset) moves it too
+  await page.locator('#clear').click();
+  await expect.poll(() => thumbOn('judgment')).toBe(true);
+  // A control that was hidden (inside Advanced settings) gets its highlight when it appears
+  await page.locator('#advanced summary').click();
+  const basis = page.locator('#basis');
+  await expect.poll(async () => {
+    const [t, s] = await Promise.all([basis.locator('.seg-thumb').boundingBox(), basis.locator('input:checked + span').boundingBox()]);
+    return Math.abs(t.x - s.x) < 1 && Math.abs(t.width - s.width) < 1;
+  }).toBe(true);
+});
+
+test('collapsible sections open and close with a height animation', async ({ page }) => {
+  await page.goto('./');
+  const adv = page.locator('#advanced');
+  // Click the heading and record the section's height on every frame for half a second
+  const sample = () => adv.evaluate((d) => new Promise((resolve) => {
+    const hs = [];
+    d.querySelector('summary').click();
+    const t0 = performance.now();
+    const tick = () => {
+      hs.push(d.offsetHeight);
+      if (performance.now() - t0 < 500) requestAnimationFrame(tick);
+      else resolve(hs);
+    };
+    requestAnimationFrame(tick);
+  }));
+  const closed = (await adv.boundingBox()).height;
+  const opening = await sample();
+  await expect(adv).toHaveAttribute('open', '');
+  const full = (await adv.boundingBox()).height;
+  expect(full).toBeGreaterThan(closed + 100);
+  expect(opening.filter((h) => h > closed + 1 && h < full - 1).length, `heights ${opening}`).toBeGreaterThan(2);
+  const closing = await sample();
+  expect(closing.filter((h) => h > closed + 1 && h < full - 1).length, `heights ${closing}`).toBeGreaterThan(2);
+  await expect(adv).not.toHaveAttribute('open', '');
+  expect(Math.round((await adv.boundingBox()).height)).toBe(Math.round(closed));
 });
