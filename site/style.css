@@ -298,13 +298,12 @@ button.help[aria-expanded="true"] { background: var(--accent); color: var(--acce
 /* Tables */
 .table-wrap { overflow-x: auto; margin-bottom: 16px; }
 details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
-/* Interest results wider than the screen: a shadow at the edge that has more to scroll to */
-#results .table-wrap {
-  background:
-    linear-gradient(to right, var(--bg) 30%, transparent) left / 32px 100% no-repeat local,
-    linear-gradient(to left, var(--bg) 30%, transparent) right / 32px 100% no-repeat local,
-    radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--text) 30%, transparent), transparent) left / 12px 100% no-repeat scroll,
-    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--text) 30%, transparent), transparent) right / 12px 100% no-repeat scroll;
+/* A table wider than its box: the edge with more to scroll to fades out (ui-motion.js sets more-left / more-right) */
+.table-wrap.more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
+.table-wrap.more-left { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); }
+.table-wrap.more-left.more-right {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
 }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
@@ -511,7 +510,7 @@ button.chip.i-swap { padding: 2px 10px; }
   .summary dd { font-size: 1.1rem; }
   .summary .answer { background: none; }
   .table-wrap, details .table-wrap { overflow: visible; max-height: none; }
-  #results .table-wrap { background: none; }
+  .table-wrap { -webkit-mask-image: none !important; mask-image: none !important; }
   th, td { padding: 4px 6px; }
   td.formula, th { white-space: normal; }
   tr { break-inside: avoid; }

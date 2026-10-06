@@ -12,7 +12,7 @@ import {
   isFixed, fmtPct, kindLabel, rateBasisLabel, DAYS_COUNTED, daysCountedText,
 } from './interest-text.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
-import { setupSegments, setupDetails } from './ui-motion.js?v=__BUILD__';
+import { setupSegments, setupDetails, setupScrollFades } from './ui-motion.js?v=__BUILD__';
 // Segmented radio groups (End date, Day count basis, Rounding) get a select-like .value
 // Currency: HK$ / US$ / Others (type a symbol or code); .value is 'HKD', 'USD' or 'other'. A code from an older link
 // (GBP, EUR...) opens as Others with its symbol filled in.
@@ -797,6 +797,7 @@ setupInterestExports({ getResult: () => lastResult, rateData, publishedKinds, us
 
 setupSegments();
 setupDetails();
+setupScrollFades();
 setDefaultDates();
 readQuery();
 loadRates()

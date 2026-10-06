@@ -2,6 +2,7 @@
 // - segmented controls (radios, or toggle buttons with aria-pressed): the chosen option's highlight (the "thumb")
 //   slides to the new option
 // - collapsible sections (<details>): open and close with a smooth height change
+// Also (not an animation): wide tables fade out at an edge with more to scroll to
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ---- Segmented controls ----
@@ -98,5 +99,22 @@ export function setupDetails(root = document) {
         animateHeight(details, from, to);
       }
     });
+  }
+}
+
+// ---- Wide tables: a fade at the edge with more to scroll to (left, right or both); none when it all fits ----
+
+export function setupScrollFades(root = document) {
+  const update = (wrap) => {
+    const max = wrap.scrollWidth - wrap.clientWidth;
+    wrap.classList.toggle('more-left', max > 1 && wrap.scrollLeft > 1);
+    wrap.classList.toggle('more-right', max > 1 && wrap.scrollLeft < max - 1);
+  };
+  const observer = new ResizeObserver((entries) => entries.forEach((e) => update(e.target.closest('.table-wrap'))));
+  for (const wrap of root.querySelectorAll('.table-wrap')) {
+    wrap.addEventListener('scroll', () => update(wrap), { passive: true });
+    observer.observe(wrap); // the box changes size (a phone turned, a tab shown)
+    const table = wrap.querySelector('table');
+    if (table) observer.observe(table); // the table changes size (new results)
   }
 }
