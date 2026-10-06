@@ -619,7 +619,7 @@ window.addEventListener('afterprint', () => {
 });
 
 document.querySelectorAll('input[name="source2"]').forEach((el) => el.addEventListener('change', showSourceFields));
-$('switchOn').addEventListener('change', showSourceFields);
+$('switchSeg').addEventListener('change', showSourceFields);
 $('compounding').addEventListener('change', showSourceFields);
 
 // ---- Form ----

@@ -589,8 +589,5 @@ label.radio, .seg { border-color: var(--ctl-border); }
 .seg span { transition: color .2s; }
 @media (prefers-reduced-motion: reduce) { .seg.thumb-ready .seg-thumb { transition: none; } }
 
-/* Change rate on a date: an opt-in checkbox on its own row; the new rate's fields open under it */
-#switchField { grid-column: 1 / -1; }
-#switchField label.check { min-height: 32px; font-weight: 600; font-size: 0.9rem; }
-@media (max-width: 600px) { #switchField label.check { min-height: 44px; } }
-#switchFields { margin-top: -6px; padding-left: 14px; border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+/* Change rate on a date (No / Yes): with Yes, the new rate's fields open on their own row, indented under it */
+#switchFields { padding-left: 14px; border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); }

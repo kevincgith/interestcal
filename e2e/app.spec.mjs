@@ -697,9 +697,9 @@ test('every segmented control is as tall as a text box; on a phone each fills it
     const [end, days] = await Promise.all([page.locator('#end').boundingBox(), page.locator('#daysCounted').boundingBox()]);
     expect(Math.abs(end.y - days.y)).toBeLessThan(0.5);
   }
-  // Change rate on a date is an opt-in checkbox that opens the new rate's fields
-  await expect(page.locator('#switchOn')).toBeChecked();
-  await page.locator('#switchOn').uncheck();
+  // Rate change is a None / From a date segmented control like the rest
+  await expect(page.locator('#switchSeg input[value="yes"]')).toBeChecked();
+  await page.locator('#switchSeg input[value="no"]').check();
   await expect(page.locator('#switchFields')).toBeHidden();
 });
 
