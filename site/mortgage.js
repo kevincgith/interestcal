@@ -160,9 +160,9 @@ export function mortgageSummary(input, { stressAdd = 2, monthlyIncome = null } =
     stressAdd,
     stressedPayment: stressed.firstPayment,
     monthlyIncome,
-    // Debt-servicing ratio: first instalment / income (HK banks look at both the actual and the stressed ratio)
-    dsr: monthlyIncome ? plan.firstPayment / monthlyIncome : null,
-    stressedDsr: monthlyIncome ? stressed.firstPayment / monthlyIncome : null,
+    // Debt-to-income ratio: first instalment / income (HK banks look at both the actual and the stressed ratio)
+    dti: monthlyIncome ? plan.firstPayment / monthlyIncome : null,
+    stressedDti: monthlyIncome ? stressed.firstPayment / monthlyIncome : null,
   };
 }
 

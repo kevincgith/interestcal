@@ -324,6 +324,9 @@ function render(res) {
   $('pValLabel').textContent = isPeriods(res) ? 'Valued at' : 'Valuation date';
   $('pValOut').textContent = isPeriods(res) ? 'T0 (now)' : fmtDate(res.valuation);
   $('pIrrTile').hidden = !isIrr(res);
+  // The main figure: the rate when solving for it, else the present value
+  $('pIrrTile').classList.toggle('answer', isIrr(res));
+  $('pTotal').parentElement.classList.toggle('answer', !isIrr(res));
   $('pIrr').textContent = isIrr(res) ? (isPeriods(res) ? periodRate(res) : `${fmtRate(res.rate)} p.a.`) : '';
   $('pColWhen').textContent = isPeriods(res) ? 'Period' : 'Date';
   $('pTable').classList.toggle('periods', isPeriods(res));

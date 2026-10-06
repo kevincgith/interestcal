@@ -56,14 +56,14 @@ test('a rate change recalculates the instalment for the months left', () => {
   assert.equal(s.rows.at(-1).balance, 0);
 });
 
-test('stress test and debt-servicing ratio', () => {
+test('stress test and debt-to-income ratio', () => {
   const m = mortgageSummary(
     { loan: 1_000_000, start: '2026-01-15', years: 30, rates: fixed(3) },
     { stressAdd: 2, monthlyIncome: 20_000 },
   );
   assert.equal(m.stressedPayment, instalment(1_000_000, 0.05, 360));
-  close(m.dsr, 4216.04 / 20_000, 1e-9);
-  close(m.stressedDsr, m.stressedPayment / 20_000, 1e-9);
+  close(m.dti, 4216.04 / 20_000, 1e-9);
+  close(m.stressedDti, m.stressedPayment / 20_000, 1e-9);
 });
 
 test('rate tables: P - x, fixed, and H + x capped at P - y', () => {

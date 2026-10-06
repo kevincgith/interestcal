@@ -383,7 +383,6 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1p
 .tvm-n select { width: auto; }
 #tform label.solved input:not([type="radio"]) { border-style: dashed; color: var(--accent); font-weight: 700; }
 #tResults.stale > :not(.stale-note) { opacity: 0.45; }
-.summary .answer { border-color: var(--accent); }
 .summary dd small { display: block; font-size: 0.8rem; font-weight: normal; color: var(--muted); margin-top: 2px; }
 /* Inflation tab: "In" and "Worth in" are each a year and a month side by side ("Now" has no month) */
 .i-pick { display: flex; gap: 8px; min-width: 0; }
@@ -433,20 +432,20 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 button.secondary:hover { background: var(--accent-soft); }
 .actions button[type="submit"] { padding-inline: 28px; }
 
-/* Result tiles */
+/* Result tiles: each tab's main figure (class "answer") stands out */
 .summary { gap: 14px; }
 .summary div { border-radius: var(--radius); box-shadow: var(--shadow); }
 .summary dt { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.72rem; font-weight: 600; }
 .summary dd { letter-spacing: -0.01em; }
-.summary div:nth-child(3) { background: linear-gradient(135deg, var(--accent-soft), transparent), var(--surface); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
-.summary div:nth-child(3) dd { color: var(--accent); }
+.summary .answer { background: linear-gradient(135deg, var(--accent-soft), transparent), var(--surface); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.summary .answer dd { color: var(--accent); }
 
 th { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; }
 tbody tr:hover td { background: var(--accent-soft); }
 .warning { border-radius: 10px; }
 
 @media (max-width: 600px) { .card { padding: 16px; } }
-@media print { .card, .header-rates, .summary div { box-shadow: none; } body { background: #fff; } .summary div:nth-child(3) { background: none; } }
+@media print { .card, .header-rates, .summary div { box-shadow: none; } body { background: #fff; } .summary .answer { background: none; } }
 
 /* End date: Included / Excluded segmented control (replaces the Days counted dropdown) */
 .field, .end-field { display: grid; gap: 6px; /* same as a plain label, so boxes in a row line up */ align-content: start; min-width: 0; }

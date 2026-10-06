@@ -232,7 +232,7 @@
         <div><dt>Total interest</dt><dd id="totalInterest"></dd></div>
         <div id="addedTile" hidden><dt>Principal added</dt><dd id="totalAdded"></dd></div>
         <div id="paidTile" hidden><dt>Payments received</dt><dd id="totalPaid"></dd></div>
-        <div><dt>Total amount due</dt><dd id="totalDue"></dd></div>
+        <div class="answer"><dt>Total amount due</dt><dd id="totalDue"></dd></div>
         <div><dt>Total no. of days</dt><dd id="totalDays"></dd></div>
         <div><dt title="Interest per day from the end date until payment">Daily interest</dt><dd id="perDiem"></dd></div>
       </dl>
@@ -446,14 +446,14 @@
         <p id="mWarn" class="warning" hidden></p>
         <dl class="summary">
           <div><dt>Loan amount</dt><dd id="mLoanOut"></dd></div>
-          <div><dt>Monthly instalment</dt><dd id="mPayment"></dd></div>
+          <div class="answer"><dt>Monthly instalment</dt><dd id="mPayment"></dd></div>
+          <div id="mStressTile"><dt id="mStressLabel">Stress test</dt><dd><span id="mStressPay"></span><small id="mStressMore"></small></dd></div>
+          <div id="mDtiTile" hidden><dt>Debt-to-income ratio</dt><dd><span id="mDti"></span><small id="mDtiMore"></small></dd></div>
           <div><dt>Total interest</dt><dd id="mInterest"></dd></div>
           <div><dt>Total repaid</dt><dd id="mTotal"></dd></div>
           <div><dt>Loan ends</dt><dd id="mEnds"></dd></div>
         </dl>
         <p id="mRateLine" class="verified"></p>
-        <p id="mStressLine" class="verified"></p>
-        <p id="mDsrLine" class="verified" hidden></p>
         <p id="mSavedLine" class="verified" hidden></p>
 
         <h2 class="m-section">Compare plans</h2>

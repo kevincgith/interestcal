@@ -333,8 +333,8 @@ function resultLines(m) {
     stress:
       `Stress test at +${m.stressAdd}% (${rate3(m.firstRate + m.stressAdd / 100)}): instalment HK$${money.format(m.stressedPayment)}` +
       ` (+HK$${money.format(m.stressedPayment - m.firstPayment)} a month).`,
-    dsr: m.monthlyIncome
-      ? `Debt-servicing ratio: ${(m.dsr * 100).toFixed(1)}% now, ${(m.stressedDsr * 100).toFixed(1)}% under the stress test ` +
+    dti: m.monthlyIncome
+      ? `Debt-to-income ratio: ${(m.dti * 100).toFixed(1)}% now, ${(m.stressedDti * 100).toFixed(1)}% under the stress test ` +
         `(instalment ÷ monthly income of HK$${money.format(m.monthlyIncome)}). Banks compare these with their limits.`
       : '',
     saved: m.totalExtra > 0
@@ -358,9 +358,15 @@ function render(m) {
   $('mEnds').textContent = `${fmtDate(m.payoffDate)} (${duration(m.monthsTaken)})`;
   const lines = resultLines(m);
   $('mRateLine').textContent = lines.rate;
-  $('mStressLine').textContent = lines.stress;
-  $('mDsrLine').hidden = !lines.dsr;
-  $('mDsrLine').textContent = lines.dsr;
+  // Stress test and debt-to-income ratio: tiles beside the instalment (the downloads keep the full sentences)
+  $('mStressLabel').textContent = `Instalment at rate + ${m.stressAdd}%`;
+  $('mStressPay').textContent = money.format(m.stressedPayment);
+  $('mStressMore').textContent = `+${money.format(m.stressedPayment - m.firstPayment)} a month (${rate3(m.firstRate + m.stressAdd / 100)})`;
+  $('mDtiTile').hidden = !m.monthlyIncome;
+  if (m.monthlyIncome) {
+    $('mDti').textContent = `${(m.dti * 100).toFixed(1)}%`;
+    $('mDtiMore').textContent = `${(m.stressedDti * 100).toFixed(1)}% at rate + ${m.stressAdd}%`;
+  }
   $('mSavedLine').hidden = !lines.saved && !lines.rebate;
   $('mSavedLine').textContent = [lines.rebate, lines.saved].filter(Boolean).join(' ');
   renderCompare(m);
@@ -703,7 +709,7 @@ $('mPdf').addEventListener('click', () => {
     const lines = resultLines(m);
     const doc = buildMortgagePdf(lib, m, {
       inputs: inputItems(m),
-      lines: [m.warning, lines.rate, lines.rebate, lines.stress, lines.dsr, lines.saved].filter(Boolean),
+      lines: [m.warning, lines.rate, lines.rebate, lines.stress, lines.dti, lines.saved].filter(Boolean),
       fmt: { money: (n) => money.format(n), date: fmtDate, rate: rate3, duration },
       planNames: TYPES,
       generatedOn: fmtDate(todayIso()),
@@ -720,7 +726,7 @@ $('mXlsx').addEventListener('click', () => {
     const lines = resultLines(m);
     const wb = buildMortgageWorkbook(XLSX, m, {
       inputs: inputItems(m),
-      lines: [m.warning, lines.rate, lines.rebate, lines.stress, lines.dsr, lines.saved].filter(Boolean),
+      lines: [m.warning, lines.rate, lines.rebate, lines.stress, lines.dti, lines.saved].filter(Boolean),
       planNames: TYPES,
       primeSource: m.inputs.type === 'fixed' ? null : prime?.source,
       hiborSource: m.inputs.type === 'hibor' ? hibor[m.inputs.rateParams.tenor]?.source : null,

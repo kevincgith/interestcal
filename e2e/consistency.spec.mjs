@@ -62,3 +62,15 @@ test('old links still set the converted controls', async ({ page }) => {
   await expect(page.locator('#tDue input[value="start"]')).toBeChecked();
   await expect(page.locator('#panel-pv').getByText('Currency', { exact: true })).toHaveCount(0);
 });
+
+test('each tab highlights exactly one main figure', async ({ page }) => {
+  for (const [query, tile] of [
+    ['./', 'Total amount due'], ['?tab=mortgage', 'Monthly instalment'], ['?tab=pv', 'Present value'],
+    ['?tab=pv&m=tvm', 'Payment (PMT)'], ['?tab=inflation', ''],
+  ]) {
+    await page.goto(query);
+    const answers = page.locator('[role="tabpanel"]:not([hidden]) .summary .answer:visible');
+    await expect(answers).toHaveCount(1);
+    if (tile) await expect(answers.locator('dt')).toContainText(tile);
+  }
+});

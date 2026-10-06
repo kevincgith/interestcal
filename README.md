@@ -28,7 +28,7 @@ You can choose one of three rates:
     - **Fixed.**
   - **Interest:** each month's interest = balance × rate × actual days ÷ 365. The instalment is recalculated when the rate changes.
   - **Extra repayments:** these keep the instalment the same, so the loan ends sooner. The results show interest and months saved.
-  - **Stress test:** +2% or +3%, plus a debt-servicing ratio from monthly income.
+  - **Stress test:** +2% or +3%: the instalment at that higher rate, shown beside the monthly instalment, plus a debt-to-income ratio (first instalment ÷ monthly income, now and under the stress test) when you enter your income.
   - **Cash rebate** (% of the loan) for each plan, with net cost and an **effective rate** after the rebate: the monthly rate at which the instalments repay the loan plus the rebate, × 12.
   - **Compare plans:** HIBOR-based, prime-based and fixed for the same loan, each with its own settings. The lowest net cost is marked.
   - **HIBOR plans:** the schedule shows both HIBOR + margin and the prime cap for each due date, and ticks whichever set the rate.
