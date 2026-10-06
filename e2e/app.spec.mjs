@@ -565,8 +565,8 @@ test('help: "?" shows and hides an explanation without changing the setting or m
   await help.click();
   await expect(text).toBeHidden();
   // The end date's rule is explained too
-  await page.getByRole('button', { name: /end date earn interest/ }).click();
-  await expect(page.locator('label', { has: page.locator('#end') }).locator('.help-text')).toContainText('1 to 2 January is 1 day');
+  await page.getByRole('button', { name: 'What is end date counted?' }).click();
+  await expect(page.locator('.field', { has: page.locator('#daysCounted') }).locator('.help-text')).toContainText('1 to 2 January is 1 day');
 });
 
 test('the same start and end date shows an error instead of a zero result', async ({ page }) => {
@@ -593,7 +593,7 @@ test('help opens only from the "?" itself, not by clicking the label text', asyn
   for (const [, helpName, field] of [
     ['Day count basis', 'What is day count basis?', '#basis'],
     ['Rounding', 'What is rounding?', '#rounding'],
-    ['End date', /end date earn interest/, '#end'],
+    ['End date counted', 'What is end date counted?', '#daysCounted'],
   ]) {
     const label = page.locator('label, .field', { has: page.locator(field) });
     const text = label.locator('.help-text');
