@@ -47,10 +47,12 @@
     <form id="form" class="card" novalidate>
       <fieldset class="source">
         <legend>Interest rate</legend>
-        <label class="radio"><input type="radio" name="source" value="judgment" checked> Judgment</label>
-        <label class="radio"><input type="radio" name="source" value="prime"> HK Prime</label>
-        <label class="radio"><input type="radio" name="source" value="usprime"> US Prime</label>
-        <label class="radio"><input type="radio" name="source" value="fixed"> Fixed</label>
+        <div class="seg">
+          <label><input type="radio" name="source" value="judgment" checked><span>Judgment</span></label>
+          <label><input type="radio" name="source" value="prime"><span>HK Prime</span></label>
+          <label><input type="radio" name="source" value="usprime"><span>US Prime</span></label>
+          <label><input type="radio" name="source" value="fixed"><span>Fixed</span></label>
+        </div>
       </fieldset>
       <label><span>Principal (<span class="cur">HK$</span>)</span>
         <input id="principal" type="text" inputmode="decimal" autocomplete="off" required value="1,000,000.00" placeholder="1,000,000.00">
@@ -146,10 +148,12 @@
             </label>
             <fieldset class="source">
               <legend>New rate</legend>
-              <label class="radio"><input type="radio" name="source2" value="judgment" checked> Judgment</label>
-              <label class="radio"><input type="radio" name="source2" value="prime"> HK Prime</label>
-              <label class="radio"><input type="radio" name="source2" value="usprime"> US Prime</label>
-              <label class="radio"><input type="radio" name="source2" value="fixed"> Fixed</label>
+        <div class="seg">
+                <label><input type="radio" name="source2" value="judgment" checked><span>Judgment</span></label>
+                <label><input type="radio" name="source2" value="prime"><span>HK Prime</span></label>
+                <label><input type="radio" name="source2" value="usprime"><span>US Prime</span></label>
+                <label><input type="radio" name="source2" value="fixed"><span>Fixed</span></label>
+        </div>
             </fieldset>
             <label id="spread2Field" for="spread2" hidden>Spread over prime (% p.a.)
               <div class="stepper">
