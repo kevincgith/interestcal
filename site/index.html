@@ -47,10 +47,10 @@
     <form id="form" class="card" novalidate>
       <fieldset class="source">
         <legend>Interest rate</legend>
-        <label class="radio"><input type="radio" name="source" value="judgment" checked> Judgment debt rate</label>
-        <label class="radio"><input type="radio" name="source" value="prime"> HSBC prime rate</label>
-        <label class="radio"><input type="radio" name="source" value="usprime"> US prime rate</label>
-        <label class="radio"><input type="radio" name="source" value="fixed"> Fixed rate</label>
+        <label class="radio"><input type="radio" name="source" value="judgment" checked> Judgment</label>
+        <label class="radio"><input type="radio" name="source" value="prime"> HSBC Prime</label>
+        <label class="radio"><input type="radio" name="source" value="usprime"> US Prime</label>
+        <label class="radio"><input type="radio" name="source" value="fixed"> Fixed</label>
       </fieldset>
       <label><span>Principal (<span class="cur">HK$</span>)</span>
         <input id="principal" type="text" inputmode="decimal" autocomplete="off" required value="1,000,000.00" placeholder="1,000,000.00">
@@ -58,17 +58,16 @@
       <label>Start date
         <input id="start" type="date" required>
       </label>
-      <label for="end"><span class="label-row">End date <button type="button" class="help" aria-expanded="false" aria-label="Does the end date earn interest?">?</button></span>
-        <input id="end" type="date" required>
-        <span class="help-text" hidden>Whether the end date earns interest depends on Days counted, just below. With “End date included” (the default) both the start and end dates earn interest, so 1 to 2 January is 2 days. With “End date not included” the end date doesn’t earn interest (end date minus start date, as in Excel and the original workbook), so 1 to 2 January is 1 day.</span>
-      </label>
-      <label for="daysCounted"><span class="label-row">Days counted <button type="button" class="help" aria-expanded="false" aria-label="What is days counted?">?</button></span>
-        <select id="daysCounted">
-          <option value="incl" selected>End date included</option>
-          <option value="excl">End date not included</option>
-        </select>
-        <span class="help-text" hidden>End date included (the default): both the start and end dates earn interest, so 1 to 2 January is 2 days and 1 January to 31 March is 90 days; each period then shows its last day counted. This is usually how it is counted in court, for example for judgment interest, and in most contracts and orders. End date not included (as in Excel and the original workbook): the start date earns interest and the end date doesn’t, so 1 to 2 January is 1 day, and where one period ends and the next begins the shared date is counted once.</span>
-      </label>
+      <div class="end-field">
+        <label for="end"><span class="label-row">End date <button type="button" class="help" aria-expanded="false" aria-label="Does the end date earn interest?">?</button></span>
+          <input id="end" type="date" required>
+          <span class="help-text" hidden>Included (the default): both the start and end dates earn interest, so 1 to 2 January is 2 days and 1 January to 31 March is 90 days; each period then shows its last day counted. This is usually how it is counted in court, for example for judgment interest, and in most contracts and orders. Excluded (as in Excel and the original workbook): the start date earns interest and the end date doesn’t, so 1 to 2 January is 1 day, and where one period ends and the next begins the shared date is counted once.</span>
+        </label>
+        <div class="seg" id="daysCounted" role="radiogroup" aria-label="End date counted">
+          <label><input type="radio" name="daysCounted" value="incl" checked><span>Included</span></label>
+          <label><input type="radio" name="daysCounted" value="excl"><span>Excluded</span></label>
+        </div>
+      </div>
       <label id="fixedField" for="fixedRate" hidden>Fixed rate (% p.a.)
         <div class="stepper">
           <button type="button" class="step" data-step="-1" aria-label="Decrease fixed rate by 1%">−</button>
@@ -84,41 +83,47 @@
         </div>
       </label>
       <details id="advanced" class="advanced">
-        <summary>Advanced settings <span class="muted">(day count, rows, rounding, compounding, rate switch, currency)</span></summary>
+        <summary>Advanced settings <span class="muted">(day count, table detail, rounding, compounding, rate change, currency)</span></summary>
         <div class="advanced-body">
-          <label for="basis"><span class="label-row">Day count basis <button type="button" class="help" aria-expanded="false" aria-label="What is day count basis?">?</button></span>
-            <select id="basis">
-              <option value="act/act" selected>Actual/Actual</option>
-              <option value="act/365">Actual/365 Fixed</option>
-              <option value="act/360">Actual/360</option>
-            </select>
-            <span class="help-text" hidden>How many days a year has. Actual/Actual (used by the HK courts): 366 in a leap year, 365 otherwise, splitting the period at 1 January when that changes. Actual/365 Fixed: always 365. Actual/360: always 360, used for some US dollar loans.</span>
-          </label>
-          <label for="rows"><span class="label-row">Calculation rows <button type="button" class="help" aria-expanded="false" aria-label="What is calculation rows?">?</button></span>
-            <select id="rows">
-              <option value="all" selected>Detailed (each published rate)</option>
-              <option value="rate">Combined (per rate period)</option>
-            </select>
+          <div class="field" id="basisField">
+            <span class="label-row">Day count basis <button type="button" class="help" aria-expanded="false" aria-label="What is day count basis?">?</button></span>
+            <div class="seg" id="basis" role="radiogroup" aria-label="Day count basis">
+              <label><input type="radio" name="basis" value="act/act" checked><span>Act/Act</span></label>
+              <label><input type="radio" name="basis" value="act/365"><span>Act/365F</span></label>
+              <label hidden><input type="radio" name="basis" value="act/360"><span>Act/360</span></label>
+            </div>
+            <span class="help-text" hidden>How many days a year has. Act/Act (Actual/Actual, used by the HK courts): 366 in a leap year, 365 otherwise, splitting the period at 1 January when that changes. Act/365F (Actual/365 Fixed): always 365.</span>
+          </div>
+          <div class="field">
+            <span class="label-row">Table detail <button type="button" class="help" aria-expanded="false" aria-label="What is table detail?">?</button></span>
+            <div class="seg" id="rows" role="radiogroup" aria-label="Table detail">
+              <label><input type="radio" name="rows" value="all" checked><span>Detailed</span></label>
+              <label><input type="radio" name="rows" value="rate"><span>Combined</span></label>
+            </div>
             <span class="help-text" hidden>Detailed: a row for each published rate (even when a quarter repeats the same rate), each payment and each new year. Combined: consecutive rows at the same rate become one, with the working shown as a sum. The total is the same either way.</span>
-          </label>
-          <label for="rounding"><span class="label-row">Rounding <button type="button" class="help" aria-expanded="false" aria-label="What is rounding?">?</button></span>
-            <select id="rounding">
-              <option value="total" selected>Round the total only</option>
-              <option value="period">Round each period</option>
-            </select>
-            <span class="help-text" hidden>Round the total only: rows are added unrounded and only the total is rounded to cents (the original workbook’s method). Round each period: each row is rounded to cents first, which can change the total by a cent or two.</span>
-          </label>
-          <label for="compounding"><span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="What is compounding?">?</button></span>
-            <select id="compounding">
-              <option value="none" selected>None (simple interest)</option>
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="yearly">Yearly</option>
-              <option value="daily">Daily</option>
-              <option value="continuous">Continuous</option>
-            </select>
-            <span class="help-text" hidden>None: simple interest, so interest never earns interest (the usual position for judgment debts). Monthly, quarterly or yearly: unpaid interest is added to the principal at the end of each period and earns interest from then. Daily or continuous: compounded every day, or continuously.</span>
-          </label>
+          </div>
+          <div class="field">
+            <span class="label-row">Rounding <button type="button" class="help" aria-expanded="false" aria-label="What is rounding?">?</button></span>
+            <div class="seg" id="rounding" role="radiogroup" aria-label="Rounding">
+              <label><input type="radio" name="rounding" value="total" checked><span>Total</span></label>
+              <label><input type="radio" name="rounding" value="period"><span>Each Period</span></label>
+            </div>
+            <span class="help-text" hidden>Total: rows are added unrounded and only the total is rounded to cents (the original workbook’s method). Each Period: each row is rounded to cents first, which can change the total by a cent or two.</span>
+          </div>
+          <div class="field" id="compounding">
+            <span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="What is compounding?">?</button></span>
+            <div class="toggle-row">
+              <label class="toggle"><input type="checkbox" id="compoundOn"><span class="track" aria-hidden="true"></span><span id="compoundState">No</span></label>
+              <select id="compoundType" aria-label="Compounding frequency" hidden>
+                <option value="monthly" selected>Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="yearly">Yearly</option>
+                <option value="daily">Daily</option>
+                <option value="continuous">Continuous</option>
+              </select>
+            </div>
+            <span class="help-text" hidden>No (the default): simple interest, so interest never earns interest (the usual position for judgment debts). Yes: choose how often. Monthly, quarterly or yearly: unpaid interest is added to the principal at the end of each period and earns interest from then. Daily or continuous: compounded every day, or continuously.</span>
+          </div>
           <label id="compoundDatesField" for="compoundDates" hidden><span class="label-row">Compounding dates <button type="button" class="help" aria-expanded="false" aria-label="What is compounding dates?">?</button></span>
             <select id="compoundDates">
               <option value="start" selected>From the start date (anniversaries)</option>
@@ -126,18 +131,23 @@
             </select>
             <span class="help-text" hidden>From the start date: every month, quarter or year counted from the start date (anniversaries). Calendar period ends: at each calendar month, quarter or year end.</span>
           </label>
-          <label class="radio switch-toggle"><input type="checkbox" id="switchOn"> Switch to a different rate from a date <button type="button" class="help" aria-expanded="false" aria-label="What is a rate switch?">?</button></label>
-          <span class="help-text switch-help" hidden>Use one rate up to a date and another from that date, e.g. a contract rate (or prime + 1%) until judgment, then the judgment rate from the judgment date.</span>
+          <div class="field switch-toggle">
+            <span class="label-row">Change rate on a date <button type="button" class="help" aria-expanded="false" aria-label="What is a rate change?">?</button></span>
+            <div class="toggle-row">
+              <label class="toggle"><input type="checkbox" id="switchOn" aria-label="Change rate on a date"><span class="track" aria-hidden="true"></span><span id="switchState">No</span></label>
+            </div>
+            <span class="help-text" hidden>Use one rate up to a date and another from that date, e.g. a contract rate (or prime + 1%) until judgment, then the judgment rate from the judgment date.</span>
+          </div>
           <div id="switchFields" class="switch-fields" hidden>
             <label>Switch date (new rate applies from this day)
               <input id="switchDate" type="date">
             </label>
             <fieldset class="source">
               <legend>New rate</legend>
-              <label class="radio"><input type="radio" name="source2" value="judgment" checked> Judgment debt rate</label>
-              <label class="radio"><input type="radio" name="source2" value="prime"> HSBC prime rate</label>
-              <label class="radio"><input type="radio" name="source2" value="usprime"> US prime rate</label>
-              <label class="radio"><input type="radio" name="source2" value="fixed"> Fixed rate</label>
+              <label class="radio"><input type="radio" name="source2" value="judgment" checked> Judgment</label>
+              <label class="radio"><input type="radio" name="source2" value="prime"> HSBC Prime</label>
+              <label class="radio"><input type="radio" name="source2" value="usprime"> US Prime</label>
+              <label class="radio"><input type="radio" name="source2" value="fixed"> Fixed</label>
             </fieldset>
             <label id="spread2Field" for="spread2" hidden>Spread over prime (% p.a.)
               <div class="stepper">
@@ -154,11 +164,15 @@
               </div>
             </label>
           </div>
-          <label for="currency"><span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
-            <select id="currency">
-              <option value="HKD" selected>HKD (HK$)</option>
-              <option value="USD">USD (US$)</option>
-              <option value="CNY">RMB (CN¥)</option>
+          <div class="field" id="currency">
+            <span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
+            <div class="seg" id="currencySeg" role="radiogroup" aria-label="Currency">
+              <label><input type="radio" name="currency" value="HKD" checked><span>HK$</span></label>
+              <label><input type="radio" name="currency" value="USD"><span>US$</span></label>
+              <label><input type="radio" name="currency" value="more"><span>Others</span></label>
+            </div>
+            <select id="currencyMore" aria-label="Other currency" hidden>
+              <option value="CNY" selected>RMB (CN¥)</option>
               <option value="EUR">EUR (€)</option>
               <option value="JPY">JPY (JP¥)</option>
               <option value="GBP">GBP (£)</option>
@@ -170,8 +184,8 @@
               <option value="NOK">NOK</option>
               <option value="other">Other…</option>
             </select>
-            <span class="help-text" hidden>Only changes the symbol shown on the page and in downloads; the calculation is the same in any currency. HKD by default, or USD for the US prime rate. Once you pick one, changing the rate won’t change it.</span>
-          </label>
+            <span class="help-text" hidden>Only changes the symbol shown on the page and in downloads; the calculation is the same in any currency. HK$ by default, or US$ for the US prime rate. Others lists more currencies, or type your own symbol. Once you pick one, changing the rate won’t change it.</span>
+          </div>
           <label id="customCurField" hidden>Currency symbol or code
             <input id="customCur" type="text" maxlength="8" autocomplete="off" placeholder="e.g. S$ or SGD">
           </label>

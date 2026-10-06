@@ -25,8 +25,8 @@ test('changing inputs does not recalculate until Calculate is pressed', async ({
   await expect(total(page)).toHaveText('4,434.64');
 
   await page.locator('#advanced summary').click();
-  await page.locator('#basis').selectOption('act/360');
-  await page.locator('#rounding').selectOption('period');
+  await page.locator('#basis input[value="act/365"]').check();
+  await page.locator('#rounding input[value="period"]').check();
   await page.locator('input[name="source"][value="prime"]').check();
   await page.getByRole('button', { name: 'Increase spread by 1%' }).click();
   await page.locator('#principal').fill('999');
@@ -55,7 +55,7 @@ test('fixed rate: interest, daily interest, and no published rate table', async 
 
 test('form fields share one height and never overlap; no sideways scrolling', async ({ page }) => {
   await page.goto('?src=prime&pay=2026-03-01:1000&sw=2026-06-01&src2=prime&incl=0');
-  const ids = ['principal', 'start', 'end', 'basis', 'rounding', 'compounding', 'switchDate'];
+  const ids = ['principal', 'start', 'end', 'switchDate'];
   const boxes = await Promise.all(ids.map((id) => page.locator(`#${id}`).boundingBox()));
   boxes.push(await page.locator('#spreadField .stepper').boundingBox());
   boxes.push(await page.locator('#spread2Field .stepper').boundingBox());
@@ -229,17 +229,20 @@ test('advanced settings are closed by default and compounding defaults to simple
   await expect(page.locator('#basis')).toBeHidden();
   await expect(page.locator('#rounding')).toBeHidden();
   await expect(page.locator('#advanced')).not.toHaveAttribute('open', '');
-  await expect(page.locator('#compounding')).toHaveValue('none');
+  await expect(page.locator('#compoundOn')).not.toBeChecked();
   await expect(page.locator('#compareLine')).toBeHidden();
   await page.locator('#advanced summary').click();
   await expect(page.locator('#compounding')).toBeVisible();
-  await expect(page.locator('#basis')).toHaveValue('act/act');
-  await expect(page.locator('#rounding')).toHaveValue('total');
+  await expect(page.locator('#compoundType')).toBeHidden();
+  await expect(page.locator('#basis input:checked')).toHaveValue('act/act');
+  await expect(page.locator('#rounding input:checked')).toHaveValue('total');
   await expect(page.locator('#switchFields')).toBeHidden();
   await expect(page.locator('#compoundDatesField')).toBeHidden();
-  await page.locator('#compounding').selectOption('quarterly');
+  await page.locator('#compoundOn').check();
+  await expect(page.locator('#compoundType')).toBeVisible();
+  await page.locator('#compoundType').selectOption('quarterly');
   await expect(page.locator('#compoundDatesField')).toBeVisible();
-  await page.locator('#compounding').selectOption('daily');
+  await page.locator('#compoundType').selectOption('daily');
   await expect(page.locator('#compoundDatesField')).toBeHidden();
 });
 
@@ -256,7 +259,7 @@ test('monthly compounding from a shared link, compared with simple interest', as
 test('switch from prime + 1% to the judgment rate on a date', async ({ page }) => {
   await page.goto('?src=prime&p=100000&from=2026-01-01&to=2026-12-31&spread=1&incl=0');
   await page.locator('#advanced summary').click();
-  await page.getByLabel('Switch to a different rate from a date').check();
+  await page.locator('#switchOn').check();
   await page.getByLabel('Switch date (new rate applies from this day)').fill('2026-07-01');
   await page.getByRole('button', { name: 'Calculate' }).click();
 
@@ -283,7 +286,7 @@ test('downloads work with compounding and a rate switch', async ({ page }) => {
 test('a shared link with a non-default day count opens Advanced settings', async ({ page }) => {
   await page.goto('?src=judgment&p=1000&from=2026-01-01&to=2026-02-01&basis=act%2F360&incl=0');
   await expect(page.locator('#advanced')).toHaveAttribute('open', '');
-  await expect(page.locator('#basis')).toHaveValue('act/360');
+  await expect(page.locator('#basis input:checked')).toHaveValue('act/360');
 });
 
 test('calendar compounding dates from a shared link', async ({ page }) => {
@@ -341,12 +344,12 @@ test('US prime rate: spread applies, latest rate line and rate table use the Fed
   await expect(page.locator('label', { hasText: 'Principal (' }).first()).toContainText('Principal (HK$)');
 });
 
-test('Calculation rows: one row per rate period combines year-end rows, keeps the total, and goes in the link', async ({ page }) => {
+test('Table detail: one row per rate period combines year-end rows, keeps the total, and goes in the link', async ({ page }) => {
   await page.goto('?src=fixed&rate=8&p=100000&from=2023-07-01&to=2024-07-01&incl=0');
   const totalBefore = await total(page).textContent();
   await expect(page.locator('#periods tr')).toHaveCount(2); // split at 1 January (365 -> 366)
   await page.locator('#advanced summary').click();
-  await page.locator('#rows').selectOption('rate');
+  await page.locator('#rows input[value="rate"]').check();
   await page.locator('#form button[type="submit"]').click();
   await expect(page.locator('#periods tr')).toHaveCount(1);
   await expect(page.locator('#periods tr').first()).toContainText('100,000.00 × 8.000% × (184 ÷ 365 + 182 ÷ 366)');
@@ -355,7 +358,7 @@ test('Calculation rows: one row per rate period combines year-end rows, keeps th
   await expect(page).toHaveURL(/rows=rate/);
   // The link reopens with the setting
   await page.reload();
-  await expect(page.locator('#rows')).toHaveValue('rate');
+  await expect(page.locator('#rows input:checked')).toHaveValue('rate');
   await expect(page.locator('#periods tr')).toHaveCount(1);
 });
 
@@ -450,24 +453,25 @@ test('cash flows: collapsed by default, counts what is inside, and opens for a l
 test('currency: HKD by default, USD for US prime, a chosen one sticks, and Other takes any symbol', async ({ page }) => {
   const principalLabel = page.locator('label', { hasText: 'Principal (' }).first();
   await page.goto('./');
-  await expect(page.locator('#currency')).toHaveValue('HKD');
+  await expect(page.locator('#currency input:checked')).toHaveValue('HKD');
   await page.locator('input[name="source"][value="usprime"]').check();
-  await expect(page.locator('#currency')).toHaveValue('USD');
+  await expect(page.locator('#currency input:checked')).toHaveValue('USD');
   await expect(principalLabel).toContainText('Principal (US$)');
   await page.locator('input[name="source"][value="judgment"]').check();
-  await expect(page.locator('#currency')).toHaveValue('HKD');
+  await expect(page.locator('#currency input:checked')).toHaveValue('HKD');
 
   // A currency the user picks stays when the rate changes, and goes in the link
   await page.locator('#advanced summary').click();
-  await page.locator('#currency').selectOption('GBP');
+  await page.locator('#currency input[value="more"]').check();
+  await page.locator('#currencyMore').selectOption('GBP');
   await page.locator('input[name="source"][value="usprime"]').check();
-  await expect(page.locator('#currency')).toHaveValue('GBP');
+  await expect(page.locator('#currencyMore')).toHaveValue('GBP');
   await expect(principalLabel).toContainText('Principal (£)');
   await page.locator('#form button[type="submit"]').click();
   await expect(page).toHaveURL(/cur=GBP/);
 
   // Other: whatever is typed
-  await page.locator('#currency').selectOption('other');
+  await page.locator('#currencyMore').selectOption('other');
   await expect(page.locator('#customCurField')).toBeVisible();
   await page.locator('#customCur').fill('S$');
   await expect(principalLabel).toContainText('Principal (S$)');
@@ -479,10 +483,10 @@ test('currency: HKD by default, USD for US prime, a chosen one sticks, and Other
 
   // The link reopens with it; Reset goes back to HKD
   await page.reload();
-  await expect(page.locator('#currency')).toHaveValue('other');
+  await expect(page.locator('#currencyMore')).toHaveValue('other');
   await expect(page.locator('#customCur')).toHaveValue('S$');
   await page.locator('#clear').click();
-  await expect(page.locator('#currency')).toHaveValue('HKD');
+  await expect(page.locator('#currency input:checked')).toHaveValue('HKD');
   await expect(principalLabel).toContainText('Principal (HK$)');
 });
 
@@ -551,13 +555,13 @@ test('help: "?" shows and hides an explanation without changing the setting or m
   await expect(total(page)).not.toHaveText('');
   await page.locator('#advanced summary').click();
   const help = page.getByRole('button', { name: 'What is day count basis?' });
-  const text = page.locator('label', { has: page.locator('#basis') }).locator('.help-text');
+  const text = page.locator('.field', { has: page.locator('#basis') }).locator('.help-text');
   await expect(text).toBeHidden();
   await help.click();
   await expect(text).toBeVisible();
   await expect(text).toContainText('366 in a leap year');
   await expect(help).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.locator('#basis')).toHaveValue('act/act');
+  await expect(page.locator('#basis input:checked')).toHaveValue('act/act');
   await expect(page.locator('#staleNote')).toBeHidden();
   await help.click();
   await expect(text).toBeHidden();
@@ -569,7 +573,7 @@ test('help: "?" shows and hides an explanation without changing the setting or m
 test('the same start and end date shows an error instead of a zero result', async ({ page }) => {
   await page.goto('./');
   await expect(total(page)).not.toHaveText('');
-  await page.locator('#daysCounted').selectOption('excl'); // with the end date included, one day is valid
+  await page.locator('#daysCounted').locator('input[value="excl"]').check(); // with the end date included, one day is valid
   await page.locator('#end').fill(await page.locator('#start').inputValue());
   await page.locator('#form button[type="submit"]').click();
   await expect(page.locator('#error')).toBeVisible();
@@ -592,7 +596,7 @@ test('help opens only from the "?" itself, not by clicking the label text', asyn
     ['Rounding', 'What is rounding?', '#rounding'],
     ['End date', /end date earn interest/, '#end'],
   ]) {
-    const label = page.locator('label', { has: page.locator(field) });
+    const label = page.locator('label, .field', { has: page.locator(field) });
     const text = label.locator('.help-text');
     await label.locator('.label-row').click({ position: { x: 4, y: 6 } }); // on the words, away from the "?"
     await expect(text).toBeHidden();
@@ -633,19 +637,19 @@ test('recent calculations can be cleared; saved ones stay', async ({ page }) => 
 test('days counted: both start and end dates count, on the page, in the link and in Word and Excel', async ({ page }) => {
   // HK$365,000 at a fixed 8%: one day earns exactly HK$80.00
   await page.goto('?src=fixed&rate=8&p=365000&from=2026-01-01&to=2026-03-31&basis=act%2F365');
-  await expect(page.locator('#daysCounted')).toHaveValue('incl'); // the default, outside Advanced settings
+  await expect(page.locator('#daysCounted input:checked')).toHaveValue('incl'); // the default, outside Advanced settings
   await expect(page.locator('#daysCounted')).toBeVisible();
   const row = page.locator('#periods tr').first().locator('td');
   await expect(row.nth(1)).toHaveText('31-Mar-2026'); // the last day counted
   await expect(row.nth(2)).toHaveText('90');
   await expect(total(page)).toHaveText('7,200.00'); // 90 days x 80.00
   // Leaving the end date out: one day less
-  await page.locator('#daysCounted').selectOption('excl');
+  await page.locator('#daysCounted').locator('input[value="excl"]').check();
   await page.locator('#form button[type="submit"]').click();
   await expect(total(page)).toHaveText('7,120.00');
   await expect(page).toHaveURL(/incl=0/);
   // Both dates count: the same start and end date is one day, not an error
-  await page.locator('#daysCounted').selectOption('incl');
+  await page.locator('#daysCounted').locator('input[value="incl"]').check();
   await page.locator('#end').fill('2026-01-01');
   await page.locator('#form button[type="submit"]').click();
   await expect(page.locator('#error')).toBeHidden();
