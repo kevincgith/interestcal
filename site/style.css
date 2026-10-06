@@ -526,5 +526,5 @@ label.radio, .seg { border-color: var(--ctl-border); }
 .field.inline > .toggle-row { flex-wrap: nowrap; }
 .field.inline > .toggle-row select { flex: 0 1 160px; min-width: 0; }
 #compounding.inline, #currency.inline { grid-column: span 2; }
-@media (max-width: 600px) { #currency.inline { grid-column: auto; } }
+@media (max-width: 600px) { #compounding.inline, #currency.inline { grid-column: auto; } }
 .field.inline > .toggle-row select { margin-left: 8px; }

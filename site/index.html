@@ -141,7 +141,7 @@
             <span class="help-text" hidden>Use one rate up to a date and another from that date, e.g. a contract rate (or prime + 1%) until judgment, then the judgment rate from the judgment date.</span>
           </div>
           <div id="switchFields" class="switch-fields" hidden>
-            <label>Switch date (new rate applies from this day)
+            <label>New rate effective date
               <input id="switchDate" type="date">
             </label>
             <fieldset class="source">
@@ -171,21 +171,8 @@
             <div class="seg" id="currencySeg" role="radiogroup" aria-label="Currency">
               <label><input type="radio" name="currency" value="HKD" checked><span>HK$</span></label>
               <label><input type="radio" name="currency" value="USD"><span>US$</span></label>
-              <label><input type="radio" name="currency" value="more"><span>Others</span></label>
+              <label><input type="radio" name="currency" value="other"><span>Others</span></label>
             </div>
-            <select id="currencyMore" aria-label="Other currency" hidden>
-              <option value="CNY" selected>RMB (CN¥)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="JPY">JPY (JP¥)</option>
-              <option value="GBP">GBP (£)</option>
-              <option value="CHF">CHF</option>
-              <option value="CAD">CAD (C$)</option>
-              <option value="AUD">AUD (A$)</option>
-              <option value="NZD">NZD (NZ$)</option>
-              <option value="SEK">SEK</option>
-              <option value="NOK">NOK</option>
-              <option value="other">Other…</option>
-            </select>
             <span class="help-text" hidden>Only changes the symbol shown on the page and in downloads; the calculation is the same in any currency. HK$ by default, or US$ for the US prime rate. Others lists more currencies, or type your own symbol. Once you pick one, changing the rate won’t change it.</span>
           </div>
           <label id="customCurField" hidden>Currency symbol or code

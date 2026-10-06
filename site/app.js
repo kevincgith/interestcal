@@ -13,18 +13,16 @@ import {
 } from './interest-text.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 // Segmented radio groups (End date, Day count basis, Rounding) get a select-like .value
-// Currency: HK$ / US$ / Others (a list, shown only for Others); .value is the currency code, or 'other' for a typed symbol
+// Currency: HK$ / US$ / Others (type a symbol or code); .value is 'HKD', 'USD' or 'other'. A code from an older link
+// (GBP, EUR...) opens as Others with its symbol filled in.
 Object.defineProperty($('currency'), 'value', {
-  get: () => {
-    const v = $('currency').querySelector('input:checked').value;
-    return v === 'more' ? $('currencyMore').value : v;
-  },
+  get: () => $('currency').querySelector('input:checked').value,
   set: (v) => {
     const direct = $('currency').querySelector(`input[value="${v}"]`);
-    if (direct && v !== 'more') direct.checked = true;
+    if (direct) direct.checked = true;
     else {
-      $('currency').querySelector('input[value="more"]').checked = true;
-      $('currencyMore').value = v;
+      $('currency').querySelector('input[value="other"]').checked = true;
+      $('customCur').value = CURRENCIES[v] ?? v;
     }
   },
 });
@@ -526,7 +524,6 @@ function showSourceFields() {
   $('switchFields').hidden = !$('switchOn').checked;
   $('spread2Field').hidden = !hasSpread(currentSource2());
   $('fixed2Field').hidden = currentSource2() !== 'fixed';
-  $('currencyMore').hidden = $('currency').querySelector('input:checked').value !== 'more';
   $('switchState').textContent = $('switchOn').checked ? 'Yes' : 'No';
   $('compoundType').hidden = !$('compoundOn').checked;
   $('compoundState').textContent = $('compoundOn').checked ? 'Yes' : 'No';
@@ -578,6 +575,7 @@ document.querySelectorAll('form .help').forEach((btn) => { // both tabs' forms
 $('currency').addEventListener('change', () => {
   currencyChosen = true;
   showSourceFields();
+  if ($('currency').value === 'other') $('customCur').focus(); // type a symbol right away
 });
 $('customCur').addEventListener('input', showSourceFields);
 $('share').addEventListener('click', () => copyLink(location.href, $('shareStatus')));
