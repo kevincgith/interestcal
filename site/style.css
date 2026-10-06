@@ -124,8 +124,11 @@ label { display: grid; gap: 6px; align-content: start; font-size: 0.9rem; font-w
 /* A control that isn't a <label> (a segmented control and what it opens): the same label gap, so boxes in a row line up */
 .field { display: grid; gap: 6px; align-content: start; min-width: 0; font-size: 0.9rem; font-weight: 600; }
 .field .help-text { grid-column: auto; }
-/* A three-option control is wider than a quarter-width column: it takes two (one column on a phone) */
+/* A control with three or four options is wider than a quarter-width column: it takes two (one column on a phone) and
+   fills them, options spread evenly, so there's no gap before the next field */
 .field.wide { grid-column: span 2; }
+.field.wide > .seg { display: flex; width: 100%; }
+.field.wide > .seg > label { flex: 1 1 0; }
 /* Label and control on one line (Apply payments first to) */
 .field.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; min-height: 44px; }
 .field.inline > .label-row { min-width: 8.5em; }
@@ -404,18 +407,21 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 .tvm-n select { width: auto; }
 #tform label.solved input:not([type="radio"]) { border-style: dashed; color: var(--accent); font-weight: 700; }
 
-/* ---- Inflation tab: Now / Year, then the year (and month); Swap next to "Worth in"; years-ago shortcuts ---- */
+/* ---- Inflation tab: Now | Year with the year (and month) under it, all one width; "Years ago" shortcuts on one row
+   under their label; Swap beside "Worth in" ---- */
 
+#iInField .seg-stack, #iWorthField .seg-stack { width: 100%; max-width: 220px; justify-self: start; }
+#iInField .seg-stack > .seg, #iWorthField .seg-stack > .seg { justify-self: stretch; }
 .i-when { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
-.i-when .stepper { flex: 1 1 150px; min-width: 150px; max-width: 200px; }
-.i-when select { flex: 1 1 150px; min-width: 0; max-width: 200px; }
+.i-when .stepper { flex: 1 1 100%; max-width: none; }
+.i-when select { flex: 1 1 100%; min-width: 0; }
 .i-pick { display: flex; gap: 8px; min-width: 0; }
 .i-pick select { flex: 1; min-width: 0; }
-.i-shortcuts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.i-shortcuts .chip { min-width: 34px; }
+.i-shortcuts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; max-width: 220px; }
+.i-shortcuts > .muted { grid-column: 1 / -1; font-size: 0.82rem; }
+.i-shortcuts .chip { padding: 3px 0; }
 .i-shortcuts .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
-button.chip.i-swap { margin-left: auto; padding: 2px 10px; }
-#iWorthField .label-row { width: 100%; }
+button.chip.i-swap { padding: 2px 10px; }
 /* "Start (= 100)" above its year and month, like any field */
 .i-rebase { display: grid; gap: 6px; max-width: 360px; margin: 12px 0 8px; }
 
@@ -449,7 +455,8 @@ button.chip.i-swap { margin-left: auto; padding: 2px 10px; }
   .card { padding: 16px; }
   .field.wide { grid-column: auto; }
   .field.inline > .label-row { min-width: 0; }
-  form .stepper, .i-when .stepper { max-width: none; }
+  form .stepper { max-width: none; }
+  #iInField .seg-stack, #iWorthField .seg-stack, .i-shortcuts { max-width: none; }
   /* Segmented controls fill the row with equal parts */
   .seg, .seg-stack, .source .seg { display: flex; width: 100%; max-width: none; justify-self: stretch; }
   .seg-stack { display: grid; }

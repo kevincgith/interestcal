@@ -596,13 +596,13 @@
         <label id="pValField">Valuation date
           <input id="pValuation" type="date" required>
         </label>
-        <div class="field wide">
+        <div class="field">
           <span class="label-row">Solve for <button type="button" class="help" aria-expanded="false" aria-label="What can it solve for?">?</button></span>
           <div class="seg" id="pSolve" role="radiogroup" aria-label="Solve for">
             <label><input type="radio" name="pSolve" value="pv" checked><span>Present value</span></label>
-            <label><input type="radio" name="pSolve" value="irr"><span>Rate (IRR)</span></label>
+            <label><input type="radio" name="pSolve" value="irr"><span>IRR</span></label>
           </div>
-          <span class="help-text" hidden>Present value: what the cash flows are worth on the valuation date at the rate you enter. Rate (IRR): the rate at which they are worth exactly zero, i.e. the return they give. It needs money paid out (a minus amount) and money received. With Actual/365 and yearly compounding it is Excel’s XIRR.</span>
+          <span class="help-text" hidden>Present value: what the cash flows are worth on the valuation date at the rate you enter. IRR (internal rate of return): the rate at which they are worth exactly zero, i.e. the return they give. It needs money paid out (a minus amount) and money received. With Actual/365 and yearly compounding it is Excel’s XIRR.</span>
         </div>
         <label id="pRateField" for="pRate"><span class="label-row">Discount rate (% p.a.) <button type="button" class="help" aria-expanded="false" aria-label="What is the discount rate?">?</button></span>
           <div class="stepper">
