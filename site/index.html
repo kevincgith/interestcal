@@ -58,16 +58,16 @@
       <label>Start date
         <input id="start" type="date" required>
       </label>
-      <label for="end"><span class="label-row">End date <button type="button" class="help" aria-expanded="false" aria-label="Does the end date earn interest?">?</button></span>
+      <label for="end">End date
         <input id="end" type="date" required>
-        <span class="help-text" hidden>Included (the default): both the start and end dates earn interest, so 1 to 2 January is 2 days and 1 January to 31 March is 90 days; each period then shows its last day counted. This is usually how it is counted in court, for example for judgment interest, and in most contracts and orders. Excluded (as in Excel and the original workbook): the start date earns interest and the end date doesn’t, so 1 to 2 January is 1 day, and where one period ends and the next begins the shared date is counted once.</span>
       </label>
       <div class="field" id="daysField">
-        <span class="label-row">End date counted</span>
+        <span class="label-row">End date counted <button type="button" class="help" aria-expanded="false" aria-label="What is end date counted?">?</button></span>
         <div class="seg" id="daysCounted" role="radiogroup" aria-label="End date counted">
           <label><input type="radio" name="daysCounted" value="incl" checked><span>Included</span></label>
           <label><input type="radio" name="daysCounted" value="excl"><span>Excluded</span></label>
         </div>
+        <span class="help-text" hidden>Included (the default): both the start and end dates earn interest, so 1 to 2 January is 2 days and 1 January to 31 March is 90 days; each period then shows its last day counted. This is usually how it is counted in court, for example for judgment interest, and in most contracts and orders. Excluded (as in Excel and the original workbook): the start date earns interest and the end date doesn’t, so 1 to 2 January is 1 day, and where one period ends and the next begins the shared date is counted once.</span>
       </div>
       <label id="fixedField" for="fixedRate" hidden>Fixed rate (% p.a.)
         <div class="stepper">
