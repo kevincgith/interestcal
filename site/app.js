@@ -26,11 +26,12 @@ Object.defineProperty($('currency'), 'value', {
     }
   },
 });
-// Compounding: a No/Yes toggle plus a frequency list shown only on Yes; .value is 'none' or the frequency
+// Compounding: Simple / Compound plus a frequency list shown only for Compound; .value is 'none' or the frequency
+const compoundOn = () => $('compounding').querySelector('input[value="compound"]').checked;
 Object.defineProperty($('compounding'), 'value', {
-  get: () => ($('compoundOn').checked ? $('compoundType').value : 'none'),
+  get: () => (compoundOn() ? $('compoundType').value : 'none'),
   set: (v) => {
-    $('compoundOn').checked = v !== 'none';
+    $('compounding').querySelector(`input[value="${v === 'none' ? 'simple' : 'compound'}"]`).checked = true;
     if (v !== 'none') $('compoundType').value = v;
   },
 });
@@ -525,8 +526,7 @@ function showSourceFields() {
   $('spread2Field').hidden = !hasSpread(currentSource2());
   $('fixed2Field').hidden = currentSource2() !== 'fixed';
   $('switchState').textContent = $('switchOn').checked ? 'Yes' : 'No';
-  $('compoundType').hidden = !$('compoundOn').checked;
-  $('compoundState').textContent = $('compoundOn').checked ? 'Yes' : 'No';
+  $('compoundType').hidden = !compoundOn();
   $('compoundDatesField').hidden = !PERIOD_NAME[$('compounding').value];
   if (!currencyChosen) $('currency').value = defaultCurrency(currentSource());
   $('customCurField').hidden = $('currency').value !== 'other';

@@ -45,7 +45,7 @@ const yearOf = (day) => new Date(day * MS_PER_DAY).getUTCFullYear();
 const jan1 = (y) => Date.UTC(y, 0, 1) / MS_PER_DAY;
 
 export const ALLOCATIONS = ['interest', 'principal'];
-export const COMPOUNDING = ['none', 'monthly', 'quarterly', 'yearly', 'daily', 'continuous'];
+export const COMPOUNDING = ['none', 'weekly', 'monthly', 'quarterly', 'yearly', 'daily', 'continuous'];
 const COMPOUND_MONTHS = { monthly: 1, quarterly: 3, yearly: 12 };
 export const COMPOUND_DATES = ['start', 'calendar'];
 
@@ -78,7 +78,7 @@ export function addMonths(iso, n) {
  *   principal from their date and earn interest from that day. On a day with both, sums are added before payments.
  * @param {'interest' | 'principal'} [input.allocation]  what a payment pays off first: accrued unpaid interest
  *   ('interest', the usual rule) or principal.
- * @param {'none' | 'monthly' | 'quarterly' | 'yearly' | 'daily' | 'continuous'} [input.compounding]
+ * @param {'none' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'daily' | 'continuous'} [input.compounding]
  *   'none' (default): simple interest, unpaid interest never earns interest.
  *   monthly/quarterly/yearly: unpaid interest is added to principal on each compounding date (see compoundDates).
  *   daily: principal x ((1 + rate / year days)^days - 1) within each period, added to principal as it accrues.
@@ -151,7 +151,7 @@ export function calculateInterest({
   }
   for (const p of applied) cuts.add(p.day);
   for (const a of added) cuts.add(a.day);
-  // Compounding dates (monthly / quarterly / yearly): anniversaries of the start date, or the 1st of each calendar
+  // Compounding dates (weekly / monthly / quarterly / yearly): anniversaries of the start date, or the 1st of each calendar
   // month / quarter / year (interest accrued to a period end joins the principal from the next day)
   const capDays = new Set();
   const step = COMPOUND_MONTHS[compounding];
@@ -167,6 +167,14 @@ export function calculateInterest({
         capDays.add(day);
         cuts.add(day);
       }
+    }
+  }
+  if (compounding === 'weekly') {
+    // Every 7 days from the start date, or every Monday (day 0, 1 Jan 1970, was a Thursday)
+    const first = compoundDates === 'calendar' ? loanStart + 7 - ((loanStart + 3) % 7) : loanStart + 7;
+    for (let day = first; day < loanEnd; day += 7) {
+      capDays.add(day);
+      cuts.add(day);
     }
   }
   const points = [...cuts].sort((a, b) => a - b);

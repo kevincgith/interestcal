@@ -64,6 +64,7 @@ export const BASES = {
 
 export const COMPOUNDINGS = {
   none: 'None (simple interest)',
+  weekly: 'Weekly',
   monthly: 'Monthly',
   quarterly: 'Quarterly',
   yearly: 'Yearly',
@@ -71,7 +72,7 @@ export const COMPOUNDINGS = {
   continuous: 'Continuous',
 };
 
-export const PERIOD_NAME = { monthly: 'month', quarterly: 'quarter', yearly: 'year' };
+export const PERIOD_NAME = { weekly: 'week', monthly: 'month', quarterly: 'quarter', yearly: 'year' };
 // "Monthly (calendar month ends)", "Quarterly (from the start date)", "Daily", ...
 export const compoundingLabel = (r) =>
   COMPOUNDINGS[r.compounding] +

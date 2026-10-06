@@ -229,7 +229,7 @@ test('advanced settings are closed by default and compounding defaults to simple
   await expect(page.locator('#basis')).toBeHidden();
   await expect(page.locator('#rounding')).toBeHidden();
   await expect(page.locator('#advanced')).not.toHaveAttribute('open', '');
-  await expect(page.locator('#compoundOn')).not.toBeChecked();
+  await expect(page.locator('#compounding input:checked')).toHaveValue('simple');
   await expect(page.locator('#compareLine')).toBeHidden();
   await page.locator('#advanced summary').click();
   await expect(page.locator('#compounding')).toBeVisible();
@@ -238,7 +238,7 @@ test('advanced settings are closed by default and compounding defaults to simple
   await expect(page.locator('#rounding input:checked')).toHaveValue('total');
   await expect(page.locator('#switchFields')).toBeHidden();
   await expect(page.locator('#compoundDatesField')).toBeHidden();
-  await page.locator('#compoundOn').check();
+  await page.locator('#compounding input[value="compound"]').check();
   await expect(page.locator('#compoundType')).toBeVisible();
   await page.locator('#compoundType').selectOption('quarterly');
   await expect(page.locator('#compoundDatesField')).toBeVisible();

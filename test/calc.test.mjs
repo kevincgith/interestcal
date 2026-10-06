@@ -347,6 +347,23 @@ test('monthly compounding on start-date anniversaries', () => {
   close(r.periods[1].principal, 100000 + (100000 * 0.08 * 31) / 365);
 });
 
+test('weekly compounding: every 7 days from the start date, or every Monday', () => {
+  const w = calculateInterest({ principal: 100000, start: '2026-01-01', end: '2026-01-22', rates: fixed8, compounding: 'weekly' });
+  assert.deepEqual(w.periods.map((p) => [p.start, p.days]), [['2026-01-01', 7], ['2026-01-08', 7], ['2026-01-15', 7]]);
+  const wk = (b) => (b * 0.08 * 7) / 365;
+  const i1 = wk(100000);
+  const i2 = wk(100000 + i1);
+  const i3 = wk(100000 + i1 + i2);
+  close(w.totalInterest, i1 + i2 + i3);
+  close(w.periods[1].principal, 100000 + i1);
+  // 1 Jan 2026 is a Thursday: Mondays are 5, 12 and 19 January
+  const c = calculateInterest({ principal: 100000, start: '2026-01-01', end: '2026-01-22', rates: fixed8, compounding: 'weekly', compoundDates: 'calendar' });
+  assert.deepEqual(c.periods.map((p) => [p.start, p.days]), [['2026-01-01', 4], ['2026-01-05', 7], ['2026-01-12', 7], ['2026-01-19', 3]]);
+  // A start date that is itself a Monday: the next Monday is a week later
+  const m = calculateInterest({ principal: 1000, start: '2026-01-05', end: '2026-01-20', rates: fixed8, compounding: 'weekly', compoundDates: 'calendar' });
+  assert.deepEqual(m.periods.map((p) => p.start), ['2026-01-05', '2026-01-12', '2026-01-19']);
+});
+
 test('monthly anniversaries keep the start day where the month has it', () => {
   assert.equal(addMonths('2026-01-31', 1), '2026-02-28');
   assert.equal(addMonths('2024-01-31', 1), '2024-02-29');
@@ -441,7 +458,7 @@ test('Actual/Actual splits at 1 January only when the year days change', () => {
 });
 
 test('rejects an unknown compounding', () => {
-  assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, compounding: 'weekly' }), /compounding/);
+  assert.throws(() => calculateInterest({ principal: 1, start: '2026-01-01', end: '2026-02-01', rates, compounding: 'hourly' }), /compounding/);
 });
 
 test('leap year rule', () => {

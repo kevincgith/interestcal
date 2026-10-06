@@ -525,6 +525,7 @@ label.radio, .seg { border-color: var(--ctl-border); }
 #daysField .seg span { display: flex; align-items: center; padding: 0 16px; font-size: 0.9rem; }
 .field.inline > .toggle-row { flex-wrap: nowrap; }
 .field.inline > .toggle-row select { flex: 0 1 160px; min-width: 0; }
-#compounding.inline, #currency.inline { grid-column: span 2; }
-@media (max-width: 600px) { #compounding.inline, #currency.inline { grid-column: auto; } }
+#currency.inline { grid-column: span 2; }
+@media (max-width: 600px) { #currency.inline { grid-column: auto; } }
 .field.inline > .toggle-row select { margin-left: 8px; }
+#compounding > select { width: auto; max-width: 240px; }
