@@ -783,33 +783,65 @@
         <label for="iAmount"><span>Amount (HK$)</span>
           <input id="iAmount" type="text" inputmode="decimal" autocomplete="off" value="100.00">
         </label>
-        <label><span class="label-row">In <button type="button" class="help" aria-expanded="false" aria-label="Full year, month or now?">?</button></span>
-          <span class="i-pick">
-            <select id="iInYear" aria-label="In year"></select>
-            <select id="iInMonth" aria-label="In month"></select>
+        <div class="field" id="iInField">
+          <span class="label-row">In <button type="button" class="help" aria-expanded="false" aria-label="Now or a year?">?</button></span>
+          <div class="seg-stack">
+            <div class="seg" id="iInMode" role="radiogroup" aria-label="In">
+              <label><input type="radio" name="iInMode" value="now"><span>Now</span></label>
+              <label><input type="radio" name="iInMode" value="year" checked><span>Year</span></label>
+            </div>
+            <div class="i-when" id="iInWhen">
+              <div class="stepper">
+                <button type="button" class="step" data-step="-1" aria-label="In: one year earlier">−</button>
+                <input id="iInYear" type="text" inputmode="numeric" autocomplete="off" maxlength="4" aria-label="In year">
+                <button type="button" class="step" data-step="1" aria-label="In: one year later">+</button>
+              </div>
+              <select id="iInMonth" aria-label="In month" hidden></select>
+            </div>
+          </div>
+          <span class="i-shortcuts"><span class="muted">Years ago:</span>
+            <button type="button" class="chip" data-ago="1">1</button>
+            <button type="button" class="chip" data-ago="5">5</button>
+            <button type="button" class="chip" data-ago="10">10</button>
+            <button type="button" class="chip" data-ago="20">20</button>
+            <button type="button" class="chip" data-ago="30">30</button>
           </span>
-          <span class="i-shortcuts">
-            <button type="button" class="chip" data-ago="1">1 year ago</button>
-            <button type="button" class="chip" data-ago="5">5 years ago</button>
-            <button type="button" class="chip" data-ago="10">10 years ago</button>
-            <button type="button" class="chip" data-ago="20">20 years ago</button>
-            <button type="button" class="chip" data-ago="30">30 years ago</button>
-          </span>
-          <span class="help-text" hidden>When the amount is from. A full year uses C&amp;SD’s average Composite CPI for that year; a month uses that month’s CPI; “Now” is the latest month published. “Worth in” can be earlier or later: HK$100 in 2000 is worth more now, and HK$100 now was worth less in 2000.</span>
-        </label>
-        <label><span>Worth in</span>
-          <span class="i-pick">
-            <select id="iWorthYear" aria-label="Worth in year"></select>
-            <select id="iWorthMonth" aria-label="Worth in month"></select>
-          </span>
-        </label>
+          <span class="help-text" hidden>When the amount is from: Now (the latest month published) or a year, typed or stepped with − and +. “Worth in” can be earlier or later: HK$100 in 2000 is worth more now, and HK$100 now was worth less in 2000. Swap turns the question round.</span>
+        </div>
+        <div class="field" id="iWorthField">
+          <span class="label-row">Worth in <button type="button" class="chip i-swap" id="iSwap" aria-label="Swap In and Worth in">⇄ Swap</button></span>
+          <div class="seg-stack">
+            <div class="seg" id="iWorthMode" role="radiogroup" aria-label="Worth in">
+              <label><input type="radio" name="iWorthMode" value="now" checked><span>Now</span></label>
+              <label><input type="radio" name="iWorthMode" value="year"><span>Year</span></label>
+            </div>
+            <div class="i-when" id="iWorthWhen" hidden>
+              <div class="stepper">
+                <button type="button" class="step" data-step="-1" aria-label="Worth in: one year earlier">−</button>
+                <input id="iWorthYear" type="text" inputmode="numeric" autocomplete="off" maxlength="4" aria-label="Worth in year">
+                <button type="button" class="step" data-step="1" aria-label="Worth in: one year later">+</button>
+              </div>
+              <select id="iWorthMonth" aria-label="Worth in month" hidden></select>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label-row">By <button type="button" class="help" aria-expanded="false" aria-label="Years or months?">?</button></span>
+          <div class="seg" id="iBy" role="radiogroup" aria-label="By">
+            <label><input type="radio" name="iBy" value="year" checked><span>Year</span></label>
+            <label><input type="radio" name="iBy" value="month"><span>Month</span></label>
+          </div>
+          <span class="help-text" hidden>Year (usually enough): each year uses C&amp;SD’s average Composite CPI for that year. Month: a single month’s CPI, for a date such as March 2010; a month box appears next to each year. “Now” is the latest month published either way.</span>
+        </div>
         <div class="actions">
+          <button type="submit">Calculate</button>
           <button type="button" id="iReset" class="secondary">Reset</button>
         </div>
         <p id="iError" class="error" role="alert" hidden></p>
       </form>
 
       <section id="iResults" hidden>
+        <p id="iStale" class="stale-note" role="status" hidden>Inputs changed. Press <strong>Calculate</strong> to recalculate.</p>
         <dl class="summary">
           <div class="answer"><dt id="iValueLabel"></dt><dd id="iValue"></dd></div>
           <div><dt>Prices changed by</dt><dd id="iChange"></dd></div>

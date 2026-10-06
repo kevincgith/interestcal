@@ -382,7 +382,7 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1p
 .tvm-n { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .tvm-n select { width: auto; }
 #tform label.solved input:not([type="radio"]) { border-style: dashed; color: var(--accent); font-weight: 700; }
-#tResults.stale > :not(.stale-note) { opacity: 0.45; }
+#tResults.stale > :not(.stale-note), #iResults.stale > :not(.stale-note) { opacity: 0.45; }
 .summary dd small { display: block; font-size: 0.8rem; font-weight: normal; color: var(--muted); margin-top: 2px; }
 /* Inflation tab: "In" and "Worth in" are each a year and a month side by side ("Now" has no month) */
 .i-pick { display: flex; gap: 8px; min-width: 0; }
@@ -616,3 +616,13 @@ form .stepper { max-width: 200px; }
   .cf-row .cf-label { grid-column: 2; grid-row: 3; }
   .cf-row.cf0 .cf-freq-field { display: none; }
 }
+
+/* Inflation: Now / Year, then the year (and month) beside it; Swap next to "Worth in"; years-ago shortcuts in one row */
+.i-when { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.i-when .stepper { flex: 1 1 150px; min-width: 150px; max-width: 200px; }
+.i-when select { flex: 1 1 150px; min-width: 0; max-width: 200px; }
+.i-shortcuts { align-items: center; }
+.i-shortcuts .chip { min-width: 34px; }
+button.chip.i-swap { margin-left: auto; padding: 2px 10px; }
+#iWorthField .label-row { width: 100%; }
+@media (max-width: 600px) { .i-when .stepper { max-width: none; } }

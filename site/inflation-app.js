@@ -3,7 +3,7 @@
 // Composite CPI, plus the yearly and monthly inflation history (C&SD table 510-60001, refreshed daily into cpi.json).
 import { adjustForInflation, cpiPoint, isBefore, monthName } from './inflation.js?v=__BUILD__';
 import { renderRateChart } from './rate-chart.js?v=__BUILD__';
-import { $, money, fmtDate, parseNumber, row, copyLink, flash, autoFitText } from './shared.js?v=__BUILD__';
+import { $, money, fmtDate, parseNumber, row, copyLink, flash, autoFitText, segValue, wireSteppers } from './shared.js?v=__BUILD__';
 import { saveCalculation, recordRecent } from './saved.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 
@@ -22,25 +22,29 @@ function showError(msg) {
   $('iError').hidden = !msg;
 }
 
-// ---- Pickers: "In" (the amount's time) and "Worth in" (the answer's), each a year list (Now first) and a month list
-// ("full year" or a month). Either can be the earlier one: the direction comes from the two choices.
+// ---- Pickers: "In" (the amount's time) and "Worth in" (the answer's), each Now or a year (typed, or − and +), and in
+// Month mode a month next to the year. Either can be the earlier one: the direction comes from the two choices.
 // The value of each: "now", a year ("2000") or a month ("2000-01").
 
-const side = (s) => ({ year: $(`i${s}Year`), month: $(`i${s}Month`) });
+segValue('iBy', 'iInMode', 'iWorthMode');
+const byMonth = () => $('iBy').value === 'month';
+const side = (s) => ({ mode: $(`i${s}Mode`), when: $(`i${s}When`), year: $(`i${s}Year`), month: $(`i${s}Month`) });
 function valueOf(s) {
-  const { year, month } = side(s);
-  if (year.value === 'now') return 'now';
-  return month.value === 'year' ? year.value : `${year.value}-${month.value}`;
+  const { mode, year, month } = side(s);
+  if (mode.value === 'now') return 'now';
+  const y = year.value.trim();
+  return byMonth() ? `${y}-${month.value}` : y;
 }
 function setValue(s, when) {
-  const { year, month } = side(s);
+  const { mode, year, month } = side(s);
   const w = String(when);
-  if (w === 'now') year.value = 'now';
+  if (w === 'now') mode.value = 'now';
   else {
+    mode.value = 'year';
     year.value = w.slice(0, 4);
-    month.value = w.length === 4 ? 'year' : w.slice(5, 7);
+    if (w.length > 4) month.value = w.slice(5, 7);
   }
-  refreshMonths(s);
+  refreshSide(s);
 }
 // Whether a value has CPI figures (a full year needs C&SD's yearly average)
 const exists = (w) => {
@@ -51,58 +55,80 @@ const exists = (w) => {
     return false;
   }
 };
+// The years there are figures for: whole years (C&SD's yearly averages), or any year with a month
+const yearRange = () => (byMonth()
+  ? [Number(cpi.monthly[0].month.slice(0, 4)), Number(cpi.monthly.at(-1).month.slice(0, 4))]
+  : [cpi.yearly[0].year, cpi.yearly.at(-1).year]);
 
-// Grey out months with no figures; keep a valid choice ("Now" has no month)
-function refreshMonths(s) {
-  const { year, month } = side(s);
-  month.hidden = year.value === 'now';
-  if (year.value === 'now') return;
-  for (const opt of month.options) opt.disabled = !exists(opt.value === 'year' ? year.value : `${year.value}-${opt.value}`);
+// Show the year (and month) only for a year; keep the year in range; grey out months with no figures
+function refreshSide(s, { clamp = true } = {}) {
+  const { mode, when, year, month } = side(s);
+  when.hidden = mode.value === 'now';
+  month.hidden = !byMonth();
+  const [lo, hi] = yearRange();
+  year.dataset.min = String(lo);
+  year.dataset.max = String(hi);
+  if (mode.value === 'year' && !year.value.trim()) year.value = String(hi); // e.g. Worth in switched from Now
+  // Switching Year / Month moves a year with no figures into range (a typed one gets a message on Calculate instead)
+  if (clamp && /^\d{4}$/.test(year.value) && Number(year.value) > hi) year.value = String(hi);
+  if (clamp && /^\d{4}$/.test(year.value) && Number(year.value) < lo) year.value = String(lo);
+  if (!byMonth() || mode.value === 'now') return;
+  for (const opt of month.options) opt.disabled = !exists(`${year.value}-${opt.value}`);
   if (month.selectedOptions[0]?.disabled) {
     const firstOk = [...month.options].find((o) => !o.disabled);
     if (firstOk) month.value = firstOk.value;
   }
 }
+const refreshSides = () => ['In', 'Worth'].forEach(refreshSide);
 
 function fillPickers() {
   const latest = cpi.monthly.at(-1).month;
-  const firstYear = Number(cpi.monthly[0].month.slice(0, 4));
   const opt = (value, text) => Object.assign(document.createElement('option'), { value, textContent: text });
-  const years = [];
-  for (let y = Number(latest.slice(0, 4)); y >= firstYear; y--) years.push(String(y));
   for (const s of ['In', 'Worth']) {
-    side(s).year.replaceChildren(opt('now', `Now (${monthName(latest)})`), ...years.map((y) => opt(y, y)));
-    side(s).month.replaceChildren(opt('year', 'full year'), ...MONTH_NAMES.map((n, i) => opt(String(i + 1).padStart(2, '0'), n)));
+    side(s).month.replaceChildren(...MONTH_NAMES.map((n, i) => opt(String(i + 1).padStart(2, '0'), n)));
+    side(s).month.value = latest.slice(5, 7); // Month mode starts at the latest month's month
   }
+  $('iInMode').querySelector('input[value="now"]').closest('label').title = `Now: ${monthName(latest)}, the latest month`;
+  $('iWorthMode').querySelector('input[value="now"]').closest('label').title = `Now: ${monthName(latest)}, the latest month`;
 }
 
-// ---- Shortcuts: 1, 5, 10, 20 or 30 years ago, the same month that many years before the latest, worth now ----
+// ---- Shortcuts: 1, 5, 10, 20 or 30 years ago, worth now: that whole year, or (by month) the same month ----
 
 const yearsAgo = (n) => {
   const latest = cpi.monthly.at(-1).month;
-  return `${Number(latest.slice(0, 4)) - n}${latest.slice(4)}`;
+  const y = Number(latest.slice(0, 4)) - n;
+  return byMonth() ? `${y}${latest.slice(4)}` : String(y);
 };
 document.querySelectorAll('[data-ago]').forEach((b) =>
-  b.addEventListener('click', (e) => {
-    e.preventDefault(); // inside the "In" label: don't open the year list
+  b.addEventListener('click', () => {
     if (!cpi) return;
     setValue('In', yearsAgo(Number(b.dataset.ago)));
     setValue('Worth', 'now');
-    calculate({ record: true });
+    inputsChanged();
   }),
 );
-// Which shortcut (if any) matches the current choice; each says its month on hover
+// Which shortcut (if any) matches the current choice; each says its year or month on hover
 function markShortcuts() {
   for (const b of document.querySelectorAll('[data-ago]')) {
-    const m = yearsAgo(Number(b.dataset.ago));
-    b.title = `${monthName(m)} to now`;
-    b.setAttribute('aria-label', `In ${monthName(m)}, worth now (${b.textContent})`);
-    b.setAttribute('aria-pressed', String(valueOf('In') === m && valueOf('Worth') === 'now'));
-    b.disabled = !exists(m);
+    const n = Number(b.dataset.ago);
+    const w = yearsAgo(n);
+    const name = w.length === 4 ? w : monthName(w);
+    b.title = `${name} to now`;
+    b.setAttribute('aria-label', `In ${name}, worth now (${n} year${n === 1 ? '' : 's'} ago)`);
+    b.setAttribute('aria-pressed', String(valueOf('In') === w && valueOf('Worth') === 'now'));
+    b.disabled = !exists(w);
   }
 }
 
-// ---- Calculate as you type ----
+// Swap: HK$100 in 2000 worth now <-> HK$100 now worth in 2000
+$('iSwap').addEventListener('click', () => {
+  const [a, b] = [valueOf('In'), valueOf('Worth')];
+  setValue('In', b);
+  setValue('Worth', a);
+  inputsChanged();
+});
+
+// ---- Calculate: as on the other tabs, results update when Calculate is pressed; changed inputs mark them stale ----
 
 function calculate({ record = false } = {}) {
   showError('');
@@ -110,6 +136,13 @@ function calculate({ record = false } = {}) {
   const amount = parseNumber($('iAmount').value);
   try {
     if (!$('iAmount').value.trim() || !Number.isFinite(amount)) throw new Error('Enter an amount, e.g. 100.');
+    const [lo, hi] = yearRange();
+    for (const [s, name] of [['In', 'In'], ['Worth', 'Worth in']]) {
+      const y = side(s).year.value.trim();
+      if (side(s).mode.value === 'year' && !(/^\d{4}$/.test(y) && Number(y) >= lo && Number(y) <= hi)) {
+        throw new Error(`${name}: enter a year from ${lo} to ${hi}${byMonth() ? '' : ' (whole years with an average CPI)'}.`);
+      }
+    }
     const [at, worth] = [valueOf('In'), valueOf('Worth')];
     const [a, b] = [cpiPoint(cpi, at), cpiPoint(cpi, worth)];
     // The calculation runs earlier -> later; "back" when the amount is at the later time
@@ -117,36 +150,52 @@ function calculate({ record = false } = {}) {
     else if (isBefore(b, a)) last = adjustForInflation(cpi, { amount, from: worth, to: at, back: true });
     else throw new Error(`Pick two different times: ${a.label} and ${b.label} overlap.`);
   } catch (err) {
-    last = null;
-    $('iResults').hidden = true;
     showError(err.message);
     return;
   }
   writeQuery(last);
   render(last);
-  if (record) scheduleRecent();
+  setStale(false);
+  if (record) recordRecent({ tab: 'inflation', query: lastQuery, title: titleFor(last) });
 }
 
-// Recent calculations: once the inputs have settled, not on every keystroke
-let recentTimer = null;
-function scheduleRecent() {
-  clearTimeout(recentTimer);
-  recentTimer = setTimeout(() => last && recordRecent({ tab: 'inflation', query: lastQuery, title: titleFor(last) }), 1500);
+function setStale(stale) {
+  $('iResults').classList.toggle('stale', stale);
+  $('iStale').hidden = !stale;
+  $('iSave').disabled = stale; // Save would keep the old result: off until Calculate is pressed
+  $('iSave').title = stale ? 'Inputs changed: press Calculate first' : '';
 }
+function inputsChanged() {
+  markShortcuts();
+  if (last) setStale(true);
+}
+$('iform').addEventListener('submit', (e) => {
+  e.preventDefault();
+  calculate({ record: true });
+});
+$('iReset').addEventListener('click', () => {
+  setDefaults();
+  calculate();
+  if (activeTab() === 'inflation') history.replaceState(null, '', `${location.pathname}?tab=inflation`);
+});
 
 for (const s of ['In', 'Worth']) {
-  side(s).year.addEventListener('change', () => {
-    refreshMonths(s);
-    calculate({ record: true });
+  side(s).mode.addEventListener('change', () => refreshSide(s));
+  side(s).year.addEventListener('input', () => {
+    if (/^\d{4}$/.test(side(s).year.value.trim())) refreshSide(s, { clamp: false });
   });
-  side(s).month.addEventListener('change', () => calculate({ record: true }));
 }
-$('iAmount').addEventListener('input', () => calculate({ record: true }));
+$('iBy').addEventListener('change', refreshSides);
+wireSteppers($('iform'), () => {
+  refreshSides();
+  inputsChanged();
+});
+$('iform').addEventListener('input', inputsChanged);
+$('iform').addEventListener('change', inputsChanged);
 $('iAmount').addEventListener('blur', () => {
   const n = parseNumber($('iAmount').value);
   if ($('iAmount').value.trim() && Number.isFinite(n)) $('iAmount').value = money.format(n);
 });
-$('iform').addEventListener('submit', (e) => e.preventDefault());
 
 const yearsText = (y) => {
   const r = Math.round(y * 10) / 10;
@@ -193,6 +242,8 @@ function readQuery() {
   let [inAt, worth] = [q.get('in'), q.get('w')];
   if (!q.has('in') && q.has('f')) [inAt, worth] = q.get('d') === 'back' ? [q.get('t'), q.get('f')] : [q.get('f'), q.get('t')];
   const ok = (w) => (w === 'now' || /^\d{4}(-\d{2})?$/.test(w ?? '')) && exists(w);
+  // A month at either end opens Month mode (a whole year at the other end then uses the latest month's month)
+  if ([inAt, worth].some((w) => ok(w) && /^\d{4}-\d{2}$/.test(w))) $('iBy').value = 'month';
   if (ok(inAt)) setValue('In', inAt);
   if (ok(worth)) setValue('Worth', worth);
 }
@@ -213,13 +264,10 @@ $('iSave').addEventListener('click', () => {
 
 function setDefaults() {
   $('iAmount').value = '100.00';
+  $('iBy').value = 'year';
   setValue('In', '2000');
   setValue('Worth', 'now');
 }
-$('iReset').addEventListener('click', () => {
-  setDefaults();
-  calculate();
-});
 
 // ---- History: chart, yearly and monthly tables, header line ----
 
