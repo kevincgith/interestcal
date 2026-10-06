@@ -68,10 +68,13 @@ a { color: var(--accent); }
 
 .header-rates {
   display: flow-root; background: var(--surface); border: 1px solid var(--border); border-bottom: 0;
-  border-radius: 0 var(--radius) 0 0; padding: 14px 20px 0; box-shadow: var(--shadow);
+  border-radius: var(--radius) var(--radius) 0 0; padding: 14px 20px 0; box-shadow: var(--shadow);
 }
 .header-rates:not([data-tab="pv"]) + .card { margin-top: 0; border-top: 0; border-radius: 0 0 var(--radius) var(--radius); }
 .header-rates[data-tab="pv"] { display: none; }
+/* The first tab (Interest) sits right above the card's top-left corner: that corner is square, so the selected tab joins
+   the card. Under any other tab the corner stays rounded */
+.header-rates[data-tab="interest"] { border-top-left-radius: 0; }
 .header-rates[data-tab="interest"] .latest-rate[data-tabs]:not([data-tabs~="interest"]),
 .header-rates[data-tab="mortgage"] .latest-rate[data-tabs]:not([data-tabs~="mortgage"]) { display: none; }
 .header-rates[data-tab="inflation"] :is(.as-at, .latest-rates:not(.latest-cpi)),
@@ -98,8 +101,10 @@ a { color: var(--accent); }
 }
 .tabs [role="tab"][aria-selected="true"]:hover { color: var(--text); }
 /* Each tab's form card attaches to the tab bar the same way (every panel, not just the first); the PV tab's calculator
-   form sits after the (hidden) cash flows form, so it attaches the same way */
-[role="tabpanel"] > .card:first-child, [role="tabpanel"] > form.card { margin-top: 0; border-top-left-radius: 0; }
+   form sits after the (hidden) cash flows form, so it attaches the same way. Only under the first tab is its top-left
+   corner square (see .header-rates) */
+[role="tabpanel"] > .card:first-child, [role="tabpanel"] > form.card { margin-top: 0; }
+#panel-interest > .card:first-child { border-top-left-radius: 0; }
 
 /* ---- Cards and collapsible sections ---- */
 

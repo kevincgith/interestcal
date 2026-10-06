@@ -83,6 +83,10 @@ jobs:
       - run: npm ci
       - run: npm test
       # Browser tests (desktop Chrome + iPhone Safari engine) must pass before the page goes live
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
       - name: Stamp asset URLs with the commit so browsers fetch fresh CSS/JS after each deploy
