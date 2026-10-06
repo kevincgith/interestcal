@@ -1,5 +1,6 @@
 // Small UI animations, off when the system asks for reduced motion:
-// - segmented controls: the chosen option's highlight (the "thumb") slides to the new option
+// - segmented controls (radios, or toggle buttons with aria-pressed): the chosen option's highlight (the "thumb")
+//   slides to the new option
 // - collapsible sections (<details>): open and close with a smooth height change
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -9,10 +10,13 @@ const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matc
 // ResizeObserver places the thumb when it appears. The first placement doesn't animate.
 function placeThumb(seg) {
   const thumb = seg.querySelector(':scope > .seg-thumb');
-  const label = seg.querySelector('input:checked')?.closest('label');
-  if (!thumb || !label || !seg.offsetWidth) return;
-  const span = label.querySelector('span');
-  const box = span.getBoundingClientRect();
+  // The chosen option: a checked radio's text, or a pressed button (view and range toggles)
+  const target = seg.querySelector('input:checked')?.closest('label')?.querySelector('span') ??
+    seg.querySelector(':scope > button[aria-pressed="true"]');
+  if (!thumb || !seg.offsetWidth) return;
+  thumb.hidden = !target; // e.g. no chart range chosen after typing dates
+  if (!target) return;
+  const box = target.getBoundingClientRect();
   const outer = seg.getBoundingClientRect();
   thumb.style.width = `${box.width}px`;
   thumb.style.height = `${box.height}px`;

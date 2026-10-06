@@ -2,8 +2,8 @@
 // The term can be years or payments and the rate is % p.a., so nobody multiplies or divides by 12 by hand.
 // Also owns the PV tab's mode switch (Cash flows | Time Value of Money).
 import { solveTvm, tvmSchedule, periodRate, PAYMENT_FREQUENCIES } from './tvm.js?v=__BUILD__';
-import { CURRENCIES } from './interest-text.js?v=__BUILD__';
-import { $, money, fmtRate, row, copyLink, flash, autoFitText } from './shared.js?v=__BUILD__';
+import { $, money, fmtRate, row, copyLink, flash, autoFitText, segValue } from './shared.js?v=__BUILD__';
+import { currencyControl } from './currency-control.js?v=__BUILD__';
 import { saveCalculation, recordRecent } from './saved.js?v=__BUILD__';
 import { activeTab } from './tabs.js?v=__BUILD__';
 
@@ -11,7 +11,6 @@ const EACH = { monthly: 'a month', quarterly: 'a quarter', 'half-yearly': 'a hal
 const NAMES = { n: 'Term (N)', rate: 'Rate (I/Y)', pv: 'Present value (PV)', pmt: 'Payment (PMT)', fv: 'Future value (FV)' };
 const SHORT = { n: 'N', rate: 'I/Y', pv: 'PV', pmt: 'PMT', fv: 'FV' };
 const FIELD = { n: 'tN', rate: 'tRate', pv: 'tPv', pmt: 'tPmt', fv: 'tFv' };
-const CURRENCY_LABELS = { CNY: 'RMB' };
 
 let last = null;
 let lastQuery = '';
@@ -49,7 +48,11 @@ document.querySelectorAll('.pv-mode button').forEach((b) =>
 
 // ---- Formatting ----
 
-const cur = () => CURRENCIES[$('tCurrency').value] ?? 'HK$';
+// Payments made (end / start) is a segmented control read like the dropdown it replaced; currency is HK$ / US$ /
+// Others, as on the Interest tab
+segValue('tDue');
+const currency = currencyControl('tCurrency', 'tCustomCur');
+const cur = () => currency.symbol();
 const signedMoney = (n, c = cur()) => (n < 0 ? `−${c}${money.format(-n)}` : `${c}${money.format(n)}`);
 const plain = (n) => (n < 0 ? `−${money.format(-n)}` : money.format(n));
 const freq = () => $('tFreq').value;
@@ -62,12 +65,6 @@ const plural = (n, word) => `${fmtCount(n)} ${word}${Math.abs(n - 1) < 1e-9 ? ''
 const yearsText = (n) => plural(n / py(), 'year');
 const paymentsText = (n) => `${fmtCount(n)} ${freq()} payment${Math.abs(n - 1) < 1e-9 ? '' : 's'}`;
 
-$('tCurrency').replaceChildren(
-  ...Object.entries(CURRENCIES).map(([code, sym]) =>
-    Object.assign(document.createElement('option'), { value: code, textContent: sym === code ? code : `${CURRENCY_LABELS[code] ?? code} (${sym})` }),
-  ),
-);
-$('tCurrency').value = 'HKD';
 
 // ---- Live hints: "= 360 monthly payments", "= 0.416667% a month", "each month"; the solved field is marked ----
 
@@ -248,7 +245,7 @@ function writeQuery(t) {
   for (const key of ['pv', 'pmt', 'fv']) if (i.solve !== key) q.set(key, String(i[key]));
   if (i.comp !== 'same') q.set('cy', i.comp);
   if (i.due) q.set('due', '1');
-  if (i.currencyCode !== 'HKD') q.set('cur', i.currencyCode);
+  if (i.currencyCode && i.currencyCode !== 'HKD') q.set('cur', i.currencyCode);
   lastQuery = `?${q}`;
   if (activeTab() === 'pv' && tvmMode()) history.replaceState(null, '', `${location.pathname}${lastQuery}`);
 }
@@ -275,7 +272,7 @@ function readQuery() {
   set('fv', 'tFv', plain);
   if (['12', '4', '2', '1'].includes(q.get('cy'))) $('tComp').value = q.get('cy');
   if (q.get('due') === '1') $('tDue').value = 'start';
-  if (q.get('cur') in CURRENCIES) $('tCurrency').value = q.get('cur');
+  if (q.get('cur')) $('tCurrency').value = q.get('cur').slice(0, 8);
   if (q.has('cy') || q.has('due') || q.has('cur')) $('tAdvanced').open = true;
   return true;
 }

@@ -67,8 +67,9 @@ test('editing marks results out of date; Calculate updates the link; negative an
 
 test('settings from a link: quarterly compounding, Act/Act, US$', async ({ page }) => {
   await page.goto(`${LINK}&c=quarterly&b=aa&cur=USD`);
-  await expect(page.locator('#pCompounding')).toHaveValue('quarterly');
-  await expect(page.locator('#pBasis')).toHaveValue('act/act');
+  await expect(page.locator('#pCompMode input[value="compound"]')).toBeChecked();
+  await expect(page.locator('#pCompFreq')).toHaveValue('quarterly');
+  await expect(page.locator('#pBasis input[value="act/act"]')).toBeChecked();
   await expect(page.locator('#pTotal')).toHaveText(/^US\$/);
   await expect(page.locator('#pRows tr').nth(2).locator('td').last()).toHaveText(
     '50,000.00 ÷ (1 + 5.000% ÷ 4)^(4 × (453 ÷ 365 + 278 ÷ 366))',
@@ -168,7 +169,7 @@ test('repeating cash flow: added from the form, expanded into dated rows, kept i
 test('solve for the rate (IRR): Microsoft\'s XIRR example, rate box hidden, link and save', async ({ page }) => {
   await page.goto('?tab=pv&v=2008-01-01&r=5&cf=2008-01-01,-10000&cf=2008-03-01,2750&cf=2008-10-30,4250&cf=2009-02-15,3250&cf=2009-04-01,2750');
   await expect(page.locator('#pIrrTile')).toBeHidden();
-  await page.locator('#pSolve').selectOption('irr');
+  await page.locator('#pSolve input[value="irr"]').check();
   await expect(page.locator('#pRateField')).toBeHidden();
   await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
 
@@ -181,7 +182,7 @@ test('solve for the rate (IRR): Microsoft\'s XIRR example, rate box hidden, link
   await expect(page.locator('#savedList .saved-name').first()).toHaveValue('IRR 37.336253% · 5 cash flows · 01-Jan-2008');
 
   // Back to Present value: the rate box holds the rate found
-  await page.locator('#pSolve').selectOption('pv');
+  await page.locator('#pSolve input[value="pv"]').check();
   await expect(page.locator('#pRate')).toHaveValue('37.336253');
 });
 
@@ -195,7 +196,7 @@ test('IRR errors and the note for more than one answer', async ({ page }) => {
 
 test('periods timing: Excel\'s NPV example, T+n rows, fields that don\'t apply hidden, link', async ({ page }) => {
   await page.goto(LINK);
-  await page.locator('#pTiming').selectOption('periods');
+  await page.locator('#pTiming input[value="periods"]').check();
   for (const id of ['#pValField', '#pCompField', '#pBasisField']) await expect(page.locator(id)).toBeHidden();
   await expect(page.locator('#pPeriodField')).toBeVisible();
   await expect(page.locator('.pv-flows-note .periods-only').first()).toBeVisible();
@@ -226,7 +227,7 @@ test('periods timing: quarterly IRR of a bond at par is the coupon rate; rate a 
   await page.goto('?tab=pv&tm=p&pl=quarter&r=5&cf=0,-1000,Buy&rf=1,30,p,8,Coupon&cf=8,1000,Back');
   await expect(page.locator('#pRateHint')).toHaveText('= 1.250% a quarter');
   await expect(page.locator('#pFlowRows .repeat-last')).toHaveText('· last at T+8');
-  await page.locator('#pSolve').selectOption('irr');
+  await page.locator('#pSolve input[value="irr"]').check();
   await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
   await expect(page.locator('#pIrr')).toHaveText('12.000% p.a. = 3.000% a quarter');
   await expect(page.locator('#pRateLine')).toContainText('(12.550881% a year with compounding)');

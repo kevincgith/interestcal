@@ -131,3 +131,20 @@ export function autoFitText(container, selector = 'dd', minPx = 13) {
   new MutationObserver(fit).observe(container, { childList: true, characterData: true, subtree: true });
   fit();
 }
+
+/**
+ * Segmented controls (radio buttons in a .seg) read and set like a <select>: .value is the checked option's value.
+ * Setting a value that isn't an option leaves the choice as it was.
+ */
+export function segValue(...ids) {
+  for (const id of ids) {
+    const group = $(id);
+    Object.defineProperty(group, 'value', {
+      get: () => group.querySelector('input:checked')?.value ?? '',
+      set: (v) => {
+        const input = [...group.querySelectorAll('input[type="radio"]')].find((i) => i.value === String(v));
+        if (input) input.checked = true;
+      },
+    });
+  }
+}

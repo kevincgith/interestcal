@@ -141,6 +141,7 @@ You can choose one of three rates:
 | `scripts/parse-cpi.mjs`, `update-cpi.mjs` | CPI download, checks and `site/cpi.json` writer, run by the daily update |
 | `site/pv.js`, `pv-app.js`, `pv-export.js` | Present value calculation, tab and downloads. `test/pv-export.test.mjs` runs the Excel formulas for every compounding and day count basis and checks they give the page's figures |
 | `site/shared.js`, `tabs.js` | Helpers shared by the tabs; tab switching |
+| `site/ui-motion.js`, `currency-control.js` | The sliding highlight on segmented controls and the open/close animation of collapsible sections (off with Reduce Motion); the HK$ / US$ / Others currency control used by the PV tab |
 | `site/prime-rates.json` | HSBC prime rates parsed from the HKMA spreadsheet |
 | `site/us-prime-rates.json` | US prime rate changes since 2000 (Federal Reserve H.15) |
 | `scripts/fetch-rates.mjs` | Fetches and validates both sources, and rewrites a JSON file only when its rates change |

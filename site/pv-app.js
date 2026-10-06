@@ -6,8 +6,9 @@ import { addMonths, toDay } from './calc.js?v=__BUILD__';
 import { CURRENCIES } from './interest-text.js?v=__BUILD__';
 import {
   $, money, fmtDate, fmtRate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
-  wireSteppers, autoFitText, flash,
+  wireSteppers, autoFitText, flash, segValue,
 } from './shared.js?v=__BUILD__';
+import { currencyControl } from './currency-control.js?v=__BUILD__';
 import { saveCalculation, recordRecent } from './saved.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 import { tvmMode, tvmQuery, setFlowsQuery } from './tvm-app.js?v=__BUILD__';
@@ -19,7 +20,6 @@ const COMPOUNDING_NAMES = {
 };
 const BASIS_NAMES = { 'act/365': 'Actual/365 Fixed', 'act/360': 'Actual/360', 'act/act': 'Actual/Actual (ISDA)' };
 const BASIS_KEYS = { 'act/365': '365', 'act/360': '360', 'act/act': 'aa' }; // link values (no slash)
-const CURRENCY_LABELS = { CNY: 'RMB' };
 const PERIOD_WORDS = { year: 'year', 'half-year': 'half-year', quarter: 'quarter', month: 'month' };
 
 let last = null; // last calculation
@@ -28,7 +28,6 @@ let lastQuery = '';
 registerQuery('pv', () => (tvmMode() ? tvmQuery() : lastQuery));
 setFlowsQuery(() => lastQuery);
 
-const cur = () => CURRENCIES[$('pCurrency').value] ?? 'HK$';
 // Signed money with a real minus sign: -1,234.50 -> "−1,234.50"
 const signed = (n) => (n < 0 ? `−${money.format(-n)}` : money.format(n));
 const withCur = (n, c = last?.currency ?? cur()) => (n < 0 ? `−${c}${money.format(-n)}` : `${c}${money.format(n)}`);
@@ -38,19 +37,30 @@ function showError(msg) {
   $('pError').hidden = !msg;
 }
 
-// ---- Currency list (same symbols as the Interest tab) ----
+// ---- Settings: segmented controls read like the dropdowns they replaced ----
 
-$('pCurrency').replaceChildren(
-  ...Object.entries(CURRENCIES).map(([code, sym]) =>
-    Object.assign(document.createElement('option'), {
-      value: code, textContent: sym === code ? code : `${CURRENCY_LABELS[code] ?? code} (${sym})`,
-    }),
-  ),
-);
-$('pCurrency').value = 'HKD';
-$('pCurrency').addEventListener('change', () => {
-  document.querySelectorAll('#pFlowRows .pay-amount').forEach((el) => (el.placeholder = `Amount (${cur()})`));
+segValue('pTiming', 'pPeriod', 'pSolve', 'pBasis');
+// Compounding: Simple / Compound plus a frequency list shown only for Compound; .value is 'simple' or the frequency
+const compoundOn = () => $('pCompMode').value === 'compound';
+segValue('pCompMode');
+Object.defineProperty($('pCompounding'), 'value', {
+  get: () => (compoundOn() ? $('pCompFreq').value : 'simple'),
+  set: (v) => {
+    $('pCompMode').value = v === 'simple' ? 'simple' : 'compound';
+    if (v !== 'simple') $('pCompFreq').value = v;
+    showCompFreq();
+  },
 });
+const showCompFreq = () => ($('pCompFreq').hidden = !compoundOn());
+$('pCompMode').addEventListener('change', showCompFreq);
+$('pform').addEventListener('reset', () => setTimeout(showCompFreq));
+
+// Currency: HK$ / US$ / Others, as on the Interest tab
+const currency = currencyControl('pCurrency', 'pCustomCur', () => {
+  document.querySelectorAll('#pFlowRows .pay-amount').forEach((el) => (el.placeholder = amountPlaceholder()));
+});
+const cur = () => currency.symbol();
+const amountPlaceholder = () => (cur() ? `Amount (${cur()})` : 'Amount');
 
 // ---- Cash flow rows: date + amount (may be negative) + optional description; a repeating row also has how often
 // and how many times ----
@@ -70,7 +80,7 @@ function addFlowRow(date = '', amount = '', label = '', repeat = null, period = 
   });
   pd.setAttribute('aria-label', 'Cash flow period');
   const a = Object.assign(document.createElement('input'), {
-    type: 'text', className: 'pay-amount', placeholder: `Amount (${cur()})`, inputMode: 'text', autocomplete: 'off',
+    type: 'text', className: 'pay-amount', placeholder: amountPlaceholder(), inputMode: 'text', autocomplete: 'off',
     value: amount === '' ? '' : signed(amount),
   });
   a.setAttribute('aria-label', 'Cash flow amount');
@@ -262,7 +272,7 @@ $('pform').addEventListener('submit', (e) => {
       // Switching back to Present value starts from the rate found
       $('pRate').value = String(Number(found.rate.toFixed(6)));
     }
-    last = { ...presentValue(inputs), inputs, roots, currency: CURRENCIES[inputs.currencyCode] ?? 'HK$' };
+    last = { ...presentValue(inputs), inputs, roots, currency: cur() };
   } catch (err) {
     showError(err.message);
     return;
@@ -358,7 +368,7 @@ function writeQuery(res) {
   else q.set('r', String(i.rate));
   if (!periods && i.compounding !== 'yearly') q.set('c', i.compounding);
   if (!periods && i.basis !== 'act/365') q.set('b', BASIS_KEYS[i.basis]);
-  if (i.currencyCode !== 'HKD') q.set('cur', i.currencyCode);
+  if (i.currencyCode && i.currencyCode !== 'HKD') q.set('cur', i.currencyCode);
   // One cf per cash flow: date,amount,description (the description may itself contain commas)
   // A repeating one: rf=date,amount,every,times,description
   // Periods timing: the period number instead of the date, and "p" (every period) for how often
@@ -377,10 +387,10 @@ function readQuery() {
   if (q.get('tab') !== 'pv') return false;
   if (isIsoDate(q.get('v'))) $('pValuation').value = q.get('v');
   if (q.has('r') && Number.isFinite(Number(q.get('r')))) $('pRate').value = q.get('r');
-  if ([...$('pCompounding').options].some((o) => o.value === q.get('c'))) $('pCompounding').value = q.get('c');
+  if (q.get('c') === 'simple' || [...$('pCompFreq').options].some((o) => o.value === q.get('c'))) $('pCompounding').value = q.get('c');
   const basis = Object.keys(BASIS_KEYS).find((k) => BASIS_KEYS[k] === q.get('b'));
   if (basis) $('pBasis').value = basis;
-  if (q.get('cur') in CURRENCIES) $('pCurrency').value = q.get('cur');
+  if (q.get('cur')) $('pCurrency').value = q.get('cur').slice(0, 8);
   const periods = q.get('tm') === 'p';
   if (periods) $('pTiming').value = 'periods';
   if (q.get('pl') in PERIOD_LENGTHS) $('pPeriod').value = q.get('pl');
@@ -453,7 +463,8 @@ const inputItems = (res) => [
     ['Compounding', COMPOUNDING_NAMES[res.compounding].replace(/^./, (c) => c.toUpperCase())],
     ['Day count basis', BASIS_NAMES[res.basis]],
   ]),
-  ['Currency', `${CURRENCY_NAMES[res.inputs.currencyCode] ?? res.inputs.currencyCode} (${res.currency})`],
+  ...(res.currency ? [['Currency', res.inputs.currencyCode in CURRENCIES
+    ? `${CURRENCY_NAMES[res.inputs.currencyCode] ?? res.inputs.currencyCode} (${res.currency})` : res.currency]] : []),
   ['Calculated on', fmtDate(todayIso())],
 ];
 const exportLines = (res) => notes(res);

@@ -47,7 +47,7 @@ test('HIBOR-based: the lower of H + margin and P - cap; future resets use the en
   await expect(page.locator('#mRateLine')).toContainText('Rate at drawdown: 3.250% p.a.');
   await expect(page.locator('#mHibor')).toHaveValue('2.85');
   await page.goto('?tab=mortgage&mt=hibor&h=1&mg=1.3&cap=1.75&price=8000000&ltv=70&yrs=30&from=2035-01-15&ht=3m');
-  await expect(page.locator('#mTenor')).toHaveValue('3m');
+  await expect(page.locator('#mTenor input[value="3m"]')).toBeChecked();
   await expect(page.locator('#mRateLine')).toContainText('Rate at drawdown: 2.300% p.a.');
   await expect(page.locator('#mRateHint')).toContainText('3-month HIBOR');
 });
@@ -98,14 +98,14 @@ test('mortgage form layout: one field height, no overlap, no sideways scroll', a
 test('textbook interest method: rate / 12 each month, from the Advanced settings or a link', async ({ page }) => {
   await page.goto(FIXED);
   await page.locator('#mAdvanced summary').click();
-  await page.locator('#mMethod').selectOption('monthly');
+  await page.locator('#mMethod input[value="monthly"]').check();
   await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
   await expect(page.locator('#mSchedule tr').first().locator('td').nth(6)).toHaveText('2,500.00');
   await expect(page.locator('#mRateLine')).toContainText('balance × rate ÷ 12 (textbook method)');
   await expect(page).toHaveURL(/meth=monthly/);
   await page.goto(page.url());
   await expect(page.locator('#mAdvanced')).toHaveAttribute('open', '');
-  await expect(page.locator('#mMethod')).toHaveValue('monthly');
+  await expect(page.locator('#mMethod input[value="monthly"]')).toBeChecked();
 });
 
 test('HIBOR-based is the default plan, then prime-based, then fixed', async ({ page }) => {
@@ -273,7 +273,7 @@ test('rate history: mortgage line is the lower of HIBOR + margin and prime - cap
   const box = await page.locator('#hiborChart svg').boundingBox();
   await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
   await expect(page.locator('#hiborChart .tip')).toContainText(/Mortgage rate: [\d.]+% \((1-month HIBOR \+ 1\.30%|prime − 1\.75%, the cap)\)/);
-  await page.locator('#mortgageTenor').selectOption('3m');
+  await page.locator('#mortgageTenor input[value="3m"]').check();
   await expect(page.locator('#hiborChart svg path')).toHaveCount(3);
 });
 
@@ -311,12 +311,12 @@ test('Prime (P): big P and another bank’s P sit above small P; the discount an
   const firstRate = async () => parseFloat(await page.locator('#mSchedule tr').first().locator('td').nth(2).textContent());
   const base = '?tab=mortgage&mt=prime&disc=1.75&price=5000000&ltv=60&yrs=20&from=2026-01-15';
   await page.goto(base);
-  await expect(page.locator('#mPrimeKind')).toHaveValue('small');
+  await expect(page.locator('#mPrimeKind input[value="small"]')).toBeChecked();
   await expect(page.locator('#mSchedule tr').first()).toBeVisible();
   const small = await firstRate();
   await expect(page.locator('#mRateHint')).toContainText(/^Rate = small P − 1\.75% \(now [\d.]+% − 1\.75% = [\d.]+%\)\.$/);
 
-  await page.locator('#mPrimeKind').selectOption('big');
+  await page.locator('#mPrimeKind input[value="big"]').check();
   await expect(page.locator('#mPrimeExtraField')).toBeHidden();
   await expect(page.locator('#mRateHint')).toContainText(/^Rate = big P \(small P \+ 0\.25%\) − 1\.75% \(now [\d.]+% \+ 0\.25% − 1\.75% = [\d.]+% − 1\.75% = [\d.]+%\)\.$/);
   await page.locator('#mform button[type="submit"]').click();
@@ -324,7 +324,7 @@ test('Prime (P): big P and another bank’s P sit above small P; the discount an
   await expect.poll(firstRate).toBeCloseTo(small + 0.25, 6);
   await expect(page.locator('#mRateLine')).toContainText('Big P − 1.75%');
 
-  await page.locator('#mPrimeKind').selectOption('other');
+  await page.locator('#mPrimeKind input[value="other"]').check();
   await expect(page.locator('#mPrimeExtraField')).toBeVisible();
   await page.locator('#mPrimeExtra').fill('0.5');
   await page.locator('#mform button[type="submit"]').click();
@@ -334,7 +334,7 @@ test('Prime (P): big P and another bank’s P sit above small P; the discount an
 
   // The link reopens with the choice
   await page.reload();
-  await expect(page.locator('#mPrimeKind')).toHaveValue('other');
+  await expect(page.locator('#mPrimeKind input[value="other"]')).toBeChecked();
   await expect(page.locator('#mPrimeExtra')).toHaveValue('0.5');
 
   // HIBOR plan: the cap uses big P (a high HIBOR, so the cap applies)

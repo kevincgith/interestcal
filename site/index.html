@@ -294,11 +294,14 @@
 
     <section id="panel-mortgage" role="tabpanel" aria-labelledby="tab-mortgage" hidden>
       <form id="mform" class="card" novalidate>
-        <fieldset class="source">
-          <legend>Mortgage rate</legend>
-          <label class="radio"><input type="radio" name="mtype" value="hibor" checked> HIBOR-based (H + x%, capped)</label>
-          <label class="radio"><input type="radio" name="mtype" value="prime"> Prime-based (P − x%)</label>
-          <label class="radio"><input type="radio" name="mtype" value="fixed"> Fixed rate</label>
+        <fieldset class="source field">
+          <legend><span class="label-row">Mortgage rate <button type="button" class="help" aria-expanded="false" aria-label="What are the mortgage rate types?">?</button></span></legend>
+          <div class="seg" role="radiogroup" aria-label="Mortgage rate">
+            <label><input type="radio" name="mtype" value="hibor" checked><span>HIBOR</span></label>
+            <label><input type="radio" name="mtype" value="prime"><span>Prime</span></label>
+            <label><input type="radio" name="mtype" value="fixed"><span>Fixed</span></label>
+          </div>
+          <span class="help-text" hidden>HIBOR: HIBOR plus a margin (H + x%), reset every month and capped at prime minus a discount (P − x%), the usual plan for new HK mortgages. Prime: prime minus a discount (P − x%). Fixed: one rate for the whole loan.</span>
         </fieldset>
         <label>Property price (HK$)
           <input id="mPrice" type="text" inputmode="decimal" autocomplete="off" value="8,000,000.00">
@@ -322,14 +325,15 @@
         </label>
         <p id="mLoanLine" class="loan-line"></p>
 
-        <label id="mPrimeField" for="mPrimeKind"><span class="label-row">Prime (P) <button type="button" class="help" aria-expanded="false" aria-label="What is small P and big P?">?</button></span>
-          <select id="mPrimeKind">
-            <option value="small" selected>Small P (HSBC)</option>
-            <option value="big">Big P (small P + 0.25%)</option>
-            <option value="other">Another bank’s P…</option>
-          </select>
+        <div class="field wide" id="mPrimeField">
+          <span class="label-row">Prime (P) <button type="button" class="help" aria-expanded="false" aria-label="What is small P and big P?">?</button></span>
+          <div class="seg" id="mPrimeKind" role="radiogroup" aria-label="Prime (P)">
+            <label><input type="radio" name="mPrimeKind" value="small" checked><span>Small P</span></label>
+            <label><input type="radio" name="mPrimeKind" value="big"><span>Big P</span></label>
+            <label><input type="radio" name="mPrimeKind" value="other"><span>Other bank</span></label>
+          </div>
           <span class="help-text" hidden>Small P is HSBC’s prime (also Hang Seng’s), from the daily data. Big P is the higher prime of banks such as BOCHK and Standard Chartered, 0.25% above small P; some banks’ P is higher still. Banks move their P together, so big P and other banks’ P are worked out as small P plus that gap, including for past dates, which makes past figures an estimate if a bank ever moved on a different day. The discount and the HIBOR cap then apply to the P chosen here.</span>
-        </label>
+        </div>
         <label id="mPrimeExtraField" for="mPrimeExtra" hidden>Bank’s P above small P (% p.a.)
           <div class="stepper">
             <button type="button" class="step" data-step="-0.125" aria-label="Decrease the bank’s P by 0.125%">−</button>
@@ -344,12 +348,13 @@
             <button type="button" class="step" data-step="0.25" aria-label="Increase discount below prime by 0.25%">+</button>
           </div>
         </label>
-        <label id="mTenorField">HIBOR tenor
-          <select id="mTenor">
-            <option value="1m" selected>1-month HIBOR</option>
-            <option value="3m">3-month HIBOR</option>
-          </select>
-        </label>
+        <div class="field" id="mTenorField">
+          <span class="label-row">HIBOR tenor</span>
+          <div class="seg" id="mTenor" role="radiogroup" aria-label="HIBOR tenor">
+            <label><input type="radio" name="mTenor" value="1m" checked><span>1-month</span></label>
+            <label><input type="radio" name="mTenor" value="3m"><span>3-month</span></label>
+          </div>
+        </div>
         <label id="mHiborField">Current HIBOR (%)
           <input id="mHibor" type="text" inputmode="decimal" autocomplete="off" value="">
         </label>
@@ -400,18 +405,22 @@
         <details id="mAdvanced" class="advanced">
           <summary>Advanced settings <span class="muted">(interest method, stress test, income)</span></summary>
           <div class="advanced-body">
-            <label>Interest method
-              <select id="mMethod">
-                <option value="actual" selected>Actual/365 Fixed (HK banks)</option>
-                <option value="monthly">Rate ÷ 12 each month (textbook)</option>
-              </select>
-            </label>
-            <label>Stress test
-              <select id="mStress">
-                <option value="2" selected>Rate + 2%</option>
-                <option value="3">Rate + 3%</option>
-              </select>
-            </label>
+            <div class="field">
+              <span class="label-row">Interest method <button type="button" class="help" aria-expanded="false" aria-label="What is the interest method?">?</button></span>
+              <div class="seg" id="mMethod" role="radiogroup" aria-label="Interest method">
+                <label><input type="radio" name="mMethod" value="actual" checked><span>Actual/365F</span></label>
+                <label><input type="radio" name="mMethod" value="monthly"><span>Rate ÷ 12</span></label>
+              </div>
+              <span class="help-text" hidden>Actual/365F (how HK banks charge): each month’s interest is the balance × rate × the days in that month ÷ 365, so longer months cost a little more. Rate ÷ 12 (the textbook method, as in Excel’s PMT): the balance × rate ÷ 12 every month.</span>
+            </div>
+            <div class="field">
+              <span class="label-row">Stress test <button type="button" class="help" aria-expanded="false" aria-label="What is the stress test?">?</button></span>
+              <div class="seg" id="mStress" role="radiogroup" aria-label="Stress test">
+                <label><input type="radio" name="mStress" value="2" checked><span>Rate + 2%</span></label>
+                <label><input type="radio" name="mStress" value="3"><span>Rate + 3%</span></label>
+              </div>
+              <span class="help-text" hidden>The instalment if the rate were this much higher, as banks check when approving a mortgage.</span>
+            </div>
             <label>Monthly income (HK$, optional)
               <input id="mIncome" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 60,000">
             </label>
@@ -460,9 +469,9 @@
 
         <h2 class="m-section">Each year</h2>
         <div id="mChart" class="chart" role="img" aria-label="Principal and interest paid each year"></div>
-        <div class="view-toggle" role="group" aria-label="Schedule view">
-          <button type="button" id="mViewMonthly" class="secondary" aria-pressed="true">Monthly</button>
-          <button type="button" id="mViewYearly" class="secondary" aria-pressed="false">Yearly</button>
+        <div class="seg view-seg" role="group" aria-label="Schedule view">
+          <button type="button" id="mViewMonthly" aria-pressed="true">Monthly</button>
+          <button type="button" id="mViewYearly" aria-pressed="false">Yearly</button>
         </div>
         <div id="mYearlyWrap" class="table-wrap" hidden>
           <table>
@@ -490,11 +499,11 @@
       <details id="hiborCard" class="card chart-card">
         <summary>Rate history <span id="hiborMeta" class="muted">HIBOR and HSBC prime rate</span></summary>
         <div class="range-row">
-          <div class="view-toggle" role="group" aria-label="Chart range">
-            <button type="button" class="secondary" data-range="1y" aria-pressed="false">1Y</button>
-            <button type="button" class="secondary" data-range="5y" aria-pressed="false">5Y</button>
-            <button type="button" class="secondary" data-range="10y" aria-pressed="true">10Y</button>
-            <button type="button" class="secondary" data-range="all" aria-pressed="false">All</button>
+          <div class="seg view-seg" role="group" aria-label="Chart range">
+            <button type="button" data-range="1y" aria-pressed="false">1Y</button>
+            <button type="button" data-range="5y" aria-pressed="false">5Y</button>
+            <button type="button" data-range="10y" aria-pressed="true">10Y</button>
+            <button type="button" data-range="all" aria-pressed="false">All</button>
           </div>
           <label class="inline">From <input type="date" id="rhFrom" min="1971-01-01"></label>
           <label class="inline">To <input type="date" id="rhTo" min="1971-01-01"></label>
@@ -502,7 +511,7 @@
         <p class="muted m-note">Show each rate, with an optional spread (% p.a.), e.g. HIBOR + 1.3 or prime − 1.75.</p>
         <div id="seriesCtl" class="series-ctls">
           <div class="series-ctl">
-            <label class="radio"><input type="checkbox" data-series="1m" checked> <i class="swatch" style="background:var(--series-1)"></i> 1-month HIBOR</label>
+            <label class="check"><input type="checkbox" data-series="1m" checked> <i class="swatch" style="background:var(--series-1)"></i> 1-month HIBOR</label>
             <div class="stepper" title="Spread added to 1-month HIBOR">
               <button type="button" class="step" data-step="-0.1" aria-label="Decrease 1-month HIBOR spread by 0.1%">−</button>
               <input type="text" inputmode="decimal" autocomplete="off" value="0" data-spread="1m" aria-label="1-month HIBOR spread (% p.a.)">
@@ -510,7 +519,7 @@
             </div>
           </div>
           <div class="series-ctl">
-            <label class="radio"><input type="checkbox" data-series="3m" checked> <i class="swatch" style="background:var(--series-2)"></i> 3-month HIBOR</label>
+            <label class="check"><input type="checkbox" data-series="3m" checked> <i class="swatch" style="background:var(--series-2)"></i> 3-month HIBOR</label>
             <div class="stepper" title="Spread added to 3-month HIBOR">
               <button type="button" class="step" data-step="-0.1" aria-label="Decrease 3-month HIBOR spread by 0.1%">−</button>
               <input type="text" inputmode="decimal" autocomplete="off" value="0" data-spread="3m" aria-label="3-month HIBOR spread (% p.a.)">
@@ -518,7 +527,7 @@
             </div>
           </div>
           <div class="series-ctl">
-            <label class="radio"><input type="checkbox" data-series="prime"> <i class="swatch" style="background:var(--series-3)"></i> HSBC prime rate</label>
+            <label class="check"><input type="checkbox" data-series="prime"> <i class="swatch" style="background:var(--series-3)"></i> HSBC prime rate</label>
             <div class="stepper" title="Spread added to HSBC prime rate">
               <button type="button" class="step" data-step="-0.25" aria-label="Decrease HSBC prime rate spread by 0.25%">−</button>
               <input type="text" inputmode="decimal" autocomplete="off" value="0" data-spread="prime" aria-label="HSBC prime rate spread (% p.a.)">
@@ -526,11 +535,11 @@
             </div>
           </div>
           <div class="series-ctl">
-            <label class="radio"><input type="checkbox" data-series="mortgage"> <i class="swatch" style="background:var(--text)"></i> Mortgage rate</label>
-            <select id="mortgageTenor" aria-label="HIBOR used for the mortgage rate">
-              <option value="1m" selected>Lower of 1M H and P</option>
-              <option value="3m">Lower of 3M H and P</option>
-            </select>
+            <label class="check"><input type="checkbox" data-series="mortgage"> <i class="swatch" style="background:var(--text)"></i> Mortgage rate</label>
+<div class="seg" id="mortgageTenor" role="radiogroup" aria-label="HIBOR used for the mortgage rate">
+              <label><input type="radio" name="mortgageTenor" value="1m" checked><span>1M HIBOR</span></label>
+              <label><input type="radio" name="mortgageTenor" value="3m"><span>3M HIBOR</span></label>
+            </div>
           </div>
         </div>
         <p class="muted m-note">Mortgage rate = the lower of HIBOR + its spread and prime + its spread (the cap), using the spreads above.</p>
@@ -544,25 +553,27 @@
 
     <section id="panel-pv" role="tabpanel" aria-labelledby="tab-pv" hidden>
       <form id="pform" class="card" novalidate>
-        <div class="pv-mode view-toggle" role="group" aria-label="What to calculate">
-          <button type="button" class="secondary" data-mode="flows" aria-pressed="true">Cash flows</button>
-          <button type="button" class="secondary" data-mode="tvm" aria-pressed="false">Time Value of Money</button>
+        <div class="pv-mode seg view-seg" role="group" aria-label="What to calculate">
+          <button type="button" data-mode="flows" aria-pressed="true">Cash flows</button>
+          <button type="button" data-mode="tvm" aria-pressed="false">Time Value of Money</button>
         </div>
-        <label for="pTiming"><span class="label-row">Timing <button type="button" class="help" aria-expanded="false" aria-label="Dates or periods?">?</button></span>
-          <select id="pTiming">
-            <option value="dates" selected>Dates</option>
-            <option value="periods">Periods (T0, T+1, …)</option>
-          </select>
+        <div class="field">
+          <span class="label-row">Timing <button type="button" class="help" aria-expanded="false" aria-label="Dates or periods?">?</button></span>
+          <div class="seg" id="pTiming" role="radiogroup" aria-label="Timing">
+            <label><input type="radio" name="pTiming" value="dates" checked><span>Dates</span></label>
+            <label><input type="radio" name="pTiming" value="periods"><span>Periods</span></label>
+          </div>
           <span class="help-text" hidden>Dates: each cash flow on a calendar date, valued on the valuation date. Periods: each cash flow at a whole period from now, T0 = now, T+1 = one period later, and so on, as in Excel’s NPV and IRR. The rate stays % p.a. and is divided by the periods a year for you.</span>
-        </label>
-        <label id="pPeriodField" for="pPeriod" hidden>Each period is a
-          <select id="pPeriod">
-            <option value="year" selected>Year</option>
-            <option value="half-year">Half-year</option>
-            <option value="quarter">Quarter</option>
-            <option value="month">Month</option>
-          </select>
-        </label>
+        </div>
+        <div class="field" id="pPeriodField" hidden>
+          <span class="label-row">Each period is a</span>
+          <div class="seg" id="pPeriod" role="radiogroup" aria-label="Each period is a">
+            <label><input type="radio" name="pPeriod" value="year" checked><span>Year</span></label>
+            <label><input type="radio" name="pPeriod" value="half-year"><span>Half-year</span></label>
+            <label><input type="radio" name="pPeriod" value="quarter"><span>Quarter</span></label>
+            <label><input type="radio" name="pPeriod" value="month"><span>Month</span></label>
+          </div>
+        </div>
         <label id="pValField">Valuation date
           <input id="pValuation" type="date" required>
           <span class="date-shortcuts">
@@ -572,13 +583,14 @@
             <button type="button" class="chip" data-date="year" data-target="pValuation" data-field="Valuation date">Year end</button>
           </span>
         </label>
-        <label for="pSolve"><span class="label-row">Solve for <button type="button" class="help" aria-expanded="false" aria-label="What can it solve for?">?</button></span>
-          <select id="pSolve">
-            <option value="pv" selected>Present value</option>
-            <option value="irr">Rate (IRR)</option>
-          </select>
+        <div class="field">
+          <span class="label-row">Solve for <button type="button" class="help" aria-expanded="false" aria-label="What can it solve for?">?</button></span>
+          <div class="seg" id="pSolve" role="radiogroup" aria-label="Solve for">
+            <label><input type="radio" name="pSolve" value="pv" checked><span>Present value</span></label>
+            <label><input type="radio" name="pSolve" value="irr"><span>Rate (IRR)</span></label>
+          </div>
           <span class="help-text" hidden>Present value: what the cash flows are worth on the valuation date at the rate you enter. Rate (IRR): the rate at which they are worth exactly zero, i.e. the return they give. It needs money paid out (a minus amount) and money received. With Actual/365 and yearly compounding it is Excel’s XIRR.</span>
-        </label>
+        </div>
         <label id="pRateField" for="pRate"><span class="label-row">Discount rate (% p.a.) <button type="button" class="help" aria-expanded="false" aria-label="What is the discount rate?">?</button></span>
           <div class="stepper">
             <button type="button" class="step" data-step="-0.25" aria-label="Decrease discount rate by 0.25%">−</button>
@@ -588,29 +600,45 @@
           <span id="pRateHint" class="rate-hint"></span>
           <span class="help-text" hidden>The yearly rate used to bring each future amount back to the valuation date, e.g. a loan or deposit rate, or the return you could earn elsewhere. A higher rate gives a lower present value. It can be negative.</span>
         </label>
-        <label id="pCompField" for="pCompounding"><span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="What does compounding change?">?</button></span>
-          <select id="pCompounding">
-            <option value="yearly" selected>Yearly</option>
-            <option value="half-yearly">Half-yearly</option>
-            <option value="quarterly">Quarterly</option>
-            <option value="monthly">Monthly</option>
-            <option value="daily">Daily</option>
-            <option value="continuous">Continuous</option>
-            <option value="simple">None (simple)</option>
-          </select>
+        <div class="field" id="pCompField">
+          <span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="What does compounding change?">?</button></span>
+          <div class="seg-stack" id="pCompounding">
+            <div class="seg" id="pCompMode" role="radiogroup" aria-label="Compounding">
+              <label><input type="radio" name="pCompMode" value="simple"><span>Simple</span></label>
+              <label><input type="radio" name="pCompMode" value="compound" checked><span>Compound</span></label>
+            </div>
+            <select id="pCompFreq" aria-label="Compounding frequency">
+              <option value="yearly" selected>Yearly</option>
+              <option value="half-yearly">Half-yearly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="monthly">Monthly</option>
+              <option value="daily">Daily</option>
+              <option value="continuous">Continuous</option>
+            </select>
+          </div>
           <span class="help-text" hidden>How often the rate compounds. Yearly: amount ÷ (1 + rate)^years. Half-yearly, quarterly and monthly divide the rate by 2, 4 or 12 and compound that many times a year. Daily compounds each day at rate ÷ the year days. Continuous: amount × e^(−rate × years). None (simple): amount ÷ (1 + rate × years).</span>
-        </label>
-        <label id="pBasisField" for="pBasis"><span class="label-row">Day count basis <button type="button" class="help" aria-expanded="false" aria-label="What is day count basis?">?</button></span>
-          <select id="pBasis">
-            <option value="act/365" selected>Actual/365 Fixed</option>
-            <option value="act/360">Actual/360</option>
-            <option value="act/act">Actual/Actual (ISDA)</option>
-          </select>
+        </div>
+        <div class="field wide" id="pBasisField">
+          <span class="label-row">Day count basis <button type="button" class="help" aria-expanded="false" aria-label="What is day count basis?">?</button></span>
+          <div class="seg" id="pBasis" role="radiogroup" aria-label="Day count basis">
+            <label><input type="radio" name="pBasis" value="act/365" checked><span>Act/365F</span></label>
+            <label><input type="radio" name="pBasis" value="act/360"><span>Act/360</span></label>
+            <label><input type="radio" name="pBasis" value="act/act"><span>Act/Act</span></label>
+          </div>
           <span class="help-text" hidden>How days become years. Actual/365: days ÷ 365, as in Excel’s XNPV. Actual/360: days ÷ 360. Actual/Actual: the days in each calendar year ÷ 365 or 366 (leap year), added up.</span>
-        </label>
-        <label for="pCurrency">Currency
-          <select id="pCurrency"></select>
-        </label>
+        </div>
+        <div class="field">
+          <span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
+          <div class="seg-stack">
+            <div class="seg" id="pCurrency" role="radiogroup" aria-label="Currency">
+              <label><input type="radio" name="pCurrency" value="HKD" checked><span>HK$</span></label>
+              <label><input type="radio" name="pCurrency" value="USD"><span>US$</span></label>
+              <label><input type="radio" name="pCurrency" value="other"><span>Others</span></label>
+            </div>
+            <input id="pCustomCur" type="text" maxlength="8" autocomplete="off" placeholder="e.g. S$ or SGD" aria-label="Currency symbol or code" hidden>
+          </div>
+          <span class="help-text" hidden>Only changes the symbol shown on the page and in downloads; the calculation is the same in any currency. Others: type any symbol or code.</span>
+        </div>
 
         <fieldset class="payments">
           <legend>Cash flows</legend>
@@ -657,9 +685,9 @@
         </div>
       </section>
       <form id="tform" class="card" novalidate hidden>
-        <div class="pv-mode view-toggle" role="group" aria-label="What to calculate">
-          <button type="button" class="secondary" data-mode="flows" aria-pressed="false">Cash flows</button>
-          <button type="button" class="secondary" data-mode="tvm" aria-pressed="true">Time Value of Money</button>
+        <div class="pv-mode seg view-seg" role="group" aria-label="What to calculate">
+          <button type="button" data-mode="flows" aria-pressed="false">Cash flows</button>
+          <button type="button" data-mode="tvm" aria-pressed="true">Time Value of Money</button>
         </div>
         <div class="tvm-examples">
           <span class="muted">Try:</span>
@@ -671,11 +699,13 @@
         </div>
         <fieldset class="source tvm-solve">
           <legend>Solve for</legend>
-          <label class="radio"><input type="radio" name="tsolve" value="n"> N</label>
-          <label class="radio"><input type="radio" name="tsolve" value="rate"> I/Y</label>
-          <label class="radio"><input type="radio" name="tsolve" value="pv"> PV</label>
-          <label class="radio"><input type="radio" name="tsolve" value="pmt" checked> PMT</label>
-          <label class="radio"><input type="radio" name="tsolve" value="fv"> FV</label>
+          <div class="seg" role="radiogroup" aria-label="Solve for">
+            <label><input type="radio" name="tsolve" value="n"><span>N</span></label>
+            <label><input type="radio" name="tsolve" value="rate"><span>I/Y</span></label>
+            <label><input type="radio" name="tsolve" value="pv"><span>PV</span></label>
+            <label><input type="radio" name="tsolve" value="pmt" checked><span>PMT</span></label>
+            <label><input type="radio" name="tsolve" value="fv"><span>FV</span></label>
+          </div>
         </fieldset>
         <label for="tFreq"><span class="label-row">Payments <button type="button" class="help" aria-expanded="false" aria-label="How do payments and the term work?">?</button></span>
           <select id="tFreq">
@@ -712,7 +742,7 @@
           <input id="tFv" type="text" inputmode="text" autocomplete="off" value="0.00">
         </label>
         <details id="tAdvanced" class="advanced">
-          <summary>More settings <span class="muted">(compounding, payment timing, currency)</span></summary>
+          <summary>Advanced settings <span class="muted">(compounding, payment timing, currency)</span></summary>
           <div class="advanced-body">
             <label for="tComp"><span class="label-row">Compounding <button type="button" class="help" aria-expanded="false" aria-label="When does compounding differ from payments?">?</button></span>
               <select id="tComp">
@@ -724,15 +754,25 @@
               </select>
               <span class="help-text" hidden>Usually the same as the payments. Some loans compound differently, e.g. Canadian mortgages compound half-yearly but are paid monthly: the rate a payment is then (1 + rate ÷ 2)^(2 ÷ 12) − 1.</span>
             </label>
-            <label for="tDue">Payments made
-              <select id="tDue">
-                <option value="end" selected>At the end of each period</option>
-                <option value="start">At the start of each period</option>
-              </select>
-            </label>
-            <label for="tCurrency">Currency
-              <select id="tCurrency"></select>
-            </label>
+            <div class="field">
+              <span class="label-row">Payments made</span>
+              <div class="seg" id="tDue" role="radiogroup" aria-label="Payments made">
+                <label><input type="radio" name="tDue" value="end" checked><span>End of period</span></label>
+                <label><input type="radio" name="tDue" value="start"><span>Start of period</span></label>
+              </div>
+            </div>
+            <div class="field">
+              <span class="label-row">Currency <button type="button" class="help" aria-expanded="false" aria-label="What is currency?">?</button></span>
+              <div class="seg-stack">
+                <div class="seg" id="tCurrency" role="radiogroup" aria-label="Currency">
+                  <label><input type="radio" name="tCurrency" value="HKD" checked><span>HK$</span></label>
+                  <label><input type="radio" name="tCurrency" value="USD"><span>US$</span></label>
+                  <label><input type="radio" name="tCurrency" value="other"><span>Others</span></label>
+                </div>
+                <input id="tCustomCur" type="text" maxlength="8" autocomplete="off" placeholder="e.g. S$ or SGD" aria-label="Currency symbol or code" hidden>
+              </div>
+              <span class="help-text" hidden>Only changes the symbol shown on the page and in downloads; the calculation is the same in any currency. Others: type any symbol or code.</span>
+            </div>
           </div>
         </details>
         <div class="actions">
@@ -813,11 +853,12 @@
 
       <details id="iIndexCard" class="card chart-card" open>
         <summary>Price level <span class="muted">Composite CPI, rebased so your start month = 100</span></summary>
-        <div class="range-row i-rebase">
-          <span>Start (= 100)</span>
-          <select id="iBaseYear" aria-label="Start year"></select>
-          <select id="iBaseMonth" aria-label="Start month"></select>
-        </div>
+        <label class="i-rebase">Start (= 100)
+          <span class="i-pick">
+            <select id="iBaseYear" aria-label="Start year"></select>
+            <select id="iBaseMonth" aria-label="Start month"></select>
+          </span>
+        </label>
         <div id="iIndexChart" class="chart" role="img" aria-label="HK price level"></div>
         <p id="iIndexNote" class="muted m-note"></p>
       </details>
@@ -825,11 +866,11 @@
       <details id="iChartCard" class="card chart-card" open>
         <summary>HK inflation history <span class="muted">year-on-year change in the Composite CPI, each month</span></summary>
         <div class="range-row">
-          <div class="view-toggle" role="group" aria-label="Chart range">
-            <button type="button" class="secondary" data-irange="5y" aria-pressed="false">5Y</button>
-            <button type="button" class="secondary" data-irange="10y" aria-pressed="true">10Y</button>
-            <button type="button" class="secondary" data-irange="20y" aria-pressed="false">20Y</button>
-            <button type="button" class="secondary" data-irange="all" aria-pressed="false">All</button>
+          <div class="seg view-seg" role="group" aria-label="Chart range">
+            <button type="button" data-irange="5y" aria-pressed="false">5Y</button>
+            <button type="button" data-irange="10y" aria-pressed="true">10Y</button>
+            <button type="button" data-irange="20y" aria-pressed="false">20Y</button>
+            <button type="button" data-irange="all" aria-pressed="false">All</button>
           </div>
         </div>
         <div id="iChart" class="chart" role="img" aria-label="HK inflation history"></div>

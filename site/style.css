@@ -119,7 +119,6 @@ input, select {
 .stepper .step:hover { background: var(--surface); }
 .source { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; }
 .source legend { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; padding: 0; }
-label.radio { display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 1rem; }
 label[hidden] { display: none; }
 .actions { grid-column: 1 / -1; display: flex; gap: 12px; }
 .advanced { grid-column: 1 / -1; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
@@ -133,11 +132,6 @@ label[hidden] { display: none; }
 .event-rows:empty { margin: 0; }
 .payment-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; gap: 8px; }
 .payment-row.with-label { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 44px; }
-@media (max-width: 600px) {
-  /* Phones: description goes on its own line under date and amount */
-  .payment-row.with-label { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; }
-  .payment-row.with-label .pay-label { grid-column: 1 / 3; grid-row: 2; }
-}
 .payment-row .remove { width: 44px; height: 44px; padding: 0; font-size: 1.2rem; line-height: 1; }
 .payments-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 label.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -303,12 +297,6 @@ details .table-wrap { max-height: 400px; overflow-y: auto; margin-top: 12px; }
 .compare .badge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; background: var(--accent); color: var(--accent-text); }
 td.applied { font-weight: 700; color: var(--text); }
 td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
-.view-toggle { display: flex; gap: 0; margin: 12px 0 8px; }
-.view-toggle button { border-radius: 0; padding: 6px 16px; }
-.view-toggle button:first-child { border-radius: 6px 0 0 6px; }
-.view-toggle button:last-child { border-radius: 0 6px 6px 0; }
-.view-toggle button + button { border-left: 0; }
-.view-toggle button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
 .chart { position: relative; margin: 8px 0; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart .legend { display: flex; gap: 16px; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
@@ -321,15 +309,10 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 #hiborChart svg { touch-action: pan-y; }
 .series-ctls { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px 20px; margin: 4px 0 12px; }
 .series-ctl { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.series-ctl .stepper { flex: none; width: 132px; height: 36px; }
-.series-ctl select { flex: none; width: auto; height: 36px; padding: 0 8px; }
 .series-ctl .swatch, .chart-card .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
 .chart .legend { flex-wrap: wrap; row-gap: 4px; }
-#hiborCard .view-toggle button { padding: 4px 12px; }
 .range-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 12px 0 8px; }
-.range-row .view-toggle { margin: 0; }
 .range-row label.inline { font-weight: normal; }
-.range-row input[type="date"] { width: auto; height: 36px; }
 .chart, .chart-card { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --grid: #e4e4df; }
 @media (prefers-color-scheme: dark) {
   .chart, .chart-card { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --grid: #34342f; }
@@ -387,9 +370,6 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1p
 .repeat-line select { width: auto; }
 .repeat-line .repeat-count { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .repeat-line .repeat-times { width: 4.2em; text-align: center; }
-@media (max-width: 600px) {
-  .payment-row.with-label .repeat-line { grid-column: 1 / -1; grid-row: 3; }
-}
 /* Periods timing: a period number instead of the date, repeats every period, no Days column */
 #pform:not(.periods) .pay-period, #pform.periods .pay-date, #pform:not(.periods) .periods-only, #pform.periods .dates-only, #pform:not(.periods) .repeat-period, #pform.periods .repeat-every { display: none; }
 #pTable.periods .col-days { display: none; }
@@ -399,7 +379,6 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1p
 .pv-mode { grid-column: 1 / -1; margin: 0 0 4px; }
 .tvm-examples { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .tvm-solve { grid-column: 1 / -1; }
-.tvm-solve .radio { display: inline-flex; margin-right: 18px; }
 .tvm-n { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .tvm-n select { width: auto; }
 #tform label.solved input:not([type="radio"]) { border-style: dashed; color: var(--accent); font-weight: 700; }
@@ -411,8 +390,6 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1p
 .i-pick select { flex: 1; min-width: 0; }
 .i-shortcuts { display: flex; flex-wrap: wrap; gap: 6px; }
 .i-shortcuts .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
-.i-rebase { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.i-rebase select { width: auto; }
 
 /* Modern look: softer surfaces, depth, pill radios, clearer focus, bolder results */
 :root {
@@ -444,20 +421,13 @@ label { letter-spacing: 0.01em; }
 /* Radio groups become segmented pills */
 .source { gap: 8px; }
 .source legend { margin-bottom: 8px; }
-label.radio { position: relative; padding: 8px 16px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg);
-  cursor: pointer; font-size: 0.95rem; transition: border-color .15s, background .15s, color .15s; }
-label.radio:hover { border-color: var(--accent); }
-label.radio:has(input[type="radio"]) input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-label.radio:has(input[type="radio"]:checked) { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-label.radio:has(input[type="radio"]:focus-visible) { box-shadow: var(--ring); }
-.tvm-solve .radio { margin-right: 0; }
 
 .advanced { border-radius: 12px; background: color-mix(in srgb, var(--bg) 60%, transparent); transition: border-color .15s; }
 .advanced:hover, .advanced[open] { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
 .advanced summary { padding: 4px 0; }
 
 button { border-radius: 10px; padding: 10px 22px; transition: transform .1s, box-shadow .15s, background .15s, filter .15s; }
-button:not(.step):not(.help):not(.chip):not(.sort):not(.secondary):not([role="tab"]):hover { filter: brightness(1.08); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent); }
+button:not(.step):not(.help):not(.chip):not(.sort):not(.secondary):not([role="tab"]):not(.seg > button):hover { filter: brightness(1.08); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent); }
 button:active { transform: translateY(1px); }
 button:focus-visible { outline: none; box-shadow: var(--ring); }
 button.secondary:hover { background: var(--accent-soft); }
@@ -475,7 +445,7 @@ th { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; }
 tbody tr:hover td { background: var(--accent-soft); }
 .warning { border-radius: 10px; }
 
-@media (max-width: 600px) { .card { padding: 16px; } label.radio { padding: 7px 13px; } }
+@media (max-width: 600px) { .card { padding: 16px; } }
 @media print { .card, .header-rates, .summary div { box-shadow: none; } body { background: #fff; } .summary div:nth-child(3) { background: none; } }
 
 /* End date: Included / Excluded segmented control (replaces the Days counted dropdown) */
@@ -514,7 +484,7 @@ label.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--ac
 .field.inline > .help-text { flex-basis: 100%; }
 .field.inline > select { flex: 0 1 200px; }
 #compounding.inline { grid-column: span 2; }
-label.radio, .seg { border-color: var(--ctl-border); }
+.seg { border-color: var(--ctl-border); }
 .seg label + label { border-left-color: var(--ctl-border); }
 .seg span { color: color-mix(in srgb, var(--muted) 55%, var(--text)); }
 .toggle .track { background: var(--ctl-border); }
@@ -531,7 +501,7 @@ label.radio, .seg { border-color: var(--ctl-border); }
 /* iOS-style: the chosen option is a rounded "thumb" inset in the track, so its corners follow the outer ones */
 .seg { padding: 3px; gap: 2px; }
 .seg label + label { border-left: 0; }
-.seg span { display: flex; flex: 1; align-items: center; justify-content: center; min-height: 36px; padding: 0 14px;
+.seg span { display: flex; flex: 1; align-items: center; justify-content: center; min-height: 36px; padding: 0 12px;
   border-radius: 7px; font-size: 0.9rem; text-align: center; white-space: nowrap; }
 .seg label:hover span { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .seg label:has(input:checked) span { background: color-mix(in srgb, var(--accent) 24%, var(--surface)); color: var(--accent);
@@ -545,7 +515,7 @@ label.radio, .seg { border-color: var(--ctl-border); }
 .seg-stack > .seg { display: flex; }
 .seg-stack > select, .seg-stack > input { width: 100%; max-width: none; }
 /* Fixed rate and spread steppers: no wider than the number needs */
-#form .stepper { max-width: 200px; }
+form .stepper { max-width: 200px; }
 /* Removing a cash flow row: a quiet icon button, red on hover */
 .payment-row .remove { border-color: transparent; background: transparent; color: var(--muted); }
 .payment-row .remove:hover { border-color: transparent; background: color-mix(in srgb, var(--error) 12%, transparent); color: var(--error); }
@@ -556,14 +526,16 @@ label.radio, .seg { border-color: var(--ctl-border); }
   .seg span { padding: 0 6px; }
   .seg span { min-width: 0; }
   .source .seg span { padding: 0 2px; font-size: 0.82rem; } /* four options: Judgment / HK Prime / US Prime / Fixed */
-  #form .stepper { max-width: none; }
-  /* Interest cash flows: date, then amount, then description, each the full width, with remove beside the date */
-  #form .payment-row, #form .payment-row.with-label { grid-template-columns: minmax(0, 1fr) 44px; }
-  #form .payment-row .pay-date { grid-column: 1; grid-row: 1; }
-  #form .payment-row .remove { grid-column: 2; grid-row: 1; }
-  #form .payment-row .pay-amount { grid-column: 1; grid-row: 2; }
-  #form .payment-row.with-label .pay-label { grid-column: 1; grid-row: 3; }
-  #form .event-rows { gap: 14px; }
+  form .stepper { max-width: none; }
+  /* Cash flow rows (every tab): date (or period), then amount, then description, each the full width, with remove
+     beside the date; a repeating row's "Every ..." line last */
+  .payment-row, .payment-row.with-label { grid-template-columns: minmax(0, 1fr) 44px; }
+  .payment-row :is(.pay-date, .pay-period) { grid-column: 1; grid-row: 1; }
+  .payment-row .remove { grid-column: 2; grid-row: 1; }
+  .payment-row .pay-amount { grid-column: 1; grid-row: 2; }
+  .payment-row.with-label .pay-label { grid-column: 1; grid-row: 3; }
+  .payment-row.with-label .repeat-line { grid-column: 1 / -1; grid-row: 4; }
+  .event-rows { gap: 14px; }
 }
 /* Results tables that are wider than the screen: a shadow at the edge that has more to scroll to */
 #results .table-wrap {
@@ -591,3 +563,30 @@ label.radio, .seg { border-color: var(--ctl-border); }
 
 /* Change rate on a date (No / Yes): with Yes, the new rate's fields open on their own row, indented under it */
 #switchFields { padding-left: 14px; border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* Toggle buttons (schedule view, chart ranges, the PV tab's Cash flows | Time Value of Money): the segmented control's
+   look, with the same sliding highlight; a pressed button is the chosen one */
+.seg > button { position: relative; z-index: 1; flex: 1 1 auto; min-height: 36px; padding: 0 12px; border: 0; border-radius: 7px;
+  background: transparent; color: color-mix(in srgb, var(--muted) 55%, var(--text)); font-size: 0.9rem; font-weight: 500;
+  white-space: nowrap; box-shadow: none; transition: color .2s; }
+.seg > button:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--accent); filter: none; box-shadow: none; }
+.seg > button[aria-pressed="true"] { color: var(--accent); font-weight: 600; background: color-mix(in srgb, var(--accent) 24%, var(--surface)); }
+.seg.has-thumb > button[aria-pressed="true"] { background: transparent; }
+.seg > button:focus-visible { box-shadow: var(--ring); }
+.view-seg { margin: 12px 0 8px; }
+.range-row .view-seg { margin: 0; }
+.pv-mode.seg { display: flex; width: 100%; max-width: 480px; }
+.pv-mode.seg > button { flex: 1 1 0; }
+@media (max-width: 600px) { .seg > button { flex: 1 1 0; min-width: 0; padding: 0 6px; } }
+/* Rate history: a checkbox per line, then its spread or HIBOR choice */
+.series-ctl .stepper { flex: none; width: 132px; }
+.series-ctl { flex-wrap: wrap; row-gap: 6px; }
+.series-ctl .seg { flex: none; }
+@media (max-width: 600px) { .series-ctl .seg { width: auto; margin-left: auto; } }
+.range-row input[type="date"] { width: auto; }
+/* Inflation: "Start (= 100)" above its year and month, like any field */
+.i-rebase { display: grid; gap: 6px; max-width: 360px; margin: 12px 0 8px; }
+
+/* A three-option control is wider than a quarter-width column: it takes two (one column on a phone) */
+.field.wide { grid-column: span 2; }
+@media (max-width: 600px) { .field.wide { grid-column: auto; } }

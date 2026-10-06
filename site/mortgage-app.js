@@ -4,12 +4,14 @@ import { buildMortgagePdf, buildMortgageWorkbook } from './mortgage-export.js?v=
 import { renderRateChart } from './rate-chart.js?v=__BUILD__';
 import {
   $, money, fmtDate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
-  wireSteppers, autoFitText, flash,
+  wireSteppers, autoFitText, flash, segValue,
 } from './shared.js?v=__BUILD__';
 import { saveCalculation, recordRecent } from './saved.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
 
 const TYPES = { prime: 'Prime-based', hibor: 'HIBOR-based', fixed: 'Fixed rate' };
+// Segmented controls read like the dropdowns they replaced
+segValue('mPrimeKind', 'mTenor', 'mMethod', 'mStress', 'mortgageTenor');
 // Which prime (P) prime-based plans and the HIBOR cap use: HSBC's "small P", "big P" (small P + 0.25%, e.g. BOCHK,
 // Standard Chartered) or another bank's P (small P + an amount). Banks move their P together, so another bank's past
 // P is estimated from HSBC's history plus that gap.
