@@ -699,6 +699,11 @@ test('every segmented control is as tall as a text box; on a phone each fills it
   expect(segs.length).toBeGreaterThan(8);
   for (const s of segs) expect(s.h).toBe(field);
   if (isMobile) for (const s of segs) expect(s.fills).toBe(true);
+  // Side by side on a wide screen: the End date box and the End date counted control line up
+  if (!isMobile) {
+    const [end, days] = await Promise.all([page.locator('#end').boundingBox(), page.locator('#daysCounted').boundingBox()]);
+    expect(Math.abs(end.y - days.y)).toBeLessThan(0.5);
+  }
   // Change rate on a date is a No / Yes segmented control like the rest
   await expect(page.locator('#switchSeg input[value="yes"]')).toBeChecked();
   await page.locator('#switchSeg input[value="no"]').check();

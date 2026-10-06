@@ -479,7 +479,7 @@ tbody tr:hover td { background: var(--accent-soft); }
 @media print { .card, .header-rates, .summary div { box-shadow: none; } body { background: #fff; } .summary div:nth-child(3) { background: none; } }
 
 /* End date: Included / Excluded segmented control (replaces the Days counted dropdown) */
-.field, .end-field { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.field, .end-field { display: grid; gap: 6px; /* same as a plain label, so boxes in a row line up */ align-content: start; min-width: 0; }
 .field { font-size: 0.9rem; font-weight: 600; }
 .field .help-text { grid-column: auto; }
 .seg { display: inline-flex; justify-self: start; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); overflow: hidden; }
@@ -541,7 +541,7 @@ label.radio, .seg { border-color: var(--ctl-border); }
 .source .seg { display: flex; width: 100%; max-width: 480px; }
 /* A segmented control with what it opens directly under it, at the same width: Compound's frequency list,
    Others' symbol or code box */
-.seg-stack { display: grid; gap: 8px; justify-self: start; min-width: 0; }
+.seg-stack { display: grid; gap: 6px; justify-self: start; min-width: 0; }
 .seg-stack > .seg { display: flex; }
 .seg-stack > select, .seg-stack > input { width: 100%; max-width: none; }
 /* Fixed rate and spread steppers: no wider than the number needs */
