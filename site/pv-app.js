@@ -1,7 +1,7 @@
 // Present value tab: valuation date, discount rate, compounding, day count basis and dated cash flows, or cash flows
 // by period (T0, T+1, ...).
 import { presentValue, pvWorking, solveRate, REPEAT_MONTHS, MAX_REPEATS, PERIOD_LENGTHS } from './pv.js?v=__BUILD__';
-import { buildPvPdf, buildPvWorkbook, buildPvCsv, periodName } from './pv-export.js?v=__BUILD__';
+import { buildPvPdf, buildPvWorkbook, periodName } from './pv-export.js?v=__BUILD__';
 import { addMonths, toDay } from './calc.js?v=__BUILD__';
 import { CURRENCIES } from './interest-text.js?v=__BUILD__';
 import {
@@ -173,7 +173,7 @@ function setStale(stale) {
   $('pResults').classList.toggle('stale', stale);
   $('pStale').hidden = !stale;
   // Downloads and Save would use the old results: off until Calculate is pressed again
-  for (const id of ['pPdf', 'pXlsx', 'pCsv', 'pSave']) {
+  for (const id of ['pPdf', 'pXlsx', 'pSave']) {
     $(id).disabled = stale;
     $(id).title = stale ? 'Inputs changed: press Calculate first' : '';
   }
@@ -486,18 +486,6 @@ $('pXlsx').addEventListener('click', () => {
     const bytes = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), exportName(res, 'xlsx'));
   }, showError);
-});
-
-$('pCsv').addEventListener('click', () => {
-  if (!last) return;
-  const res = last;
-  const csv = buildPvCsv(res, {
-    inputs: inputItems(res),
-    lines: exportLines(res),
-    working: (x) => working(res, x),
-    money: (n) => money.format(n),
-  });
-  download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), exportName(res, 'csv'));
 });
 
 $('pShare').addEventListener('click', () => copyLink(location.href, $('pShareStatus')));

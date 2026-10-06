@@ -2,7 +2,6 @@
 import { mortgageSummary, mortgageRates, comparePlans, yearlySummary, effectiveRate, mortgageLine } from './mortgage.js?v=__BUILD__';
 import { buildMortgagePdf, buildMortgageWorkbook } from './mortgage-export.js?v=__BUILD__';
 import { renderRateChart } from './rate-chart.js?v=__BUILD__';
-import { DISCLAIMER_WITH_TERMS } from './disclaimer.js?v=__BUILD__';
 import {
   $, money, fmtDate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
   wireSteppers, autoFitText, flash,
@@ -170,7 +169,7 @@ function setStale(stale) {
   $('mResults').classList.toggle('stale', stale);
   $('mStale').hidden = !stale;
   // Downloads and Save would use the old results: off until Calculate is pressed again
-  for (const id of ['mPdf', 'mXlsx', 'mCsv', 'mSave']) {
+  for (const id of ['mPdf', 'mXlsx', 'mSave']) {
     $(id).disabled = stale;
     $(id).title = stale ? 'Inputs changed: press Calculate first' : '';
   }
@@ -728,39 +727,6 @@ $('mXlsx').addEventListener('click', () => {
     const bytes = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), exportName(m, 'xlsx'));
   }, showError);
-});
-
-$('mCsv').addEventListener('click', () => {
-  if (!last) return;
-  const m = last;
-  const lines = [
-    ...inputItems(m),
-    ['Monthly Instalment', money.format(m.firstPayment)],
-    ['Total Interest', money.format(m.totalInterest)],
-    ['Total Repaid', money.format(m.totalPaid)],
-    ['Loan Ends', m.payoffDate],
-    [`Stress Test Instalment (+${m.stressAdd}%)`, money.format(m.stressedPayment)],
-    ...(m.monthlyIncome ? [['Debt-Servicing Ratio', `${(m.dsr * 100).toFixed(1)}%`], ['Stressed Debt-Servicing Ratio', `${(m.stressedDsr * 100).toFixed(1)}%`]] : []),
-    ...(m.totalExtra > 0 ? [['Interest Saved By Extra Repayments', money.format(m.interestSaved)], ['Months Saved', m.monthsSaved]] : []),
-    [],
-    ...(m.rebate > 0 ? [['Cash Rebate', money.format(m.rebate)], ['Effective Rate After Rebate', rate3(m.effRate)]] : []),
-    [],
-    ['Plan', 'Settings', 'Rate At Drawdown', 'Instalment', 'Total Interest', 'Cash Rebate', 'Net Cost', 'Effective Rate', 'Loan Ends'],
-    ...m.compare.map((c) => [TYPES[c.key], c.label, rate3(c.firstRate), money.format(c.firstPayment), money.format(c.totalInterest),
-      money.format(c.rebate), money.format(c.netCost), rate3(c.effectiveRate), c.payoffDate]),
-    [],
-    ['Year', 'From', 'To', 'Paid', 'Interest', 'Principal', 'Extra Repayment', 'Balance'],
-    ...m.yearly.map((y) => [y.year, y.from, y.to, money.format(y.paid), money.format(y.interest), money.format(y.principal),
-      money.format(y.extra), money.format(y.balance)]),
-    [],
-    ['No.', 'Due Date', 'Rate', ...(m.inputs.type === 'hibor' ? ['H + Margin', 'Cap', 'Set By'] : []), 'Instalment', 'Interest', 'Principal', 'Extra Repayment', 'Balance'],
-    ...m.rows.map((r) => [r.no, r.date, rate3(r.rate),
-      ...(m.inputs.type === 'hibor' ? [rate3(r.hLeg), rate3(r.cap), r.hLeg < r.cap ? 'HIBOR' : 'Cap'] : []), money.format(r.payment), money.format(r.interest), money.format(r.principal), money.format(r.extra), money.format(r.balance)]),
-  ];
-  lines.push([], [DISCLAIMER_WITH_TERMS]);
-  const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
-  const csv = '﻿' + lines.map((l) => l.map(cell).join(',')).join('\n') + '\n';
-  download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), exportName(m, 'csv'));
 });
 
 $('mShare').addEventListener('click', () => copyLink(location.href, $('mShareStatus')));

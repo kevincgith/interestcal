@@ -119,24 +119,19 @@ test('fits a phone screen: no sideways scroll, tabs on one line', async ({ page 
   expect(new Set(heights).size).toBe(1);
 });
 
-test('downloads: PDF, Excel and CSV, off while inputs have changed', async ({ page }) => {
+test('downloads: PDF and Excel, off while inputs have changed', async ({ page }) => {
   await page.goto(LINK);
   await expect(page.locator('#pTotal')).toHaveText('HK$119,583.51');
-  for (const [button, ext] of [['Download PDF', 'pdf'], ['Download Excel', 'xlsx'], ['Download CSV', 'csv']]) {
+  for (const [button, ext] of [['Download PDF', 'pdf'], ['Download Excel', 'xlsx']]) {
     const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#panel-pv').getByRole('button', { name: button }).click()]);
     expect(download.suggestedFilename()).toBe(`present_value_2026-10-05_3_cash_flows.${ext}`);
-    if (ext === 'csv') {
-      const text = await (await download.createReadStream()).toArray().then((c) => Buffer.concat(c).toString('utf8'));
-      expect(text).toContain('Present Value (HK$),"119,583.51"');
-      expect(text).toContain('2025-10-05,Paid earlier,"-20,000.00",-365,');
-    }
   }
   await expect(page.locator('#pError')).toBeHidden();
 
   await page.locator('#pRate').fill('6');
-  for (const id of ['#pPdf', '#pXlsx', '#pCsv', '#pSave']) await expect(page.locator(id)).toBeDisabled();
+  for (const id of ['#pPdf', '#pXlsx', '#pSave']) await expect(page.locator(id)).toBeDisabled();
   await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
-  for (const id of ['#pPdf', '#pXlsx', '#pCsv', '#pSave']) await expect(page.locator(id)).toBeEnabled();
+  for (const id of ['#pPdf', '#pXlsx', '#pSave']) await expect(page.locator(id)).toBeEnabled();
 });
 
 test('repeating cash flow: added from the form, expanded into dated rows, kept in the link', async ({ page }) => {

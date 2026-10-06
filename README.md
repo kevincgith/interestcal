@@ -33,7 +33,7 @@ You can choose one of three rates:
   - **Compare plans:** HIBOR-based, prime-based and fixed for the same loan, each with its own settings. The lowest net cost is marked.
   - **HIBOR plans:** the schedule shows both HIBOR + margin and the prime cap for each due date, and ticks whichever set the rate.
   - **Each year:** a chart of principal and interest (plus extra repayments) per loan year, and a Monthly / Yearly switch for the schedule.
-  - **Also:** the full schedule, a shareable link (`?tab=mortgage&...`), and PDF / Excel / CSV downloads.
+  - **Also:** the full schedule, a shareable link (`?tab=mortgage&...`), and PDF / Excel downloads.
 
 - **Present value tab** (labelled **PV**): the value today of amounts due on future dates, at one discount rate.
   - **Inputs:** a valuation date, a discount rate (% p.a., may be negative), compounding (yearly by default, half-yearly, quarterly, monthly, daily, continuous or none), a day count basis (Actual/365 by default, Actual/360 or Actual/Actual) and a currency.
@@ -44,7 +44,7 @@ You can choose one of three rates:
   - **Discount factor:** `(1 + rate ÷ m)^(−m × years)` for m compounding periods a year; daily `(1 + rate ÷ year days)^(−days)`; continuous `e^(−rate × years)`; none `1 ÷ (1 + rate × years)`. Years = days ÷ 365 (or 360); under Actual/Actual, the days in each calendar year ÷ 365 or 366, added up.
   - **Results:** the present value, the total of the amounts and the discount, plus a row per cash flow with its days, years, discount factor, present value and the working, e.g. `100,000.00 ÷ (1 + 5.000%)^(731 ÷ 365)`. Rows keep full precision; only the totals are rounded to cents.
   - Actual/365 with yearly compounding matches Excel's `XNPV` with the valuation date as its first date.
-  - **Downloads:** PDF, Excel and CSV, each with the inputs, totals, every row and its working, and the disclaimer. In Excel the valuation date and the rate are cells at the top, and each row's days, years, discount factor and present value are live formulas that use them (Actual/Actual writes its 1 January splits as `DATE(...)`), with the totals as `SUM`s.
+  - **Downloads:** PDF and Excel, each with the inputs, totals, every row and its working, and the disclaimer. In Excel the valuation date and the rate are cells at the top, and each row's days, years, discount factor and present value are live formulas that use them (Actual/Actual writes its 1 January splits as `DATE(...)`), with the totals as `SUM`s.
   - **Also:** a shareable link (`?tab=pv&v=...&r=...&cf=date,amount,description`; a repeating one is `rf=date,amount,every,times,description`, and `s=irr` solves for the rate), and Recent and Saved like the other tabs.
 
 - **Time Value of Money calculator** (PV tab, switch at the top: Cash flows | Time Value of Money; N, I/Y, PV, PMT, FV): the financial-calculator equation, as on a BA II Plus or HP 12C. Choose what to solve for and fill in the other four.
@@ -87,12 +87,12 @@ You can choose one of three rates:
 
   Interest stays simple either way: unpaid interest never earns interest. A payment on a date counts from that day. Payments before the start date, or on or after the end date, are ignored with a warning, and any overpayment is flagged. The results show a payments table and the outstanding principal plus unpaid interest. The exports include these too; in Excel, each period's interest uses that period's principal as a live formula.
 
-- **Daily interest thereafter:** principal × the rate in force on the end date ÷ that day's year days. Under Actual/Actual it shows two figures, ÷ 365 for a normal year and ÷ 366 for a leap year, on the page and in every download. Use it for wording like "…plus HK$219.18 per day until payment". It appears on the page and in the PDF, Excel and CSV files; in Excel it's a live formula.
+- **Daily interest thereafter:** principal × the rate in force on the end date ÷ that day's year days. Under Actual/Actual it shows two figures, ÷ 365 for a normal year and ÷ 366 for a leap year, on the page and in every download. Use it for wording like "…plus HK$219.18 per day until payment". It appears on the page and in the Word, PDF and Excel files; in Excel it's a live formula.
 
 - **Download PDF:** downloads a report straight away (built in the browser with [jsPDF](https://github.com/parallax/jsPDF)): inputs, results, the formula for each period, the rates used, and the sources as named, clickable links. No raw URLs are printed.
 - **Sortable rate table:** click **Effective date** or **Rate** to sort; click again to reverse. The PDF and Excel exports use the same order.
 - **Shareable link:** the inputs are stored in the page address (e.g. `?src=prime&p=1000000&from=2026-01-01&to=2026-09-30&basis=act%2Fact&round=total&spread=1`). **Copy link** copies it.
-- **Excel and CSV export:** the Excel file uses live formulas and has a second sheet with the rate sources.
+- **Excel export:** the Excel file uses live formulas and has a second sheet with the rate sources.
 - **Word export:** the interest schedule as a table worded like a statutory demand, one row per period: "(i) Interest on the sum of HK$… at the rate of …% per annum from … to … (n days)", the working ("(i.e. principal × rate × days ÷ 365 = amount)") and the amount, then the total, a summary (principal, any principal added or payments, interest, total amount due at the end date) and the daily interest from the end date until payment. Ready to paste into a court document.
 - **Today's rates in the header:** under "Rates updated as at…", the judgment debt rate, HSBC prime, US prime, and 1-month and 3-month HIBOR, each in the same style: name, rate in force today (3 decimals, or more when published with more, like HIBOR's 5) and the date it applies from.
 - **Word calculation inputs:** the Word file starts with a "Calculation inputs" block (rate, principal, dates, day count, rounding and any compounding or cash flows) above the table, so it explains itself when sent on.
@@ -127,8 +127,8 @@ You can choose one of three rates:
 | `site/index.html`, `app.js`, `style.css` | Static web UI. Amounts are shown as `xxx,xxx.xx`, and a spread is shown as `base + spread = rate`. |
 | `site/interest-text.js` | Interest tab wording: rate and setting names, each period's working and note, the daily interest text (no page access, so it's unit-tested) |
 | `site/cash-flows.js` | Interest tab cash flows: payment and principal-added rows |
-| `site/interest-exports.js` | Interest tab downloads: Word, PDF, Excel and CSV |
-| `site/export-xlsx.js` | Excel export. The **Calculation** sheet has live formulas (days, base + spread, `principal × rate × days ÷ year days`, totals). The **Rates** sheet has the source URL and the rates used. A CSV export is also available. |
+| `site/interest-exports.js` | Interest tab downloads: Word, PDF and Excel |
+| `site/export-xlsx.js` | Excel export. The **Calculation** sheet has live formulas (days, base + spread, `principal × rate × days ÷ year days`, totals). The **Rates** sheet has the source URL and the rates used. |
 | `site/vendor/xlsx.mini.min.js` | SheetJS 0.20.3 mini build (Apache-2.0), loaded only when you click Download Excel. It's copied from `node_modules/xlsx/dist/`. |
 | `site/saved.js` | Saved calculations (browser storage) |
 | `site/export-docx.js` | Word export. Writes the `.docx` (a zip of a few XML files) directly, so it needs no library. |

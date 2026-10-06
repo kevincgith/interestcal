@@ -5,7 +5,7 @@ export const DISCLAIMER =
   'figures are collected automatically and may be delayed or wrong; the official publisher’s figures prevail. Check every figure before ' +
   'relying on it.';
 export const TERMS_URL = 'https://app.kevinlhc.com/interestcal/terms.html';
-// For plain-text downloads (Word, Excel, CSV), which can't hold a named link
+// For plain-text downloads (Word, Excel), which can't hold a named link
 export const DISCLAIMER_WITH_TERMS = `${DISCLAIMER} Terms of use: ${TERMS_URL}`;
 
 /**

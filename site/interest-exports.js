@@ -1,13 +1,12 @@
-// Interest tab downloads: Word, PDF, Excel and CSV of the last calculation. The page passes in what only it knows
+// Interest tab downloads: Word, PDF and Excel of the last calculation. The page passes in what only it knows
 // (the result, the loaded rate data and a few helpers); the file builders are in export-*.js.
 import { buildWorkbook } from './export-xlsx.js?v=__BUILD__';
 import { buildPdf } from './export-pdf.js?v=__BUILD__';
 import { buildDocx } from './export-docx.js?v=__BUILD__';
-import { DISCLAIMER_WITH_TERMS } from './disclaimer.js?v=__BUILD__';
 import { $, money, fmtDate, fmtRate, download, loadXlsx, loadPdf, busy } from './shared.js?v=__BUILD__';
 import {
   fmtRateWithSpread, periodNote, formula, BASES, compoundingLabel, ALLOCATIONS, ROUNDINGS, SOURCES, CROSS_CHECK,
-  HSBC_PAGE, crossCheckTick, isFixed, rateBasisLabel, perDiemText, DAYS_COUNTED,
+  HSBC_PAGE, crossCheckTick, rateBasisLabel, perDiemText,
 } from './interest-text.js?v=__BUILD__';
 
 const exportName = (r, ext) => `interest_${r.source}_${r.basis.replace('/', '')}_${r.start}_${r.shownEnd ?? r.end}.${ext}`;
@@ -102,82 +101,5 @@ export function setupInterestExports({
       });
       download(doc.output('blob'), exportName(r, 'pdf'));
     }, showError);
-  });
-
-  $('csv').addEventListener('click', () => {
-    const r = getResult();
-    if (!r) return;
-    const hasNotes = r.periods.some((p, i) => periodNote(r, p, i));
-    const lines = [
-      ['Rate Basis', rateBasisLabel(r)],
-      ['Day Count Basis', BASES[r.basis]],
-      ['Rounding', ROUNDINGS[r.rounding]],
-      ...(r.rows === 'rate' ? [['Table detail', 'Combined (per rate period)']] : []),
-      ...(r.compounding !== 'none'
-        ? [
-            ['Compounding', compoundingLabel(r)],
-            ['Simple Interest (For Comparison)', money.format(r.simpleInterest)],
-            ['Interest Added To Principal', money.format(r.totalCapitalised)],
-          ]
-        : []),
-      ['Principal', money.format(r.principal)],
-      ['Start Date', r.start],
-      ['End Date', r.shownEnd ?? r.end],
-      ['Days Counted', DAYS_COUNTED[r.inclusive ? 'incl' : 'excl']],
-      ['Total Interest', money.format(r.totalInterest)],
-      ...(r.additions.length ? [['Principal Added', money.format(r.totalAdded)]] : []),
-      ...(r.payments.length
-        ? [
-            ['Payments Received', money.format(r.totalPaid)],
-            ['Payments Applied', ALLOCATIONS[r.allocation]],
-            ['Outstanding Principal', money.format(r.outstandingPrincipal)],
-            ['Unpaid Interest', money.format(r.outstandingInterest)],
-          ]
-        : []),
-      ['Total Amount Due', money.format(r.totalDue)],
-      ['Total No. of Days', r.totalDays],
-      ['Daily Interest Thereafter', perDiemText(r)],
-      ...(isFixed(r) ? [] : [['Rates As At', asAt(r.source)]]),
-      ...(rateData[r.source]?.crossCheck
-        ? [['Cross-check', `${crossCheckTick(rateData[r.source].crossCheck)}${CROSS_CHECK[rateData[r.source].crossCheck.status]} ${rateData[r.source].crossCheck.source}`]]
-        : []),
-      [],
-      [
-        'Period Start', 'Period End', 'No. of Days',
-        ...(r.payments.length || r.additions.length || r.compounding !== 'none' ? ['Principal'] : []),
-        ...(r.periods.some((p) => p.spread) ? ['Base Rate', 'Spread'] : []),
-        'Interest Rate', 'Year Days', 'Formula', 'Interest Amount',
-        ...(hasNotes ? ['Note'] : []),
-      ],
-      ...r.periods.map((p, i) => [
-        p.start, p.shownEnd ?? p.end, p.days,
-        ...(r.payments.length || r.additions.length || r.compounding !== 'none' ? [money.format(p.principal)] : []),
-        ...(r.periods.some((x) => x.spread) ? [fmtRate(p.baseRate), fmtRate(p.spread / 100)] : []),
-        fmtRate(p.rate), p.yearDays, formula(p), money.format(p.interest),
-        ...(hasNotes ? [periodNote(r, p, i)] : []),
-      ]),
-      ...(r.additions.length
-        ? [
-            [],
-            ['Added Principal Date', 'Description', 'Amount', 'Principal After'],
-            ...r.additions.map((a) => [a.date, a.label, money.format(a.amount), money.format(a.principalAfter)]),
-          ]
-        : []),
-      ...(r.payments.length
-        ? [
-            [],
-            ['Payment Date', 'Amount', 'To Interest', 'To Principal', 'Principal After', 'Unpaid Interest After'],
-            ...r.payments.map((p) => [
-              p.date, money.format(p.amount), money.format(p.toInterest), money.format(p.toPrincipal),
-              money.format(p.principalAfter), money.format(p.unpaidInterestAfter),
-            ]),
-          ]
-        : []),
-    ];
-    lines.push([], [DISCLAIMER_WITH_TERMS]);
-    const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
-    // BOM so Excel reads the × and ÷ in the formula column as UTF-8
-    const csv = '\uFEFF' + lines.map((l) => l.map(cell).join(',')).join('\n') + '\n';
-    download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), exportName(r, 'csv'));
   });
 }

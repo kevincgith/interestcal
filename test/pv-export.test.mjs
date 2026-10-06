@@ -4,7 +4,7 @@ import XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
 import { presentValue, pvWorking, PV_COMPOUNDING, PV_BASES } from '../site/pv.js';
-import { buildPvWorkbook, buildPvPdf, buildPvCsv } from '../site/pv-export.js';
+import { buildPvWorkbook, buildPvPdf } from '../site/pv-export.js';
 
 const FLOWS = [
   { date: '2027-10-05', amount: 100000, label: 'Settlement' },
@@ -103,18 +103,6 @@ test('PDF export: title, totals, a row per cash flow with its working, disclaime
   }
 });
 
-test('CSV export: totals, rows sorted by date, quoted text, disclaimer', () => {
-  const res = calc();
-  const csv = buildPvCsv(res, ctx(res));
-  assert.ok(csv.startsWith('﻿'));
-  const lines = csv.slice(1).trimEnd().split('\n');
-  assert.ok(lines.includes('Present Value (HK$),120818.07'));
-  const head = lines.indexOf('Date,Description,Amount,Days,Years,Discount Factor,Present Value,Working');
-  assert.deepEqual(lines.slice(head + 1, head + 6).map((l) => l.split(',')[0]), ['2025-10-05', '2026-10-05', '2027-10-05', '2028-10-05', 'Total']);
-  assert.match(lines[head + 2], /^2026-10-05,"Today, ""quoted""",1234\.56,0,/);
-  assert.match(lines.at(-1), /^"?Disclaimer:/);
-});
-
 test('Excel export, periods: live years, discount factor and present value from the periods-a-year and rate cells', () => {
   const flows = [{ period: 0, amount: -10000, label: 'Now' }, { period: 1, amount: 3000, times: 3, label: 'Back' }, { period: 8, amount: 2000 }];
   const res = { ...presentValue({ timing: 'periods', periodLength: 'quarter', rate: 8, flows }), currency: 'HK$' };
@@ -136,14 +124,8 @@ test('Excel export, periods: live years, discount factor and present value from 
   assert.equal(rows[head + 1 + res.rows.length][0], 'Total');
 });
 
-test('PDF and CSV exports, periods: T0 / T+n instead of dates', () => {
+test('PDF export, periods: T0 / T+n instead of dates', () => {
   const res = { ...presentValue({ timing: 'periods', periodLength: 'year', rate: 10, flows: [{ period: 0, amount: -100 }, { period: 2, amount: 121 }] }), currency: 'HK$' };
   const pdf = buildPvPdf({ jsPDF, autoTable }, res, ctx(res)).output();
   for (const s of ['Period', 'T0', 'T+2']) assert.ok(pdf.includes(`(${s})`), s);
-  const csv = buildPvCsv(res, ctx(res)).slice(1).split('\n');
-  const head = csv.indexOf('Period,Description,Amount,Years,Discount Factor,Present Value,Working');
-  assert.ok(head > 0);
-  assert.match(csv[head + 1], /^T0,,-100\.00,0\.000000,1\.0000000000,-100\.00,/);
-  assert.match(csv[head + 2], /^T\+2,,121\.00,2\.000000,/);
-  assert.equal(csv[head + 3], 'Total,,21.00,,,0.00,');
 });

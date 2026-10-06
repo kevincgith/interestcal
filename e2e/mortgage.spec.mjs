@@ -77,7 +77,7 @@ test('stress test and debt-servicing ratio', async ({ page }) => {
 test('mortgage downloads', async ({ page }) => {
   await page.goto(FIXED);
   await expect(page.locator('#mPayment')).toHaveText('4,216.04');
-  for (const [button, ext] of [['Download PDF', 'pdf'], ['Download Excel', 'xlsx'], ['Download CSV', 'csv']]) {
+  for (const [button, ext] of [['Download PDF', 'pdf'], ['Download Excel', 'xlsx']]) {
     const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#panel-mortgage').getByRole('button', { name: button }).click()]);
     expect(download.suggestedFilename()).toBe(`mortgage_fixed_1000000_30y_2026-01-15.${ext}`);
   }
@@ -350,7 +350,7 @@ test('Prime (P): big P and another bank’s P sit above small P; the discount an
 test('mortgage: changed inputs turn off the downloads and Save until Calculate is pressed', async ({ page }) => {
   await page.goto('?tab=mortgage');
   await expect(page.locator('#mPayment')).not.toHaveText('');
-  const ids = ['#mPdf', '#mXlsx', '#mCsv', '#mSave'];
+  const ids = ['#mPdf', '#mXlsx', '#mSave'];
   for (const id of ids) await expect(page.locator(id)).toBeEnabled();
   await page.locator('#mPrice').fill('6000000');
   for (const id of ids) await expect(page.locator(id)).toBeDisabled();

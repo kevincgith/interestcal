@@ -1,4 +1,4 @@
-// PDF, Excel and CSV downloads for the Present value tab. Libraries are passed in (browser vendor builds or npm
+// PDF and Excel downloads for the Present value tab. Libraries are passed in (browser vendor builds or npm
 // packages in tests).
 
 import { pdfDisclaimer, DISCLAIMER_WITH_TERMS } from './disclaimer.js?v=__BUILD__';
@@ -241,37 +241,4 @@ export function buildPvWorkbook(XLSX, res, ctx) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Present value');
   return wb;
-}
-
-/**
- * CSV text (with a byte-order mark so Excel reads the symbols): inputs, totals, a row per cash flow, disclaimer.
- * @param {object} ctx { inputs: [label, value][], lines: string[], working: (row) => string,
- *   money: (n) => string }
- */
-export function buildPvCsv(res, ctx) {
-  const m = ctx.money;
-  const cur = res.currency ? ` (${res.currency})` : '';
-  const lines = [
-    ...ctx.inputs,
-    [`Present Value${cur}`, m(res.total)],
-    [`Total Of Amounts${cur}`, m(res.futureTotal)],
-    [`Discount${cur}`, m(res.discount)],
-    ...ctx.lines.map((l) => [l]),
-    [],
-    ...(res.timing === 'periods'
-      ? [
-        ['Period', 'Description', 'Amount', 'Years', 'Discount Factor', 'Present Value', 'Working'],
-        ...res.rows.map((r) => [periodName(r.period), r.label, m(r.amount), r.t.toFixed(6), r.df.toFixed(10), m(r.pv), ctx.working(r)]),
-        ['Total', '', m(res.futureTotal), '', '', m(res.total), ''],
-      ]
-      : [
-        ['Date', 'Description', 'Amount', 'Days', 'Years', 'Discount Factor', 'Present Value', 'Working'],
-        ...res.rows.map((r) => [r.date, r.label, m(r.amount), r.days, r.t.toFixed(6), r.df.toFixed(10), m(r.pv), ctx.working(r)]),
-        ['Total', '', m(res.futureTotal), '', '', '', m(res.total), ''],
-      ]),
-    [],
-    [DISCLAIMER_WITH_TERMS],
-  ];
-  const esc = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
-  return '﻿' + lines.map((l) => l.map(esc).join(',')).join('\n') + '\n';
 }

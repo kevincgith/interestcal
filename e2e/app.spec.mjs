@@ -86,12 +86,12 @@ test('rate table sorts by effective date and by rate', async ({ page }) => {
   expect(await rates()).toEqual([...(await rates())].sort((a, b) => a - b));
 });
 
-test('PDF, Excel, Word and CSV download with the right names; exports omit the site address', async ({ page }) => {
+test('PDF, Excel and Word download with the right names (no CSV); exports omit the site address', async ({ page }) => {
   await page.goto(WORKBOOK);
   await expect(total(page)).toHaveText('4,434.64');
   const name = 'interest_judgment_actact_2025-11-24_2026-04-20';
 
-  for (const [button, ext] of [['Download PDF', 'pdf'], ['Download Excel', 'xlsx'], ['Download Word', 'docx'], ['Download CSV', 'csv']]) {
+  for (const [button, ext] of [['Download PDF', 'pdf'], ['Download Excel', 'xlsx'], ['Download Word', 'docx']]) {
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
     expect(download.suggestedFilename()).toBe(`${name}.${ext}`);
     const path = await download.path();
@@ -103,13 +103,8 @@ test('PDF, Excel, Word and CSV download with the right names; exports omit the s
       expect(bytes.toString('utf8')).toContain('Interest on the Debt of HK$');
       expect(bytes.toString('utf8')).not.toContain('127.0.0.1');
     }
-    if (ext === 'csv') {
-      const csv = bytes.toString('utf8');
-      expect(csv).toContain('Total Interest,"4,434.64"');
-      expect(csv.trimEnd()).toMatch(/Terms of use: https:\/\/app\.kevinlhc\.com\/interestcal\/terms\.html"?$/);
-      expect(csv).not.toContain('127.0.0.1');
-    }
   }
+  await expect(page.getByRole('button', { name: 'Download CSV' })).toHaveCount(0); // Excel covers it
 });
 
 test('partial payment from a shared link: applied interest first, outstanding shown', async ({ page }) => {
@@ -274,11 +269,10 @@ test('switch from prime + 1% to the judgment rate on a date', async ({ page }) =
 test('downloads work with compounding and a rate switch', async ({ page }) => {
   await page.goto('?src=prime&p=100000&from=2026-01-01&to=2026-12-31&spread=1&comp=daily&sw=2026-07-01&src2=judgment&incl=0');
   await expect(total(page)).not.toHaveText('');
-  for (const button of ['Download PDF', 'Download Excel', 'Download CSV']) {
+  for (const button of ['Download PDF', 'Download Excel']) {
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
     const bytes = await (await import('node:fs/promises')).readFile(await download.path());
     expect(bytes.length, button).toBeGreaterThan(500);
-    if (button === 'Download CSV') expect(bytes.toString('utf8')).toContain('Compounding,Daily');
   }
   await expect(page.locator('#error')).toBeHidden();
 });
@@ -609,7 +603,7 @@ test('help opens only from the "?" itself, not by clicking the label text', asyn
 test('changed inputs turn off the downloads and Save until Calculate is pressed', async ({ page }) => {
   await page.goto('./');
   await expect(total(page)).not.toHaveText('');
-  const buttons = ['Download Word', 'Download PDF', 'Download Excel', 'Download CSV'].map((name) => page.getByRole('button', { name }));
+  const buttons = ['Download Word', 'Download PDF', 'Download Excel'].map((name) => page.getByRole('button', { name }));
   buttons.push(page.getByRole('button', { name: 'Save', exact: true }));
   for (const b of buttons) await expect(b).toBeEnabled();
   await page.locator('#principal').fill('123456');
@@ -678,7 +672,6 @@ test('the summary and downloads state how days were counted', async ({ page }) =
   const fs = await import('node:fs/promises');
   for (const [button, check] of [
     ['Download Word', (b) => b.toString('utf8').includes('End date included')],
-    ['Download CSV', (b) => b.toString('utf8').includes('Days Counted,End date included')],
   ]) {
     const [d] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
     expect(check(await fs.readFile(await d.path())), button).toBe(true);
