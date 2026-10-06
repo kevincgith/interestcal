@@ -139,6 +139,8 @@ const SOURCES = [
   // HIBOR: HKMA's recent fixings (a small, reliable request) merged into the history (scripts/backfill-hibor.mjs),
   // then the days since from HKAB, which sets the fixings (HKMA republishes them weeks later). Only pre-fills the
   // mortgage tab (the HIBOR box stays editable), so an outage is a warning, not a failure; each source can fail alone.
+  // The latest fixings come from HKAB, so an HKMA outage alone (its history runs weeks behind) is a note: HIBOR still
+  // counts as checked now. An HKAB problem keeps the previous check time.
   ...HIBOR_TENORS.map((tenor) => ({
     name: `${tenor.replace('m', '-month')} HIBOR`,
     url: HIBOR_URL,
@@ -146,6 +148,7 @@ const SOURCES = [
     selfFetch: true,
     parse: async (_, previous) => {
       const warnings = [];
+      const notes = [];
       let rates = previous?.rates ?? [];
       let hkmaLatest = previous?.hkmaLatest ?? rates[0]?.effective;
       try {
@@ -153,10 +156,10 @@ const SOURCES = [
         rates = await fillOlderHibor(mergeHibor(rates, hkma), tenor);
         if (!hkmaLatest || hkma[0].effective > hkmaLatest) hkmaLatest = hkma[0].effective;
       } catch (err) {
-        warnings.push(`HKMA: ${err.message}`);
+        notes.push(`HKMA history not updated: ${err.message}`);
       }
       rates = await addRecentHkab(rates, tenor, warnings);
-      return { rates, meta: { hkmaLatest, recentSource: HKAB_PAGE }, warnings };
+      return { rates, meta: { hkmaLatest, recentSource: HKAB_PAGE }, warnings, notes };
     },
     validate: { minRows: 1, maxRate: 100 }, // HIBOR spiked above 30% in 1997
     compact: true, // thousands of daily fixings: keep the file small
@@ -172,7 +175,8 @@ async function update(source) {
     previous = JSON.parse(await readFile(file, 'utf8'));
   } catch {}
 
-  const { rates, meta = {}, warnings = [] } = await source.parse(source.selfFetch ? null : await get(url), previous);
+  // warnings: something was not confirmed (the check time stays as it was); notes: reported, but the check still counts
+  const { rates, meta = {}, warnings = [], notes = [] } = await source.parse(source.selfFetch ? null : await get(url), previous);
   validateRates(rates, source.validate);
 
   const latest = `${rates.length} rates, latest ${rates[0].effective} @ ${rates[0].rate}%`;
@@ -197,7 +201,7 @@ async function update(source) {
   await writeFile(file, (source.compact ? JSON.stringify(data) : JSON.stringify(data, null, 2)) + '\n');
   console.log(`${name}: ${changed ? 'updated' : 'no change'} (${latest}), checked ${data.checkedAt}${data.checkedTime ? ` ${data.checkedTime} HKT` : ''}.`);
   if (meta.crossCheck) console.log(`${name}: HSBC cross-check ${meta.crossCheck.status}.`);
-  if (warnings.length) throw Object.assign(new Error(warnings.join('\n  ')), { saved: true });
+  if (warnings.length || notes.length) throw Object.assign(new Error([...warnings, ...notes].join('\n  ')), { saved: true });
 }
 
 for (const source of SOURCES) {
