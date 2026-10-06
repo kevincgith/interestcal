@@ -88,7 +88,7 @@ jobs:
       - name: Stamp asset URLs with the commit so browsers fetch fresh CSS/JS after each deploy
         run: sed -i "s/__BUILD__/${GITHUB_SHA::7}/g" site/*.html site/*.js
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
       - id: deployment
