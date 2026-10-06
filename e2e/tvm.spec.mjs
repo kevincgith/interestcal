@@ -8,7 +8,7 @@ test('calculator: opens from the PV tab with the loan example worked out; switch
   await expect(page.locator('#tform')).toBeVisible();
   await expect(page.locator('#pform')).toBeHidden();
   await expect(page.locator('#pResults')).toBeHidden();
-  await expect(page.locator('#tAnswer')).toContainText('−HK$5,368.22');
+  await expect(page.locator('#tAnswer')).toContainText('−5,368.22');
   await expect(page.locator('#tPmt')).toHaveValue('−5,368.22');
   await expect(page.locator('#tNHint')).toHaveText('= 360 monthly payments');
   await expect(page.locator('#tRateHint')).toHaveText('= 0.416667% a month');

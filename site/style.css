@@ -28,6 +28,8 @@
 }
 
 * { box-sizing: border-box; }
+/* No double-tap to zoom (taps on buttons and segments act at once); pinch to zoom still works */
+html { touch-action: manipulation; }
 [hidden] { display: none !important; } /* the hidden attribute always wins over layout rules */
 
 body {

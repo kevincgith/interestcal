@@ -56,7 +56,7 @@ test('old links still set the converted controls', async ({ page }) => {
   await expect(page.locator('#pCompFreq')).toBeHidden();
   await expect(page.locator('#pBasis input[value="act/360"]')).toBeChecked();
   await page.locator('#pform').getByRole('button', { name: 'Calculate' }).click();
-  await expect(page.locator('#pTotal')).toContainText('HK$');
+  await expect(page.locator('#pTotal')).toHaveText(/^−?[\d,]+\.\d\d$/); // a plain figure, no currency symbol
   await expect(page).not.toHaveURL(/cur=/);
   await page.goto('?tab=pv&m=tvm&ts=pmt&py=12&n=30&r=5&pv=1000000&fv=0&due=1&cur=USD');
   await expect(page.locator('#tDue input[value="start"]')).toBeChecked();

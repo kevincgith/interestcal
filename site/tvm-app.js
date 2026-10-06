@@ -153,8 +153,9 @@ function fillAnswer(t) {
   updateHints();
 }
 
-function answerText(t) {
-  const c = t.currency;
+// The answer and a note under it. Tiles show figures without the currency symbol, as on every tab (it's in the
+// sentence below them); saved names keep it
+function answerText(t, c = '') {
   switch (t.solve) {
     case 'n':
       return [paymentsText(t.n), `${yearsText(t.n)}${Number.isInteger(Math.round(t.n * 1e6) / 1e6) ? '' : '; the last payment is smaller'}`];
@@ -173,11 +174,11 @@ function render(t) {
   $('tAnswerLabel').textContent = NAMES[t.solve];
   $('tAnswer').replaceChildren(main, ...(sub ? [Object.assign(document.createElement('small'), { textContent: sub })] : []));
   const paid = t.pmt * t.n;
-  $('tPaid').textContent = signedMoney(paid, c);
+  $('tPaid').textContent = signedMoney(paid, '');
   // What the money did on top of the amounts in and out: + earned, − paid
   const interest = t.pv + paid + t.fv;
   $('tInterestLabel').textContent = interest >= 0 ? 'Interest earned' : 'Interest paid';
-  $('tInterest').textContent = `${c}${money.format(Math.abs(interest))}`;
+  $('tInterest').textContent = money.format(Math.abs(interest));
   $('tEffective').textContent = `${fmtRate((1 + t.i) ** t.py - 1)} a year`;
   $('tSentence').textContent =
     `N = ${paymentsText(t.n)} (${yearsText(t.n)}), I/Y = ${fmtRate(t.rate / 100)} p.a. (${fmtRate(t.i)} ${EACH[t.inputs.freq]}` +
@@ -287,7 +288,7 @@ $('tReset').addEventListener('click', () => {
 $('tShare').addEventListener('click', () => copyLink(location.href, $('tShareStatus')));
 // e.g. "PMT −HK$5,368.22 a month · 360 monthly payments at 5.000%"
 const titleFor = (t) => {
-  const [main] = answerText(t);
+  const [main] = answerText(t, t.currency);
   return `${SHORT[t.solve]} ${main}${t.solve === 'pmt' ? ` ${EACH[t.inputs.freq]}` : ''} · ${paymentsText(t.n)} at ${fmtRate(t.rate / 100)}`;
 };
 $('tSave').addEventListener('click', () => {

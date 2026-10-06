@@ -213,7 +213,7 @@ const spanText = (r) => (r.to === 'now' ? `since ${r.fromPoint.label}` : `from $
 function render(r) {
   const { amountAt, answerAt } = ends(r);
   $('iValueLabel').textContent = `Worth ${answerAt}`;
-  $('iValue').textContent = `HK$${money.format(r.value)}`;
+  $('iValue').textContent = money.format(r.value); // tiles: no currency symbol, as on every tab
   $('iChange').textContent = pct(r.change);
   $('iAnnual').textContent = `${pct(r.annual, 2)} a year`;
   $('iIndex').textContent = `${r.fromIndex.toFixed(1)} → ${r.toIndex.toFixed(1)}`;

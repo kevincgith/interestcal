@@ -416,9 +416,10 @@ const working = (res, x) => pvWorking(res, x, { money: signed, rate: fmtRate });
 
 function render(res) {
   const c = res.currency;
-  $('pTotal').textContent = withCur(res.total, c);
-  $('pFuture').textContent = withCur(res.futureTotal, c);
-  $('pDiscount').textContent = withCur(res.discount, c);
+  // Tiles: figures without the currency symbol, as on every tab (it's in the sentences and downloads)
+  $('pTotal').textContent = withCur(res.total, '');
+  $('pFuture').textContent = withCur(res.futureTotal, '');
+  $('pDiscount').textContent = withCur(res.discount, '');
   $('pValLabel').textContent = isPeriods(res) ? 'Valued at' : 'Valuation date';
   $('pValOut').textContent = isPeriods(res) ? 'T0 (now)' : fmtDate(res.valuation);
   $('pIrrTile').hidden = !isIrr(res);

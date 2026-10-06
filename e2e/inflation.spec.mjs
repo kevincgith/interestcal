@@ -14,7 +14,7 @@ test('inflation: HK$100 in 2000 is worth ... now; Calculate and Reset as on the 
   await page.goto('?');
   await page.getByRole('tab', { name: 'Inflation' }).click();
   await expect(page).toHaveURL(/tab=inflation&a=100&in=2000&w=now/);
-  await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * latest.index) / yearIndex(2000))}`);
+  await expect(page.locator('#iValue')).toHaveText(`${fmt((100 * latest.index) / yearIndex(2000))}`);
   await expect(page.locator('#iValueLabel')).toHaveText(`Worth now (${monthNameOf(latest.month)})`);
   await expect(page.locator('#iSentence')).toContainText('Prices rose');
   await expect(page.locator('#iSentence')).toContainText('since 2000');
@@ -30,17 +30,17 @@ test('inflation: HK$100 in 2000 is worth ... now; Calculate and Reset as on the 
   await expect(page.locator('#iSave')).toBeDisabled();
   await page.locator('#iform').getByRole('button', { name: 'Calculate' }).click();
   await expect(page.locator('#iStale')).toBeHidden();
-  await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((250 * latest.index) / yearIndex(2000))}`);
+  await expect(page.locator('#iValue')).toHaveText(`${fmt((250 * latest.index) / yearIndex(2000))}`);
   await expect(page).toHaveURL(/a=250/);
   // The year steps with − and +, or is typed
   await page.getByRole('button', { name: 'In: one year later' }).click();
   await expect(page.locator('#iInYear')).toHaveValue('2001');
   await page.locator('#iInYear').fill('2010');
   await page.locator('#iform').getByRole('button', { name: 'Calculate' }).click();
-  await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((250 * latest.index) / yearIndex(2010))}`);
+  await expect(page.locator('#iValue')).toHaveText(`${fmt((250 * latest.index) / yearIndex(2010))}`);
   // Reset: HK$100 in 2000, worth now
   await page.locator('#iReset').click();
-  await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * latest.index) / yearIndex(2000))}`);
+  await expect(page.locator('#iValue')).toHaveText(`${fmt((100 * latest.index) / yearIndex(2000))}`);
   await expect(page.locator('#iAmount')).toHaveValue('100.00');
 });
 
@@ -51,7 +51,7 @@ test('inflation the other way: HK$100 now was worth ... in 2000, with Swap', asy
   await expect(page.locator('#iWorthYear')).toHaveValue('2000');
   await page.locator('#iform').getByRole('button', { name: 'Calculate' }).click();
   await expect(page.locator('#iValueLabel')).toHaveText('Worth in 2000');
-  await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * yearIndex(2000)) / latest.index)}`);
+  await expect(page.locator('#iValue')).toHaveText(`${fmt((100 * yearIndex(2000)) / latest.index)}`);
   await expect(page.locator('#iSentence')).toContainText(`had the same buying power as HK$${fmt((100 * yearIndex(2000)) / latest.index)} in 2000`);
   await expect(page).toHaveURL(/in=now&w=2000/);
   await page.reload();
@@ -73,7 +73,7 @@ test('inflation by month: a month box next to each year, months with no figures 
   await page.locator('#iWorthYear').fill('2020');
   await page.locator('#iWorthMonth').selectOption('03');
   await page.locator('#iform').getByRole('button', { name: 'Calculate' }).click();
-  await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * monthIndex('2020-03')) / monthIndex('2010-03'))}`);
+  await expect(page.locator('#iValue')).toHaveText(`${fmt((100 * monthIndex('2020-03')) / monthIndex('2010-03'))}`);
   await expect(page).toHaveURL(/in=2010-03&w=2020-03/);
   await page.reload();
   await expect(page.locator('#iBy input[value="month"]')).toBeChecked();
@@ -167,7 +167,7 @@ test('inflation shortcuts: 1, 5, 10, 20, 30 years ago, worth now: whole years, o
   await expect(page.locator('#iWorthMode input[value="now"]')).toBeChecked();
   await expect(page.getByRole('button', { name: /\(10 years ago\)/ })).toHaveAttribute('aria-pressed', 'true');
   await page.locator('#iform').getByRole('button', { name: 'Calculate' }).click();
-  await expect(page.locator('#iValue')).toHaveText(`HK$${fmt((100 * latest.index) / yearIndex(Number(yearAgo(10))))}`);
+  await expect(page.locator('#iValue')).toHaveText(`${fmt((100 * latest.index) / yearIndex(Number(yearAgo(10))))}`);
   await expect(page).toHaveURL(new RegExp(`in=${yearAgo(10)}&w=now`));
   // By month, 1 year ago is the same month a year before: the change matches C&SD's published year-on-year rate
   await page.locator('#iBy input[value="month"]').check();
