@@ -20,7 +20,7 @@ You can choose one of three rates:
 ## Features
 
 - **Mortgage tab:** equal monthly instalments on HK bank conventions.
-  - **Loan:** property price × loan-to-value (100% by default) gives the loan and down payment. Choose a tenor and a drawdown date; instalments fall due on the drawdown day each month.
+  - **Loan:** property price × loan-to-value (100% by default) gives the loan and down payment. Choose a tenor, in years or as a number of monthly payments (as the calculator's Term; e.g. 250 payments = 20 years 10 months, link `n=250`), and a drawdown date; instalments fall due on the drawdown day each month.
   - **Rate:**
     - **Prime-based (P − x%):** uses the HSBC prime history; future months use the latest prime.
     - **Prime (P):** small P (HSBC's prime, the default), big P (small P + 0.25%, e.g. BOCHK, Standard Chartered) or another bank's P (small P + an amount you enter). The discount and the HIBOR cap apply to the P chosen. Banks move their P together, so big P and other banks' past P are estimated from HSBC's history plus the gap.

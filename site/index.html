@@ -322,12 +322,19 @@
             <button type="button" class="step" data-step="5" aria-label="Increase loan-to-value by 5%">+</button>
           </div>
         </label>
-        <label for="mYears">Tenor (years)
-          <div class="stepper">
-            <button type="button" class="step" data-step="-1" aria-label="Decrease tenor by 1 year">−</button>
-            <input id="mYears" type="text" inputmode="numeric" autocomplete="off" value="30" data-min="1" data-max="50">
-            <button type="button" class="step" data-step="1" aria-label="Increase tenor by 1 year">+</button>
+        <label for="mYears">Tenor
+          <div class="tvm-n">
+            <div class="stepper">
+              <button type="button" class="step" data-step="-1" aria-label="Decrease tenor by 1 year">−</button>
+              <input id="mYears" type="text" inputmode="numeric" autocomplete="off" value="30" data-min="1" data-max="50">
+              <button type="button" class="step" data-step="1" aria-label="Increase tenor by 1 year">+</button>
+            </div>
+            <select id="mTenorUnit" aria-label="Tenor in">
+              <option value="years" selected>years</option>
+              <option value="payments">payments</option>
+            </select>
           </div>
+          <span id="mTenorHint" class="rate-hint"></span>
         </label>
         <label>Drawdown date
           <input id="mStart" type="date">

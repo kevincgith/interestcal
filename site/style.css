@@ -409,6 +409,9 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 .tvm-solve { grid-column: 1 / -1; }
 .tvm-n { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .tvm-n select { width: auto; }
+/* Mortgage tenor: a quarter-width column is too narrow for both, so the unit goes under the box, the same width */
+#mform .tvm-n { grid-template-columns: minmax(0, 200px); }
+#mform .tvm-n select { width: 100%; }
 #tform label.solved input:not([type="radio"]) { border-style: dashed; color: var(--accent); font-weight: 700; }
 
 /* ---- Inflation tab: Now | Year with the year (and month) under it, all one width; "Years ago" shortcuts on one row
@@ -464,6 +467,8 @@ button.chip.i-swap { padding: 2px 10px; }
   .field.wide { grid-column: auto; }
   .field.inline > .label-row { min-width: 0; }
   form .stepper { max-width: none; }
+  #mform .tvm-n { grid-template-columns: minmax(0, 1fr) auto; }
+  #mform .tvm-n select { width: auto; }
   #iInField .seg-stack, #iWorthField .seg-stack, .i-shortcuts { max-width: none; }
   /* Segmented controls fill the row with equal parts */
   .seg, .seg-stack, .source .seg { display: flex; width: 100%; max-width: none; justify-self: stretch; }

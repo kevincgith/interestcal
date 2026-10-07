@@ -32,9 +32,10 @@ export function instalment(balance, annualRate, months) {
 export function mortgageSchedule({ loan, start, years, rates, prepayments = [], stress = 0, method = 'actual' }) {
   if (!['actual', 'monthly'].includes(method)) throw new Error(`Unknown interest method: ${method}`);
   if (!(Number.isFinite(loan) && loan > 0)) throw new Error('Loan amount must be more than 0');
-  if (!(Number.isInteger(years * 12) && years > 0 && years <= 50)) throw new Error('Tenor must be between 1 month and 50 years');
-  if (!rates?.length) throw new Error('No mortgage rate available');
+  // A tenor in whole months: years may be a fraction, e.g. 250 payments = 250 / 12 years
   const months = Math.round(years * 12);
+  if (!(Math.abs(years * 12 - months) < 1e-6 && months >= 1 && months <= 600)) throw new Error('Tenor must be between 1 month and 50 years');
+  if (!rates?.length) throw new Error('No mortgage rate available');
   // HIBOR plans also carry the two legs (H + margin, and the prime cap) so the schedule can show which one applied
   const table = rates
     .map((r) => ({

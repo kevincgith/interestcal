@@ -412,3 +412,37 @@ test('property price and income are shown as 1,234,567.00 once the user leaves t
   await expect(page.locator('#mIncome')).toHaveValue('');
 });
 
+
+test('tenor in years or monthly payments, as the calculator\'s term: converts, steps, links and labels', async ({ page }) => {
+  await page.goto(FIXED);
+  await expect(page.locator('#mPayment')).toHaveText('4,216.04');
+  await expect(page.locator('#mTenorHint')).toHaveText('= 360 monthly payments');
+  // Switching to payments converts the number; − and + step 12 payments
+  await page.locator('#mTenorUnit').selectOption('payments');
+  await expect(page.locator('#mYears')).toHaveValue('360');
+  await expect(page.locator('#mTenorHint')).toHaveText('= 30 yrs');
+  await page.getByRole('button', { name: 'Decrease tenor by 12 payments' }).click();
+  await expect(page.locator('#mYears')).toHaveValue('348');
+  // A tenor that isn't whole years: 250 payments
+  await page.locator('#mYears').fill('250');
+  await expect(page.locator('#mTenorHint')).toHaveText('= 20 yrs 10 mths');
+  await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#mEnds')).toContainText('(20 yrs 10 mths)');
+  await expect(page.locator('#mSchedule tr')).toHaveCount(250);
+  await expect(page).toHaveURL(/[?&]n=250(&|$)/);
+  await expect(page).not.toHaveURL(/yrs=/);
+  // The link reopens in payments
+  await page.reload();
+  await expect(page.locator('#mTenorUnit')).toHaveValue('payments');
+  await expect(page.locator('#mYears')).toHaveValue('250');
+  // Back to years: 250 / 12 = 20.83, still 250 instalments
+  await page.locator('#mTenorUnit').selectOption('years');
+  await expect(page.locator('#mYears')).toHaveValue('20.83');
+  await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#mSchedule tr')).toHaveCount(250);
+  // Out of range
+  await page.locator('#mTenorUnit').selectOption('payments');
+  await page.locator('#mYears').fill('700');
+  await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
+  await expect(page.locator('#mError')).toHaveText('Tenor must be 1 to 600 monthly payments.');
+});

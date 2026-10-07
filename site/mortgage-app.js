@@ -190,6 +190,7 @@ $('mform').addEventListener('change', () => {
 wireSteppers($('mform'), () => {
   markStale();
   updateHints();
+  updateTenor();
 });
 $('mAddExtra').addEventListener('click', () => {
   addExtraRow().querySelector('.pay-date').focus();
@@ -228,11 +229,14 @@ function planParams(type) {
 function readInputs() {
   const type = currentType();
   const { price, ltv, loan } = readLoan();
-  const years = parseNumber($('mYears').value);
   const start = $('mStart').value;
   if (!(price > 0)) throw new Error('Please enter the property price.');
   if (!(ltv > 0 && ltv <= 100)) throw new Error('Loan-to-value must be between 0 and 100%.');
-  if (!(Number.isInteger(years) && years >= 1 && years <= 50)) throw new Error('Tenor must be 1 to 50 whole years.');
+  const months = tenorMonths();
+  if (months == null) {
+    throw new Error(tenorInPayments() ? 'Tenor must be 1 to 600 monthly payments.' : 'Tenor must be 1 to 50 years, in whole months (e.g. 25 or 20.5).');
+  }
+  const years = months / 12;
   if (!isIsoDate(start)) throw new Error('Please enter the drawdown date.');
   const rateParams = planParams(type);
   // Other plans for the comparison: skipped if their fields aren't valid
@@ -247,7 +251,7 @@ function readInputs() {
   const income = incomeRaw ? parseNumber(incomeRaw) : null;
   if (incomeRaw && !(income > 0)) throw new Error('Monthly income must be a number above 0.');
   return {
-    type, price, ltv, loan, years, start, rateParams, plans, income,
+    type, price, ltv, loan, years, months, tenorUnit: $('mTenorUnit').value, start, rateParams, plans, income,
     stress: Number($('mStress').value),
     method: $('mMethod').value,
     extras: readExtras(),
@@ -318,6 +322,43 @@ const duration = (months) => {
   const m = months % 12;
   return [y && `${y} yr${y === 1 ? '' : 's'}`, m && `${m} mth${m === 1 ? '' : 's'}`].filter(Boolean).join(' ') || '0 mths';
 };
+
+// ---- Tenor: years, or the number of monthly payments (as the calculator's Term) ----
+
+const tenorInPayments = () => $('mTenorUnit').value === 'payments';
+// The tenor in whole months, or null when it isn't one (1 to 600 months; years may be a fraction such as 20.5)
+function tenorMonths() {
+  const v = parseNumber($('mYears').value);
+  if (!$('mYears').value.trim() || !Number.isFinite(v)) return null;
+  const raw = tenorInPayments() ? v : v * 12;
+  const months = Math.round(raw);
+  return Math.abs(raw - months) < 0.06 && months >= 1 && months <= 600 ? months : null;
+}
+// The − and + step a year (12 payments); "= 360 monthly payments" or "= 20 yrs 10 mths" under the box
+function updateTenor() {
+  const pay = tenorInPayments();
+  $('mYears').dataset.max = pay ? '600' : '50';
+  for (const btn of $('mYears').closest('.stepper').querySelectorAll('.step')) {
+    const up = Number(btn.dataset.step) > 0;
+    btn.dataset.step = String((up ? 1 : -1) * (pay ? 12 : 1));
+    btn.setAttribute('aria-label', `${up ? 'Increase' : 'Decrease'} tenor by ${pay ? '12 payments' : '1 year'}`);
+  }
+  const months = tenorMonths();
+  $('mTenorHint').textContent = months == null ? '' : pay ? `= ${duration(months)}` : `= ${months} monthly payments`;
+}
+// Switching the unit converts the number: 30 years <-> 360 payments
+$('mTenorUnit').addEventListener('change', () => {
+  const v = parseNumber($('mYears').value);
+  if ($('mYears').value.trim() && Number.isFinite(v)) {
+    $('mYears').value = tenorInPayments() ? String(Math.round(v * 12)) : String(Number((v / 12).toFixed(2)));
+  }
+  updateTenor();
+});
+$('mYears').addEventListener('input', updateTenor);
+// e.g. "30 years (360 instalments)", or "250 monthly instalments (20 yrs 10 mths)"
+const tenorText = (i) => (i.months % 12 === 0 && i.tenorUnit !== 'payments'
+  ? `${i.months / 12} years (${i.months} instalments)`
+  : `${i.months} monthly instalments (${duration(i.months)})`);
 
 const pct1 = (x) => `${(x * 100).toFixed(1)}%`;
 const pct0 = (x) => `${Math.round(x * 100)}%`;
@@ -621,7 +662,9 @@ for (const id of ['rhFrom', 'rhTo']) {
 
 function writeQuery(m) {
   const i = m.inputs;
-  const q = new URLSearchParams({ tab: 'mortgage', mt: i.type, price: String(i.price), ltv: String(i.ltv), yrs: String(i.years), from: i.start });
+  // The tenor as entered: yrs=30 (years), or n=250 (monthly payments)
+  const tenor = i.tenorUnit === 'payments' ? { n: String(i.months) } : { yrs: String(i.years) };
+  const q = new URLSearchParams({ tab: 'mortgage', mt: i.type, price: String(i.price), ltv: String(i.ltv), ...tenor, from: i.start });
   // Every plan's settings, so the comparison reopens the same
   for (const p of i.plans) {
     if (p.type === 'prime') q.set('disc', String(p.discount));
@@ -655,6 +698,11 @@ function readQuery() {
   setNum('price', 'mPrice', (v) => money.format(v));
   setNum('ltv', 'mLtv');
   setNum('yrs', 'mYears');
+  if (/^\d+$/.test(q.get('n') ?? '')) {
+    $('mTenorUnit').value = 'payments';
+    $('mYears').value = q.get('n');
+  }
+  updateTenor();
   if (isIsoDate(q.get('from'))) $('mStart').value = q.get('from');
   setNum('disc', 'mDiscount');
   const pk = q.get('pk') ?? '';
@@ -707,12 +755,13 @@ $('mReset').addEventListener('click', () => {
   lastQuery = '';
   if (activeTab() === 'mortgage') history.replaceState(null, '', `${location.pathname}?tab=mortgage`);
   updateHints();
+  updateTenor();
 });
 
 // ---- Exports ----
 
 const exportName = (m, ext) =>
-  `mortgage_${m.inputs.type}_${Math.round(m.loan)}_${m.inputs.years}y_${m.inputs.start}.${ext}`;
+  `mortgage_${m.inputs.type}_${Math.round(m.loan)}_${m.inputs.tenorUnit === 'payments' ? `${m.inputs.months}m` : `${m.inputs.years}y`}_${m.inputs.start}.${ext}`;
 
 const inputItems = (m) => [
   ['Mortgage rate', `${TYPES[m.inputs.type]}: ${rateLabel(m.inputs)}`],
@@ -720,7 +769,7 @@ const inputItems = (m) => [
   ['Loan-to-value', pct(m.inputs.ltv)],
   ['Loan amount (HK$)', money.format(m.loan)],
   ['Down payment (HK$)', money.format(m.inputs.price - m.loan)],
-  ['Tenor', `${m.inputs.years} years (${m.months} instalments)`],
+  ['Tenor', tenorText(m.inputs)],
   ['Drawdown date', fmtDate(m.inputs.start)],
   ['Interest method', m.inputs.method === 'monthly' ? 'Rate ÷ 12 each month (textbook)' : 'Actual/365 Fixed (HK banks)'],
   ...(m.inputs.extras.length ? [['Extra repayments', m.inputs.extras.map((x) => `${fmtDate(x.date)}: ${money.format(x.amount)}`).join('; ')]] : []),
@@ -765,7 +814,7 @@ $('mXlsx').addEventListener('click', () => {
 
 $('mShare').addEventListener('click', () => copyLink(location.href, $('mShareStatus')));
 // e.g. "HIBOR-based · loan HK$8,000,000.00 · 30 yrs from 05-Oct-2026"
-const titleFor = (m) => `${TYPES[m.inputs.type]} · loan HK$${money.format(m.loan)} · ${m.inputs.years} yrs from ${fmtDate(m.inputs.start)}`;
+const titleFor = (m) => `${TYPES[m.inputs.type]} · loan HK$${money.format(m.loan)} · ${duration(m.inputs.months)} from ${fmtDate(m.inputs.start)}`;
 $('mSave').addEventListener('click', () => {
   if (!last || !lastQuery) return;
   const ok = saveCalculation({ tab: 'mortgage', query: lastQuery, title: titleFor(last) });
