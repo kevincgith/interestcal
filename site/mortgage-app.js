@@ -334,11 +334,11 @@ function tenorMonths() {
   const months = Math.round(raw);
   return Math.abs(raw - months) < 0.06 && months >= 1 && months <= 600 ? months : null;
 }
-// − and + step a year, or 12 payments; under the box, as on the calculator: "= 360 monthly payments" or "= 20.83 years"
+// − and + step a year, or one payment; under the box, as on the calculator: "= 360 monthly payments" or "= 20.83 years"
 function updateTenor() {
   const pay = tenorInPayments();
   $('mYears').dataset.max = pay ? '600' : '50';
-  setSteps($('mYears'), pay ? 12 : 1, pay ? '12 payments' : '1 year', 'tenor');
+  setSteps($('mYears'), 1, pay ? '1 payment' : '1 year', 'tenor');
   const months = tenorMonths();
   const years = months / 12;
   $('mTenorHint').textContent = months == null ? ''

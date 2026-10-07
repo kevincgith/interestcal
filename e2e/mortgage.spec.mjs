@@ -419,12 +419,12 @@ test('tenor in years or monthly payments, with − and +, styled as the calculat
   await expect(page.locator('#mTenorHint')).toHaveText('= 360 monthly payments');
   await page.getByRole('button', { name: 'Increase tenor by 1 year' }).click();
   await expect(page.locator('#mYears')).toHaveValue('31');
-  // Switching the unit keeps the number; the hint says what it now means; − and + step 12 payments
+  // Switching the unit keeps the number; the hint says what it now means; − and + step one payment
   await page.locator('#mTenorUnit').selectOption('payments');
   await expect(page.locator('#mYears')).toHaveValue('31');
   await expect(page.locator('#mTenorHint')).toHaveText('= 2.58 years');
-  await page.locator('#mYears').fill('262');
-  await page.getByRole('button', { name: 'Decrease tenor by 12 payments' }).click();
+  await page.locator('#mYears').fill('251');
+  await page.getByRole('button', { name: 'Decrease tenor by 1 payment' }).click();
   await expect(page.locator('#mYears')).toHaveValue('250');
   await expect(page.locator('#mTenorHint')).toHaveText('= 20.83 years');
   await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
