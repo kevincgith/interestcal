@@ -190,7 +190,6 @@ $('mform').addEventListener('change', () => {
 wireSteppers($('mform'), () => {
   markStale();
   updateHints();
-  updateTenor();
 });
 $('mAddExtra').addEventListener('click', () => {
   addExtraRow().querySelector('.pay-date').focus();
@@ -334,17 +333,13 @@ function tenorMonths() {
   const months = Math.round(raw);
   return Math.abs(raw - months) < 0.06 && months >= 1 && months <= 600 ? months : null;
 }
-// The − and + step a year (12 payments); "= 360 monthly payments" or "= 20 yrs 10 mths" under the box
+// Under the box, as on the calculator: "= 360 monthly payments" or "= 20.83 years"
 function updateTenor() {
-  const pay = tenorInPayments();
-  $('mYears').dataset.max = pay ? '600' : '50';
-  for (const btn of $('mYears').closest('.stepper').querySelectorAll('.step')) {
-    const up = Number(btn.dataset.step) > 0;
-    btn.dataset.step = String((up ? 1 : -1) * (pay ? 12 : 1));
-    btn.setAttribute('aria-label', `${up ? 'Increase' : 'Decrease'} tenor by ${pay ? '12 payments' : '1 year'}`);
-  }
   const months = tenorMonths();
-  $('mTenorHint').textContent = months == null ? '' : pay ? `= ${duration(months)}` : `= ${months} monthly payments`;
+  const years = months / 12;
+  $('mTenorHint').textContent = months == null ? ''
+    : tenorInPayments() ? `= ${Number.isInteger(years) ? years : years.toFixed(2)} year${years === 1 ? '' : 's'}`
+    : `= ${months} monthly payment${months === 1 ? '' : 's'}`;
 }
 // Switching the unit converts the number: 30 years <-> 360 payments
 $('mTenorUnit').addEventListener('change', () => {

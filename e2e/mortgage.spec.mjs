@@ -117,7 +117,7 @@ test('mortgage form layout: one field height, no overlap, no sideways scroll', a
   const sels = ['#mPrice', '#mLtv', '#mYears', '#mStart', '#mHibor'];
   const boxes = [];
   for (const s of sels) boxes.push(await page.locator(s).boundingBox());
-  for (const s of ['#mLtv', '#mYears', '#mMargin', '#mCap']) boxes.push(await page.locator(s).locator('xpath=..').boundingBox());
+  for (const s of ['#mLtv', '#mMargin', '#mCap']) boxes.push(await page.locator(s).locator('xpath=..').boundingBox());
   const heights = new Set([...boxes.slice(4).map((b) => Math.round(b.height)), Math.round(boxes[0].height)]);
   expect(heights.size, `heights ${[...heights]}`).toBe(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
@@ -413,19 +413,17 @@ test('property price and income are shown as 1,234,567.00 once the user leaves t
 });
 
 
-test('tenor in years or monthly payments, as the calculator\'s term: converts, steps, links and labels', async ({ page }) => {
+test('tenor in years or monthly payments, styled as the calculator\'s term: converts, links and labels', async ({ page }) => {
   await page.goto(FIXED);
   await expect(page.locator('#mPayment')).toHaveText('4,216.04');
   await expect(page.locator('#mTenorHint')).toHaveText('= 360 monthly payments');
-  // Switching to payments converts the number; − and + step 12 payments
+  // Switching to payments converts the number; the hint shows years, as on the calculator
   await page.locator('#mTenorUnit').selectOption('payments');
   await expect(page.locator('#mYears')).toHaveValue('360');
-  await expect(page.locator('#mTenorHint')).toHaveText('= 30 yrs');
-  await page.getByRole('button', { name: 'Decrease tenor by 12 payments' }).click();
-  await expect(page.locator('#mYears')).toHaveValue('348');
+  await expect(page.locator('#mTenorHint')).toHaveText('= 30 years');
   // A tenor that isn't whole years: 250 payments
   await page.locator('#mYears').fill('250');
-  await expect(page.locator('#mTenorHint')).toHaveText('= 20 yrs 10 mths');
+  await expect(page.locator('#mTenorHint')).toHaveText('= 20.83 years');
   await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
   await expect(page.locator('#mEnds')).toContainText('(20 yrs 10 mths)');
   await expect(page.locator('#mSchedule tr')).toHaveCount(250);
