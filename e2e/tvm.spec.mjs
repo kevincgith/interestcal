@@ -100,3 +100,19 @@ test('calculator examples are in the order of what they solve for: N, I/Y, PV, P
   }
   expect(solved).toEqual(['n', 'rate', 'pv', 'pmt', 'fv']);
 });
+
+test('calculator Term (N): − and + step a year, or a year\'s payments', async ({ page }) => {
+  await page.goto('?tab=pv&m=tvm');
+  await expect(page.locator('#tN')).toHaveValue('30');
+  await page.getByRole('button', { name: 'Increase term by 1 year' }).click();
+  await expect(page.locator('#tN')).toHaveValue('31');
+  await expect(page.locator('#tNHint')).toHaveText('= 372 monthly payments');
+  await page.locator('#tNUnit').selectOption('payments');
+  await page.locator('#tN').fill('360');
+  await page.getByRole('button', { name: 'Decrease term by 12 payments (a year)' }).click();
+  await expect(page.locator('#tN')).toHaveValue('348');
+  await page.locator('#tFreq').selectOption('quarterly');
+  await page.getByRole('button', { name: 'Increase term by 4 payments (a year)' }).click();
+  await expect(page.locator('#tN')).toHaveValue('352');
+});
+

@@ -148,3 +148,12 @@ export function segValue(...ids) {
     });
   }
 }
+
+/** Set a stepper's − and + to step by `size`, with labels such as "Increase tenor by 12 payments" */
+export function setSteps(input, size, sizeText, what) {
+  for (const btn of input.closest('.stepper').querySelectorAll('.step')) {
+    const up = Number(btn.dataset.step) > 0;
+    btn.dataset.step = String(up ? size : -size);
+    btn.setAttribute('aria-label', `${up ? 'Increase' : 'Decrease'} ${what} by ${sizeText}`);
+  }
+}

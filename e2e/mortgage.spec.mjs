@@ -413,16 +413,19 @@ test('property price and income are shown as 1,234,567.00 once the user leaves t
 });
 
 
-test('tenor in years or monthly payments, styled as the calculator\'s term: converts, links and labels', async ({ page }) => {
+test('tenor in years or monthly payments, with − and +, styled as the calculator\'s term: links and labels', async ({ page }) => {
   await page.goto(FIXED);
   await expect(page.locator('#mPayment')).toHaveText('4,216.04');
   await expect(page.locator('#mTenorHint')).toHaveText('= 360 monthly payments');
-  // Switching to payments converts the number; the hint shows years, as on the calculator
+  await page.getByRole('button', { name: 'Increase tenor by 1 year' }).click();
+  await expect(page.locator('#mYears')).toHaveValue('31');
+  // Switching the unit keeps the number; the hint says what it now means; − and + step 12 payments
   await page.locator('#mTenorUnit').selectOption('payments');
-  await expect(page.locator('#mYears')).toHaveValue('360');
-  await expect(page.locator('#mTenorHint')).toHaveText('= 30 years');
-  // A tenor that isn't whole years: 250 payments
-  await page.locator('#mYears').fill('250');
+  await expect(page.locator('#mYears')).toHaveValue('31');
+  await expect(page.locator('#mTenorHint')).toHaveText('= 2.58 years');
+  await page.locator('#mYears').fill('262');
+  await page.getByRole('button', { name: 'Decrease tenor by 12 payments' }).click();
+  await expect(page.locator('#mYears')).toHaveValue('250');
   await expect(page.locator('#mTenorHint')).toHaveText('= 20.83 years');
   await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
   await expect(page.locator('#mEnds')).toContainText('(20 yrs 10 mths)');
@@ -433,12 +436,11 @@ test('tenor in years or monthly payments, styled as the calculator\'s term: conv
   await page.reload();
   await expect(page.locator('#mTenorUnit')).toHaveValue('payments');
   await expect(page.locator('#mYears')).toHaveValue('250');
-  // Back to years: 250 / 12 = 20.83, still 250 instalments
+  // Years that aren't whole months, and out of range
   await page.locator('#mTenorUnit').selectOption('years');
-  await expect(page.locator('#mYears')).toHaveValue('20.83');
+  await page.locator('#mYears').fill('20.5');
   await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();
-  await expect(page.locator('#mSchedule tr')).toHaveCount(250);
-  // Out of range
+  await expect(page.locator('#mSchedule tr')).toHaveCount(246);
   await page.locator('#mTenorUnit').selectOption('payments');
   await page.locator('#mYears').fill('700');
   await page.locator('#mform').getByRole('button', { name: 'Calculate' }).click();

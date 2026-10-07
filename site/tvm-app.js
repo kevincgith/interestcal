@@ -2,7 +2,7 @@
 // The term can be years or payments and the rate is % p.a., so nobody multiplies or divides by 12 by hand.
 // Also owns the PV tab's mode switch (Cash flows | Time Value of Money).
 import { solveTvm, tvmSchedule, periodRate, PAYMENT_FREQUENCIES } from './tvm.js?v=__BUILD__';
-import { $, money, fmtRate, row, copyLink, flash, autoFitText, segValue } from './shared.js?v=__BUILD__';
+import { $, money, fmtRate, row, copyLink, flash, autoFitText, segValue, wireSteppers, setSteps } from './shared.js?v=__BUILD__';
 import { saveCalculation, recordRecent } from './saved.js?v=__BUILD__';
 import { activeTab } from './tabs.js?v=__BUILD__';
 
@@ -101,6 +101,15 @@ const changed = (e) => {
 };
 $('tform').addEventListener('input', changed);
 $('tform').addEventListener('change', changed);
+// Term (N): − and + step a year, or a year's payments (12 monthly, 4 quarterly ...)
+function updateTermSteps() {
+  const years = $('tNUnit').value === 'years';
+  const k = PAYMENT_FREQUENCIES[$('tFreq').value];
+  setSteps($('tN'), years ? 1 : k, years ? '1 year' : `${k} payment${k === 1 ? '' : 's'} (a year)`, 'term');
+}
+for (const id of ['tNUnit', 'tFreq']) $(id).addEventListener('change', updateTermSteps);
+wireSteppers($('tform'), () => $('tN').dispatchEvent(new Event('input', { bubbles: true })));
+updateTermSteps();
 
 // ---- Calculate ----
 
@@ -207,6 +216,7 @@ function fill(x) {
   $('tFreq').value = x.freq;
   $('tN').value = x.n;
   $('tNUnit').value = x.unit;
+  updateTermSteps();
   $('tRate').value = x.rate;
   for (const key of ['pv', 'pmt', 'fv']) $(FIELD[key]).value = x[key] === '' || x[key] == null ? '' : plain(x[key]);
   if (x.comp) $('tComp').value = x.comp;
@@ -258,6 +268,7 @@ function readQuery() {
   const f = Object.keys(PAYMENT_FREQUENCIES).find((k) => String(PAYMENT_FREQUENCIES[k]) === q.get('py'));
   if (f) $('tFreq').value = f;
   $('tNUnit').value = q.get('nu') === 'p' ? 'payments' : 'years';
+  updateTermSteps();
   const set = (key, id, fmt = String) => {
     if (q.has(key) && Number.isFinite(Number(q.get(key)))) $(id).value = fmt(Number(q.get(key)));
     else $(id).value = '';

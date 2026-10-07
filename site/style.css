@@ -409,6 +409,10 @@ td.applied::after { content: ' ✓'; color: var(--accent); font-weight: 600; }
 .tvm-solve { grid-column: 1 / -1; }
 .tvm-n { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .tvm-n select { width: auto; }
+/* A number with − and + beside its unit (Mortgage tenor, calculator term): narrower buttons so both fit a column */
+.tvm-n .stepper { max-width: none; }
+.tvm-n .stepper .step { width: 30px; }
+.tvm-n .stepper input { padding: 0 2px; }
 #tform label.solved input:not([type="radio"]) { border-style: dashed; color: var(--accent); font-weight: 700; }
 
 /* ---- Inflation tab: Now | Year with the year (and month) under it, all one width; "Years ago" shortcuts on one row

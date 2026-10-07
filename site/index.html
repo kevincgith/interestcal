@@ -324,7 +324,11 @@
         </label>
         <label for="mYears">Tenor
           <span class="tvm-n">
-            <input id="mYears" type="text" inputmode="decimal" autocomplete="off" value="30">
+            <div class="stepper">
+              <button type="button" class="step" data-step="-1" aria-label="Decrease tenor by 1 year">−</button>
+              <input id="mYears" type="text" inputmode="decimal" autocomplete="off" value="30" data-min="1" data-max="50">
+              <button type="button" class="step" data-step="1" aria-label="Increase tenor by 1 year">+</button>
+            </div>
             <select id="mTenorUnit" aria-label="Tenor in">
               <option value="years" selected>years</option>
               <option value="payments">payments</option>
@@ -733,7 +737,11 @@
         </label>
         <label for="tN" data-key="n">Term (N)
           <span class="tvm-n">
-            <input id="tN" type="text" inputmode="decimal" autocomplete="off" value="30">
+            <div class="stepper">
+              <button type="button" class="step" data-step="-1" aria-label="Decrease term by 1 year">−</button>
+              <input id="tN" type="text" inputmode="decimal" autocomplete="off" value="30" data-min="1">
+              <button type="button" class="step" data-step="1" aria-label="Increase term by 1 year">+</button>
+            </div>
             <select id="tNUnit" aria-label="Term in">
               <option value="years" selected>years</option>
               <option value="payments">payments</option>

@@ -4,7 +4,7 @@ import { buildMortgagePdf, buildMortgageWorkbook } from './mortgage-export.js?v=
 import { renderRateChart } from './rate-chart.js?v=__BUILD__';
 import {
   $, money, fmtDate, parseNumber, isIsoDate, todayIso, row, download, loadXlsx, loadPdf, busy, copyLink,
-  wireSteppers, autoFitText, flash, segValue,
+  wireSteppers, autoFitText, flash, segValue, setSteps,
 } from './shared.js?v=__BUILD__';
 import { saveCalculation, recordRecent } from './saved.js?v=__BUILD__';
 import { activeTab, registerQuery } from './tabs.js?v=__BUILD__';
@@ -190,6 +190,7 @@ $('mform').addEventListener('change', () => {
 wireSteppers($('mform'), () => {
   markStale();
   updateHints();
+  updateTenor();
 });
 $('mAddExtra').addEventListener('click', () => {
   addExtraRow().querySelector('.pay-date').focus();
@@ -333,22 +334,19 @@ function tenorMonths() {
   const months = Math.round(raw);
   return Math.abs(raw - months) < 0.06 && months >= 1 && months <= 600 ? months : null;
 }
-// Under the box, as on the calculator: "= 360 monthly payments" or "= 20.83 years"
+// − and + step a year, or 12 payments; under the box, as on the calculator: "= 360 monthly payments" or "= 20.83 years"
 function updateTenor() {
+  const pay = tenorInPayments();
+  $('mYears').dataset.max = pay ? '600' : '50';
+  setSteps($('mYears'), pay ? 12 : 1, pay ? '12 payments' : '1 year', 'tenor');
   const months = tenorMonths();
   const years = months / 12;
   $('mTenorHint').textContent = months == null ? ''
     : tenorInPayments() ? `= ${Number.isInteger(years) ? years : years.toFixed(2)} year${years === 1 ? '' : 's'}`
     : `= ${months} monthly payment${months === 1 ? '' : 's'}`;
 }
-// Switching the unit converts the number: 30 years <-> 360 payments
-$('mTenorUnit').addEventListener('change', () => {
-  const v = parseNumber($('mYears').value);
-  if ($('mYears').value.trim() && Number.isFinite(v)) {
-    $('mYears').value = tenorInPayments() ? String(Math.round(v * 12)) : String(Number((v / 12).toFixed(2)));
-  }
-  updateTenor();
-});
+// Switching the unit keeps the number (30 years -> 30 payments); the hint shows what it now means
+$('mTenorUnit').addEventListener('change', updateTenor);
 $('mYears').addEventListener('input', updateTenor);
 // e.g. "30 years (360 instalments)", or "250 monthly instalments (20 yrs 10 mths)"
 const tenorText = (i) => (i.months % 12 === 0 && i.tenorUnit !== 'payments'
