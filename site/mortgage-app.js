@@ -686,6 +686,14 @@ function readQuery() {
 $('mPrimeKind').addEventListener('change', updateHints);
 $('mPrimeExtra').addEventListener('input', updateHints);
 
+// Show the property price and income as xxx,xxx.xx once the user leaves the field, as on the other tabs
+for (const id of ['mPrice', 'mIncome']) {
+  $(id).addEventListener('blur', () => {
+    const n = parseNumber($(id).value);
+    if ($(id).value.trim() && Number.isFinite(n)) $(id).value = money.format(n);
+  });
+}
+
 $('mReset').addEventListener('click', () => {
   $('mform').reset();
   $('mExtraRows').replaceChildren();

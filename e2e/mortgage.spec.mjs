@@ -397,3 +397,18 @@ test('cash rebate sits in Advanced settings, which a link with a rebate opens', 
   await expect(page.locator('#mRebateH')).toHaveValue('1');
 });
 
+test('property price and income are shown as 1,234,567.00 once the user leaves the field', async ({ page }) => {
+  await page.goto('?tab=mortgage');
+  await page.locator('#mPrice').fill('6500000');
+  await page.locator('#mPrice').blur();
+  await expect(page.locator('#mPrice')).toHaveValue('6,500,000.00');
+  await page.locator('#mAdvanced summary').click();
+  await page.locator('#mIncome').fill('60000');
+  await page.locator('#mIncome').blur();
+  await expect(page.locator('#mIncome')).toHaveValue('60,000.00');
+  // An empty income stays empty (it's optional)
+  await page.locator('#mIncome').fill('');
+  await page.locator('#mIncome').blur();
+  await expect(page.locator('#mIncome')).toHaveValue('');
+});
+
