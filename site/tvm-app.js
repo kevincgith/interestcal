@@ -101,13 +101,11 @@ const changed = (e) => {
 };
 $('tform').addEventListener('input', changed);
 $('tform').addEventListener('change', changed);
-// Term (N): − and + step a year, or a year's payments (12 monthly, 4 quarterly ...)
+// Term (N): − and + step one year, or one payment (as the mortgage tenor)
 function updateTermSteps() {
-  const years = $('tNUnit').value === 'years';
-  const k = PAYMENT_FREQUENCIES[$('tFreq').value];
-  setSteps($('tN'), years ? 1 : k, years ? '1 year' : `${k} payment${k === 1 ? '' : 's'} (a year)`, 'term');
+  setSteps($('tN'), 1, $('tNUnit').value === 'years' ? '1 year' : '1 payment', 'term');
 }
-for (const id of ['tNUnit', 'tFreq']) $(id).addEventListener('change', updateTermSteps);
+$('tNUnit').addEventListener('change', updateTermSteps);
 wireSteppers($('tform'), () => $('tN').dispatchEvent(new Event('input', { bubbles: true })));
 updateTermSteps();
 
