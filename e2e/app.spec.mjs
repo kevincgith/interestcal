@@ -374,11 +374,12 @@ test('the Principal label stays on one line with its currency', async ({ page })
 test('saved calculations: save from either tab, rename, open and delete; kept after a reload', async ({ page }) => {
   await page.goto('?src=prime&p=250000&from=2025-01-01&to=2026-01-01&spread=1&incl=0');
   await expect(total(page)).not.toHaveText('');
-  await expect(page.locator('#savedCard')).toBeHidden(); // nothing saved yet
+  await page.locator('#savedCard summary').click();
+  await expect(page.locator('#savedEmpty')).toBeVisible(); // nothing saved yet
+  await expect(page.locator('#savedExport')).toBeDisabled();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('#shareStatus')).toHaveText('Saved below');
-  await expect(page.locator('#savedCard')).toBeVisible();
-  await page.locator('#savedCard summary').click();
+  await expect(page.locator('#savedEmpty')).toBeHidden();
   const first = page.locator('#savedList li').first();
   await expect(first.locator('.saved-name')).toHaveValue('HSBC prime · HK$250,000.00 · 01-Jan-2025 to 01-Jan-2026');
   await first.locator('.saved-name').fill('Client A – loan interest');
@@ -402,11 +403,12 @@ test('saved calculations: save from either tab, rename, open and delete; kept af
   await expect(page.locator('#principal')).toHaveValue('250,000.00');
   await expect(page.locator('input[name="source"][value="prime"]')).toBeChecked();
 
-  // Delete both: the card hides again
+  // Delete both: the list is empty again
   await page.locator('#savedCard summary').click();
   await page.locator('#savedList li .remove').first().click();
   await page.locator('#savedList li .remove').first().click();
-  await expect(page.locator('#savedCard')).toBeHidden();
+  await expect(page.locator('#savedList li')).toHaveCount(0);
+  await expect(page.locator('#savedEmpty')).toBeVisible();
 });
 
 test('saved calculations sort newest first or by name; the choice is kept after a reload', async ({ page }) => {
@@ -435,6 +437,54 @@ test('saved calculations sort newest first or by name; the choice is kept after 
   expect(await names()).toEqual(['beta 9', 'beta 10', 'zeta']);
   await page.locator('#savedSort label', { hasText: 'Newest first' }).click();
   expect(await names()).toEqual(['beta 10', 'zeta', 'beta 9']);
+});
+
+const threeSaved = [
+  { id: '3', tab: 'mortgage', query: '?p=3', name: 'Flat', savedAt: '2026-03-01T00:00:00.000Z' },
+  { id: '2', tab: 'interest', query: '?p=2', name: 'Client A', savedAt: '2026-02-01T00:00:00.000Z' },
+  { id: '1', tab: 'pv', query: '?p=1', name: 'Bond', savedAt: '2026-01-01T00:00:00.000Z' },
+];
+const savedNames = (page) => page.locator('#savedList .saved-name').evaluateAll((els) => els.map((e) => e.value));
+async function withSaved(page, list) {
+  await page.goto('./');
+  await page.evaluate((l) => localStorage.setItem('interestcal.saved', JSON.stringify(l)), list);
+  await page.goto('./');
+  await page.locator('#savedCard summary').click();
+}
+
+test('a deleted saved calculation can be undone, back in its place', async ({ page }) => {
+  await withSaved(page, threeSaved);
+  await page.getByRole('button', { name: 'Delete Client A' }).click();
+  expect(await savedNames(page)).toEqual(['Flat', 'Bond']);
+  await expect(page.locator('#savedStatus')).toHaveText('Deleted “Client A”. Undo');
+  await page.locator('#savedStatus').getByRole('button', { name: 'Undo' }).click();
+  expect(await savedNames(page)).toEqual(['Flat', 'Client A', 'Bond']);
+  await expect(page.locator('#savedStatus')).toHaveText('Restored “Client A”.');
+  await page.goto('./');
+  await page.locator('#savedCard summary').click();
+  expect(await savedNames(page)).toEqual(['Flat', 'Client A', 'Bond']); // kept after a reload
+});
+
+test('saved calculations export to a file and import back, skipping ones already saved', async ({ page }) => {
+  await withSaved(page, threeSaved);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#savedExport').click()]);
+  expect(dl.suggestedFilename()).toMatch(/^hk-interest-calc-saved-\d{4}-\d{2}-\d{2}\.json$/);
+  const file = JSON.parse(await (await dl.createReadStream()).toArray().then((c) => Buffer.concat(c).toString()));
+  expect(file.kind).toBe('interestcal.saved');
+  expect(file.saved.map((x) => x.name)).toEqual(['Flat', 'Client A', 'Bond']);
+  await expect(page.locator('#savedStatus')).toHaveText('Exported 3 calculations.');
+
+  // On another device (here: emptied storage) with one of its own, renamed differently
+  await withSaved(page, [{ id: 'x', tab: 'interest', query: '?p=2', name: 'My name for it', savedAt: '2026-04-01T00:00:00.000Z' }]);
+  await page.locator('#savedImportFile').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(file)) });
+  await expect(page.locator('#savedStatus')).toHaveText('Imported 2 calculations. 1 already saved.');
+  expect(await savedNames(page)).toEqual(['My name for it', 'Flat', 'Bond']);
+  await expect(page.locator('#savedList li', { hasText: 'Present value · saved' }).getByRole('link', { name: 'Open' })).toHaveAttribute('href', './?p=1');
+
+  // Not an export: nothing changes
+  await page.locator('#savedImportFile').setInputFiles({ name: 'x.json', mimeType: 'application/json', buffer: Buffer.from('{"hello":1}') });
+  await expect(page.locator('#savedStatus')).toHaveText('That file isn’t a saved-calculations export.');
+  await expect(page.locator('#savedList li')).toHaveCount(3);
 });
 
 test('header shows the refresh time in HKT when the rate files have one', async ({ page }) => {

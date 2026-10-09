@@ -338,6 +338,9 @@ td.formula { color: var(--muted); font-size: 0.9rem; white-space: normal; min-wi
 .saved-list .remove { margin-left: auto; }
 .saved-actions { margin-top: 12px; }
 .saved-sort { margin-top: 8px; }
+#savedStatus { font-size: 0.9rem; }
+/* Undo, inline in the status text */
+.link-button { height: auto; padding: 0; border: 0; background: none; box-shadow: none; color: var(--accent); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 .saved-sort[hidden] { display: none; }
 
 /* ---- Interest tab ---- */

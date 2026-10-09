@@ -1,8 +1,11 @@
 // Saved and recent calculations: each is a calculation's shareable link plus a name, kept in this browser's
-// localStorage only (never uploaded). "Saved calculations" are the ones the user chose to keep (rename, open, delete);
+// localStorage only (never uploaded). "Saved calculations" are the ones the user chose to keep (rename, open, delete
+// with undo, sort, and export to a file / import from one, to back them up or move them to another device);
 // "Recent calculations" are the last 5 the user ran with Calculate, kept automatically (open, save to keep, or clear
 // them all).
 // Storage can be unavailable (private windows, blocked site data): saving then says so and nothing breaks.
+
+import { download, todayIso } from './shared.js?v=__BUILD__';
 
 const KEY = 'interestcal.saved';
 const MAX = 50;
@@ -21,6 +24,8 @@ function sortChoice() {
     return 'time';
   }
 }
+
+const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 function load(key = KEY) {
   try {
@@ -55,7 +60,7 @@ export function recordRecent({ tab, query, title }) {
 export function saveCalculation({ tab, query, title }) {
   const list = load();
   const existing = list.find((x) => x.query === query);
-  const item = { id: existing?.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, tab, query,
+  const item = { id: existing?.id ?? newId(), tab, query,
     name: existing?.name ?? title, savedAt: new Date().toISOString() };
   const ok = store([item, ...list.filter((x) => x.query !== query)]);
   renderSaved();
@@ -73,7 +78,8 @@ export function renderSaved() {
   const ul = document.getElementById('savedList');
   if (!card || !ul) return;
   const list = load();
-  card.hidden = !list.length;
+  document.getElementById('savedEmpty').hidden = list.length > 0;
+  document.getElementById('savedExport').disabled = !list.length;
   document.getElementById('savedCount').textContent = list.length ? `(${list.length})` : '';
   const sort = sortChoice();
   const seg = document.getElementById('savedSort');
@@ -107,13 +113,97 @@ export function renderSaved() {
       const del = Object.assign(document.createElement('button'), { type: 'button', className: 'secondary remove', textContent: '×' });
       del.setAttribute('aria-label', `Delete ${x.name}`);
       del.addEventListener('click', () => {
-        store(load().filter((y) => y.id !== x.id));
+        const all = load();
+        const at = all.findIndex((y) => y.id === x.id);
+        if (at < 0) return renderSaved();
+        const [gone] = all.splice(at, 1);
+        store(all);
         renderSaved();
+        offerUndo(gone, at);
       });
       li.append(name, meta, open, del);
       return li;
     }),
   );
+}
+
+// After a delete: "Deleted “name”. Undo" for a few seconds; Undo puts it back where it was. Only the latest delete
+// can be undone.
+const UNDO_MS = 8000;
+function offerUndo(item, at) {
+  const status = document.getElementById('savedStatus');
+  const undo = Object.assign(document.createElement('button'), { type: 'button', className: 'link-button', textContent: 'Undo' });
+  undo.addEventListener('click', () => {
+    const all = load().filter((y) => y.query !== item.query);
+    all.splice(Math.min(at, all.length), 0, item);
+    store(all);
+    clearTimeout(status._undoTimer);
+    status.replaceChildren(`Restored “${item.name}”.`);
+    status._undoTimer = setTimeout(() => status.replaceChildren(), 2500);
+    renderSaved();
+  });
+  status.replaceChildren(`Deleted “${item.name}”. `, undo);
+  clearTimeout(status._undoTimer);
+  status._undoTimer = setTimeout(() => status.replaceChildren(), UNDO_MS);
+}
+
+function sayStatus(msg) {
+  const status = document.getElementById('savedStatus');
+  clearTimeout(status._undoTimer);
+  status.replaceChildren(msg);
+  status._undoTimer = setTimeout(() => status.replaceChildren(), 6000);
+}
+
+// Export: the saved calculations as a JSON file. Import: add the ones from such a file that aren't saved here yet
+// (matched by link; a calculation already saved keeps its name here), newest first, up to the usual 50.
+const FILE_KIND = 'interestcal.saved';
+
+function exportSaved() {
+  const saved = load().map(({ tab, query, name, savedAt }) => ({ tab, query, name, savedAt }));
+  const body = JSON.stringify({ kind: FILE_KIND, version: 1, exportedAt: new Date().toISOString(), saved }, null, 2);
+  download(new Blob([body], { type: 'application/json' }), `hk-interest-calc-saved-${todayIso()}.json`);
+  sayStatus(`Exported ${saved.length} calculation${saved.length === 1 ? '' : 's'}.`);
+}
+
+/** The valid calculations in an exported file's text; throws if it isn't one */
+export function parseExport(text) {
+  const data = JSON.parse(text);
+  if (data?.kind !== FILE_KIND || !Array.isArray(data.saved)) throw new Error('not an export');
+  return data.saved
+    .filter((x) => x && typeof x.query === 'string' && /^\?[^\s]{1,4000}$/.test(x.query) && typeof x.name === 'string' && x.name.trim())
+    .map((x) => ({
+      tab: Object.hasOwn(TAB_NAMES, x.tab) ? x.tab : 'interest',
+      query: x.query,
+      name: x.name.trim().slice(0, 300),
+      savedAt: Number.isNaN(Date.parse(x.savedAt)) ? new Date().toISOString() : new Date(x.savedAt).toISOString(),
+    }));
+}
+
+async function importSaved(file) {
+  let items;
+  try {
+    items = parseExport(await file.text());
+  } catch {
+    sayStatus('That file isn’t a saved-calculations export.');
+    return;
+  }
+  const list = load();
+  const have = new Set(list.map((x) => x.query));
+  const fresh = items.filter((x) => !have.has(x.query) && have.add(x.query));
+  const merged = [...list, ...fresh.map((x) => ({ id: newId(), ...x }))]
+    .sort((a, b) => (b.savedAt > a.savedAt ? 1 : b.savedAt < a.savedAt ? -1 : 0));
+  if (fresh.length && !store(merged)) {
+    sayStatus('This browser won’t save data here.');
+    return;
+  }
+  renderSaved();
+  const dropped = Math.max(0, merged.length - MAX);
+  const skipped = items.length - fresh.length;
+  sayStatus([
+    `Imported ${fresh.length} calculation${fresh.length === 1 ? '' : 's'}.`,
+    skipped ? `${skipped} already saved.` : '',
+    dropped ? `Only the newest ${MAX} are kept; ${dropped} older ones were left out.` : '',
+  ].filter(Boolean).join(' '));
 }
 
 export function renderRecent() {
@@ -152,6 +242,13 @@ export function clearRecent() {
   renderRecent();
 }
 document.getElementById('clearRecent')?.addEventListener('click', clearRecent);
+document.getElementById('savedExport')?.addEventListener('click', exportSaved);
+document.getElementById('savedImport')?.addEventListener('click', () => document.getElementById('savedImportFile').click());
+document.getElementById('savedImportFile')?.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = ''; // the same file can be chosen again
+  if (file) await importSaved(file);
+});
 document.getElementById('savedSort')?.addEventListener('change', (e) => {
   try {
     localStorage.setItem(SORT_KEY, e.target.value);

@@ -958,14 +958,22 @@
       </div>
     </details>
 
-    <details id="savedCard" class="card saved-card" hidden>
+    <details id="savedCard" class="card saved-card">
       <summary>Saved calculations <span id="savedCount" class="muted"></span></summary>
-      <p class="muted m-note">Kept in this browser only; they aren't uploaded anywhere. Click a name to rename it.</p>
+      <p class="muted m-note">Kept in this browser only; they aren't uploaded anywhere. Click a name to rename it.
+        Export a copy to back them up or move them to another device.</p>
+      <p id="savedEmpty" class="muted m-note" hidden>None yet: use Save under a result, or import a file you exported.</p>
       <div class="seg saved-sort" id="savedSort" role="radiogroup" aria-label="Sort saved calculations">
         <label><input type="radio" name="savedSort" value="time" checked><span>Newest first</span></label>
         <label><input type="radio" name="savedSort" value="name"><span>Name A–Z</span></label>
       </div>
       <ul id="savedList" class="saved-list"></ul>
+      <div class="saved-actions action-row">
+        <button type="button" id="savedExport" class="secondary">Export</button>
+        <button type="button" id="savedImport" class="secondary">Import</button>
+        <input type="file" id="savedImportFile" accept=".json,application/json" hidden>
+        <span id="savedStatus" class="muted" role="status"></span>
+      </div>
     </details>
 
     <footer class="about">
