@@ -10,6 +10,17 @@ const RECENT_KEY = 'interestcal.recent';
 const RECENT_MAX = 5;
 const TAB_NAMES = { interest: 'Interest', mortgage: 'Mortgage', pv: 'Present value', inflation: 'Inflation' };
 const tabName = (tab) => TAB_NAMES[tab] ?? 'Interest';
+const SORT_KEY = 'interestcal.savedSort';
+const byName = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+
+// Saved calculations sort newest first (as stored) or by name; the choice is remembered in this browser
+function sortChoice() {
+  try {
+    return localStorage.getItem(SORT_KEY) === 'name' ? 'name' : 'time';
+  } catch {
+    return 'time';
+  }
+}
 
 function load(key = KEY) {
   try {
@@ -64,6 +75,13 @@ export function renderSaved() {
   const list = load();
   card.hidden = !list.length;
   document.getElementById('savedCount').textContent = list.length ? `(${list.length})` : '';
+  const sort = sortChoice();
+  const seg = document.getElementById('savedSort');
+  if (seg) {
+    seg.hidden = list.length < 2;
+    seg.querySelector(`input[value="${sort}"]`).checked = true;
+  }
+  if (sort === 'name') list.sort((a, b) => byName.compare(a.name, b.name));
   ul.replaceChildren(
     ...list.map((x) => {
       const li = document.createElement('li');
@@ -78,6 +96,8 @@ export function renderSaved() {
           it.name = name.value.trim() || it.name;
           store(all);
         }
+        name.value = it?.name ?? name.value;
+        if (sortChoice() === 'name') renderSaved(); // the renamed one moves to its place
       });
       const meta = Object.assign(document.createElement('span'), {
         className: 'muted saved-meta',
@@ -132,6 +152,12 @@ export function clearRecent() {
   renderRecent();
 }
 document.getElementById('clearRecent')?.addEventListener('click', clearRecent);
+document.getElementById('savedSort')?.addEventListener('change', (e) => {
+  try {
+    localStorage.setItem(SORT_KEY, e.target.value);
+  } catch {}
+  renderSaved();
+});
 
 // Another browser tab saved, deleted or ran something
 window.addEventListener('storage', (e) => {

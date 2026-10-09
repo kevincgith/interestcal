@@ -409,6 +409,34 @@ test('saved calculations: save from either tab, rename, open and delete; kept af
   await expect(page.locator('#savedCard')).toBeHidden();
 });
 
+test('saved calculations sort newest first or by name; the choice is kept after a reload', async ({ page }) => {
+  const names = () => page.locator('#savedList .saved-name').evaluateAll((els) => els.map((e) => e.value));
+  await page.goto('./');
+  await page.evaluate(() => localStorage.setItem('interestcal.saved', JSON.stringify([
+    { id: '3', tab: 'interest', query: '?p=3', name: 'beta 10', savedAt: '2026-03-01T00:00:00Z' },
+    { id: '2', tab: 'interest', query: '?p=2', name: 'Alpha', savedAt: '2026-02-01T00:00:00Z' },
+    { id: '1', tab: 'interest', query: '?p=1', name: 'beta 9', savedAt: '2026-01-01T00:00:00Z' },
+  ])));
+  await page.goto('./');
+  await page.locator('#savedCard summary').click();
+  await expect(page.getByRole('radio', { name: 'Newest first' })).toBeChecked();
+  expect(await names()).toEqual(['beta 10', 'Alpha', 'beta 9']);
+  await page.locator('#savedSort label', { hasText: 'Name A–Z' }).click();
+  expect(await names()).toEqual(['Alpha', 'beta 9', 'beta 10']);
+
+  // A renamed calculation moves to its place by name
+  await page.locator('#savedList .saved-name').first().fill('zeta');
+  await page.locator('#savedList .saved-name').first().press('Enter');
+  await expect.poll(names).toEqual(['beta 9', 'beta 10', 'zeta']);
+
+  await page.goto('./');
+  await page.locator('#savedCard summary').click();
+  await expect(page.getByRole('radio', { name: 'Name A–Z' })).toBeChecked();
+  expect(await names()).toEqual(['beta 9', 'beta 10', 'zeta']);
+  await page.locator('#savedSort label', { hasText: 'Newest first' }).click();
+  expect(await names()).toEqual(['beta 10', 'zeta', 'beta 9']);
+});
+
 test('header shows the refresh time in HKT when the rate files have one', async ({ page }) => {
   for (const file of ['rates.json', 'prime-rates.json', 'us-prime-rates.json']) {
     // Read the real file from disk (not through the test server, which can lag when every test runs at once)

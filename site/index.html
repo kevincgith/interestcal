@@ -961,6 +961,10 @@
     <details id="savedCard" class="card saved-card" hidden>
       <summary>Saved calculations <span id="savedCount" class="muted"></span></summary>
       <p class="muted m-note">Kept in this browser only; they aren't uploaded anywhere. Click a name to rename it.</p>
+      <div class="seg saved-sort" id="savedSort" role="radiogroup" aria-label="Sort saved calculations">
+        <label><input type="radio" name="savedSort" value="time" checked><span>Newest first</span></label>
+        <label><input type="radio" name="savedSort" value="name"><span>Name A–Z</span></label>
+      </div>
       <ul id="savedList" class="saved-list"></ul>
     </details>
 

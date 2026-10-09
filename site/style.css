@@ -337,6 +337,8 @@ td.formula { color: var(--muted); font-size: 0.9rem; white-space: normal; min-wi
 .saved-list .recent-name { flex: 1 1 260px; font-weight: 600; }
 .saved-list .remove { margin-left: auto; }
 .saved-actions { margin-top: 12px; }
+.saved-sort { margin-top: 8px; }
+.saved-sort[hidden] { display: none; }
 
 /* ---- Interest tab ---- */
 
