@@ -17,7 +17,7 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.64.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
