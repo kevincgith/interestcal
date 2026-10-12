@@ -9,6 +9,10 @@ export const fmtRateWithSpread = (p) => {
   const sign = spread < 0 ? '−' : '+';
   return `${fmtRate(p.baseRate)} ${sign} ${fmtRate(Math.abs(spread) / 100)} = ${fmtRate(p.rate)}`;
 };
+// "+HK$x interest compounded", or "+HK$x interest added to principal at rate change"
+const capitalisedNote = (r, p) =>
+  `+${r.currency}${money.format(p.capitalised)} ` +
+  (p.capitalisedReason === 'rate change' ? 'interest added to principal at rate change' : 'interest compounded');
 // What a combined row covers, e.g. "3 rows combined: new year, principal changed" or "3 rows combined: same rate
 // republished"
 export function mergedNote(r, p) {
@@ -16,12 +20,12 @@ export function mergedNote(r, p) {
   p.parts.forEach((x, k) => {
     const prev = p.parts[k - 1];
     if (!prev) return;
-    if (x.capitalised > 0) why.add('interest compounded');
+    if (x.capitalised > 0) why.add(x.capitalisedReason === 'rate change' ? 'interest added at rate change' : 'interest compounded');
     else if (x.principal !== prev.principal) why.add('principal changed');
     else if (x.yearDays !== prev.yearDays) why.add('new year');
     else why.add('same rate republished'); // e.g. the judgment rate published again for a new quarter
   });
-  const start = p.capitalised > 0 ? `+${r.currency}${money.format(p.capitalised)} interest compounded; ` : '';
+  const start = p.capitalised > 0 ? `${capitalisedNote(r, p)}; ` : '';
   return `${start}${p.parts.length} rows combined${why.size ? `: ${[...why].join(', ')}` : ''}`;
 }
 // Each period's own principal: it changes after a payment
@@ -29,7 +33,7 @@ export function mergedNote(r, p) {
 // "+HK$21,366.45 interest compounded" on a compounding date, or "New year: ÷ 365 days" for an Actual/Actual year split
 export function periodNote(r, p, i) {
   if (p.parts) return mergedNote(r, p);
-  if (p.capitalised > 0) return `+${r.currency}${money.format(p.capitalised)} interest compounded`;
+  if (p.capitalised > 0) return capitalisedNote(r, p);
   const prev = r.periods[i - 1];
   if (prev && r.basis === 'act/act' && p.start.endsWith('-01-01') && p.yearDays !== prev.yearDays) {
     return `New year: ÷ ${p.yearDays} days`;
@@ -147,7 +151,10 @@ export const kindLabel = (key, spread, fixedRate) =>
     : SOURCES[key].label + (hasSpread(key) && spread ? ` ${spread < 0 ? '−' : '+'} ${Math.abs(spread)}%` : '');
 export const rateBasisLabel = (r) =>
   kindLabel(r.source, r.spreadA ?? r.spread, r.fixedRate) +
-  (r.switch ? `; from ${fmtDate(r.switch.date)}: ${kindLabel(r.switch.source, r.switch.spread, r.switch.fixedRate)}` : '');
+  (r.switch
+    ? `; from ${fmtDate(r.switch.date)}: ${kindLabel(r.switch.source, r.switch.spread, r.switch.fixedRate)}` +
+      (r.switch.capitalise ? ', charged on principal plus interest to that date' : '')
+    : '');
 
 // "HK$219.18 (at 8.000% ÷ 365)", or a dash when no rate applies on the end date
 // "HK$219.18 (at 8.000% ÷ 365)"; under Actual/Actual both years:

@@ -267,6 +267,41 @@ test('switch from prime + 1% to the judgment rate on a date', async ({ page }) =
   await expect(page.locator('#rateTitle')).toHaveText('Rates used');
 });
 
+test('rate change: interest before the change can be added to the principal', async ({ page }) => {
+  await page.goto('?src=fixed&rate=8&p=1000000&from=2024-01-01&to=2026-01-01&basis=act%2F365&incl=0');
+  await expect(page.locator('#advanced')).toHaveAttribute('open', ''); // the day count opens it
+  // Only shown with a rate change
+  await expect(page.locator('#switchCapField')).toBeHidden();
+  await page.locator('#switchOn').check();
+  await expect(page.locator('#switchCapSeg input:checked')).toHaveValue('no');
+  await page.getByLabel('New rate effective date').fill('2025-01-01');
+  await page.locator('input[name="source2"][value="fixed"]').check();
+  await page.locator('#fixedRate2').fill('6');
+  await page.getByRole('button', { name: 'Calculate' }).click();
+  await expect(total(page)).toHaveText('140,219.18');
+  await expect(page.locator('#compareLine')).toBeHidden();
+
+  await page.locator('#switchCap').check();
+  await page.getByRole('button', { name: 'Calculate' }).click();
+  await expect(total(page)).toHaveText('145,032.33');
+  await expect(page.locator('#periods .row-note')).toHaveText(['+HK$80,219.18 interest added to principal at rate change']);
+  await expect(page.locator('#compareLine')).toHaveText(
+    'Interest to 01-Jan-2025 added to principal at the rate change: HK$80,219.18. ' +
+    'Total interest HK$145,032.33, vs HK$140,219.18 without adding it (+HK$4,813.15).',
+  );
+  await expect(page).toHaveURL(/swcap=1/);
+
+  // The link brings it back
+  await page.reload();
+  await expect(page.locator('#switchCap')).toBeChecked();
+  await expect(total(page)).toHaveText('145,032.33');
+  for (const button of ['Download PDF', 'Download Excel', 'Download Word']) {
+    const [download] = await Promise.all([page.waitForEvent('download'), downloadAs(page, button)]);
+    expect((await (await import('node:fs/promises')).readFile(await download.path())).length, button).toBeGreaterThan(500);
+  }
+  await expect(page.locator('#error')).toBeHidden();
+});
+
 test('downloads work with compounding and a rate switch', async ({ page }) => {
   await page.goto('?src=prime&p=100000&from=2026-01-01&to=2026-12-31&spread=1&comp=daily&sw=2026-07-01&src2=judgment&incl=0');
   await expect(total(page)).not.toHaveText('');

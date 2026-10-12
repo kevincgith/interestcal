@@ -496,3 +496,54 @@ test('one row per rate period: a rate switch to the same rate of another kind st
   ];
   assert.equal(mergeRatePeriods(periods).length, 2);
 });
+
+// Rate change with interest added to principal: 8% to 1 Jan 2025, then 6% on principal plus the interest to that date
+const change = [
+  { effective: '1900-01-01', rate: 8, kind: 'fixed' },
+  { effective: '2025-01-01', rate: 6, kind: 'fixed' },
+];
+const changeInput = { principal: 1_000_000, start: '2024-01-01', end: '2026-01-01', rates: change, basis: 'act/365' };
+
+test('rate change: interest before the change can join the principal', () => {
+  const off = calculateInterest(changeInput);
+  assert.equal(round2(off.totalInterest), 140219.18);
+  assert.equal(off.totalCapitalised, 0);
+
+  const on = calculateInterest({ ...changeInput, capitaliseOn: ['2025-01-01'] });
+  const before = (1_000_000 * 0.08 * 366) / 365;
+  assert.equal(on.periods.length, 2);
+  assert.equal(on.periods[1].capitalised, before);
+  assert.equal(on.periods[1].capitalisedReason, 'rate change');
+  assert.equal(on.periods[1].principal, 1_000_000 + before);
+  assert.equal(round2(on.totalInterest), 145032.33);
+  assert.equal(on.totalCapitalised, before);
+  assert.equal(round2(on.outstandingPrincipal), round2(1_000_000 + before));
+  assert.equal(round2(on.outstandingInterest), round2(on.totalInterest - before));
+  assert.equal(round2(on.totalDue), round2(1_000_000 + on.totalInterest));
+});
+
+test('rate change: a payment before the change reduces the interest added to principal', () => {
+  const on = calculateInterest({ ...changeInput, capitaliseOn: ['2025-01-01'], payments: [{ date: '2024-07-01', amount: 30000 }] });
+  const row = on.periods.find((p) => p.start === '2025-01-01');
+  const before = (1_000_000 * 0.08 * 366) / 365;
+  assert.equal(round2(row.capitalised), round2(before - 30000));
+});
+
+test('rate change: added to principal alongside monthly compounding, labelled by reason', () => {
+  const on = calculateInterest({ ...changeInput, compounding: 'monthly', capitaliseOn: ['2025-01-01'] });
+  const reasons = on.periods.filter((p) => p.capitalised).map((p) => p.capitalisedReason);
+  // 1 Jan 2025 is also a monthly anniversary: the rate change wins the label
+  assert.equal(on.periods.find((p) => p.start === '2025-01-01').capitalisedReason, 'rate change');
+  assert.equal(reasons.filter((x) => x === 'compounding').length, 22);
+  // Monthly compounding already adds the December interest on 1 Jan, so the total is unchanged
+  assert.equal(on.totalInterest, calculateInterest({ ...changeInput, compounding: 'monthly' }).totalInterest);
+});
+
+test('rate change: no effect with daily compounding, or on a date outside the period', () => {
+  const daily = { ...changeInput, compounding: 'daily' };
+  assert.equal(calculateInterest({ ...daily, capitaliseOn: ['2025-01-01'] }).totalInterest, calculateInterest(daily).totalInterest);
+  assert.equal(
+    calculateInterest({ ...changeInput, capitaliseOn: ['2027-01-01'] }).totalInterest,
+    calculateInterest(changeInput).totalInterest,
+  );
+});

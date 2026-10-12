@@ -81,7 +81,7 @@ export function setupInterestExports({
         perDiem: perDiemText(r),
         currency: r.currency,
         allocation: `Payments applied ${ALLOCATIONS[r.allocation].toLowerCase()}.`,
-        compareLine: r.compounding === 'none' ? null : $('compareLine').textContent,
+        compareLine: r.simpleInterest == null ? null : $('compareLine').textContent,
         // No "rates used" section for a fixed rate
         ...(kinds.length === 0
           ? {}

@@ -74,7 +74,7 @@ You can choose one of three rates:
     - **Continuous:** `principal × (e^(rate × days ÷ year days) − 1)` within each period.
 
     Results compare the compounded interest with the same calculation as simple interest. On a compounding date, interest is added to principal first, then principal added later, then payments.
-  - **Switch to a different rate from a date:** e.g. prime + 1% before judgment, then the judgment rate after. The new rate (judgment, prime + spread, or fixed) applies from the switch date. Rows show each period's own rate, and the rates-used list labels each rate with its kind.
+  - **Switch to a different rate from a date:** e.g. prime + 1% before judgment, then the judgment rate after. The new rate (judgment, prime + spread, or fixed) applies from the switch date. Rows show each period's own rate, and the rates-used list labels each rate with its kind. Optionally, the interest accrued up to the switch date can be added to the principal (Interest before the change: Add to principal), so the new rate is charged on both; off by default.
   - **Currency:** HKD by default, USD by default for the US prime rate; or RMB, the other G10 currencies (EUR, JPY, GBP, CHF, CAD, AUD, NZD, SEK, NOK) or any symbol you type. Amounts on the page and in every download use its symbol (HK$, US$, CN¥, €, JP¥, £, C$, A$, NZ$; codes for CHF, SEK and NOK). Once chosen, it doesn't change with the rate.
 
 - **Cash flows:** principal added later and payments received sit together in a collapsible **Cash flows** pane, which shows a count (e.g. "1 principal added, 2 payments") while closed and opens by itself for a link that has any.

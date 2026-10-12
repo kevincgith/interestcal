@@ -186,6 +186,14 @@
                 <button type="button" class="step" data-step="1" aria-label="Increase new fixed rate by 1%">+</button>
               </div>
             </label>
+            <div class="field wide" id="switchCapField">
+              <span class="label-row">Interest before the change <button type="button" class="help" aria-expanded="false" aria-label="What is interest before the change?">?</button></span>
+              <div class="seg" id="switchCapSeg" role="radiogroup" aria-label="Interest before the change">
+                <label><input type="radio" name="switchCap" value="no" checked><span>Separate</span></label>
+                <label><input type="radio" name="switchCap" id="switchCap" value="yes"><span>Add to principal</span></label>
+              </div>
+              <span class="help-text" hidden>Separate (the default): the new rate is charged on the principal only. Add to principal: interest accrued and unpaid up to the effective date joins the principal on that date, and the new rate is charged on both, e.g. when a judgment is entered for the principal plus contract interest. Has no effect with daily or continuous compounding, where interest joins the principal as it accrues anyway.</span>
+            </div>
           </div>
         </div>
       </details>

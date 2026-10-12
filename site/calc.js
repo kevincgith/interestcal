@@ -87,6 +87,9 @@ export function addMonths(iso, n) {
  *   'start' (default): anniversaries of the start date (start 15 Mar, monthly: 15 Apr, 15 May, ...).
  *   'calendar': calendar period ends, i.e. interest joins the principal from the 1st of each month / 1 Jan, Apr, Jul,
  *   Oct / 1 Jan.
+ * @param {string[]} [input.capitaliseOn]  "YYYY-MM-DD" dates on which interest accrued and still unpaid joins the
+ *   principal (e.g. a rate change, where the new rate is charged on principal plus interest to that date). Works like a
+ *   compounding date; such a period's capitalisedReason is 'rate change'.
  */
 export function calculateInterest({
   principal,
@@ -101,6 +104,7 @@ export function calculateInterest({
   allocation = 'interest',
   compounding = 'none',
   compoundDates = 'start',
+  capitaliseOn = [],
 }) {
   if (!Number.isFinite(principal)) throw new Error('Principal must be a number');
   const loanStart = toDay(start);
@@ -173,6 +177,16 @@ export function calculateInterest({
     // Every 7 days from the start date, or every Monday (day 0, 1 Jan 1970, was a Thursday)
     const first = compoundDates === 'calendar' ? loanStart + 7 - ((loanStart + 3) % 7) : loanStart + 7;
     for (let day = first; day < loanEnd; day += 7) {
+      capDays.add(day);
+      cuts.add(day);
+    }
+  }
+  // Other dates on which unpaid interest joins the principal (a rate change)
+  const rateChangeCapDays = new Set();
+  for (const iso of capitaliseOn) {
+    const day = toDay(iso);
+    if (day > loanStart && day < loanEnd) {
+      rateChangeCapDays.add(day);
       capDays.add(day);
       cuts.add(day);
     }
@@ -276,6 +290,8 @@ export function calculateInterest({
       interest,
       compounding: continuousRate ? compounding : 'simple', // how this row's interest was worked out
       capitalised: capitalisedHere, // monthly / quarterly / yearly: interest compounded into principal on this row's start
+      // why: 'compounding', or 'rate change' (capitaliseOn)
+      capitalisedReason: capitalisedHere ? (rateChangeCapDays.has(segStart) ? 'rate change' : 'compounding') : undefined,
     });
     totalInterest += interest;
     totalDays += days;
@@ -326,6 +342,7 @@ export function calculateInterest({
     totalAdded,
     compounding,
     compoundDates,
+    capitaliseOn,
     totalCapitalised,
     totalInterest,
     totalPaid: totals.paid,

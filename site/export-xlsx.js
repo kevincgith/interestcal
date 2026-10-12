@@ -87,7 +87,9 @@ export function buildWorkbook(XLSX, r, ctx) {
   const withPayments = payments.length > 0;
   const withAdditions = additions.length > 0;
   // The principal changes during the calculation (payments, principal added later, or compounding)
-  const withEvents = withPayments || withAdditions || compounding !== 'none';
+  // Interest joins the principal: compounding, or at a rate change (capitaliseOn)
+  const addsInterest = compounding !== 'none' || (r.capitaliseOn?.length ?? 0) > 0;
+  const withEvents = withPayments || withAdditions || addsInterest;
   if (withPayments) rows.push(['Payments applied', ctx.allocation]);
 
   // Totals: placeholders, filled once we know where the tables land
@@ -97,7 +99,7 @@ export function buildWorkbook(XLSX, r, ctx) {
         'Total interest',
         ...(withAdditions ? ['Principal added'] : []),
         ...(withPayments ? ['Payments received'] : []),
-        ...(compounding !== 'none' ? ['Interest added to principal'] : []),
+        ...(addsInterest ? ['Interest added to principal'] : []),
         'Outstanding principal', 'Unpaid interest', 'Total amount due', 'Total no. of days', 'perDiem',
         ...(r.perDiem?.byYearDays ? ['perDiemLeap'] : []),
       ]
@@ -196,7 +198,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   set('Total interest', ['Total interest', formula(hasPeriods ? `SUM(${INT}${first}:${INT}${last})` : '0', r.totalInterest, MONEY)]);
   if (withAdditions) set('Principal added', ['Principal added', formula(`SUM(C${addFirst}:C${addLast})`, r.totalAdded, MONEY)]);
   if (withPayments) set('Payments received', ['Payments received', formula(`SUM(B${payFirst}:B${payLast})`, r.totalPaid, MONEY)]);
-  if (compounding !== 'none') set('Interest added to principal', ['Interest added to principal', num(r.totalCapitalised, MONEY)]);
+  if (addsInterest) set('Interest added to principal', ['Interest added to principal', num(r.totalCapitalised, MONEY)]);
   if (withEvents) {
     set('Outstanding principal', ['Outstanding principal', num(r.outstandingPrincipal, MONEY)]);
     set('Unpaid interest', ['Unpaid interest', num(r.outstandingInterest, MONEY)]);

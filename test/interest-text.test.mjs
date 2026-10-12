@@ -27,3 +27,17 @@ test('rate names: every published source has a short name for rate switches; spr
   assert.equal(rateBasisLabel({ source: 'usprime', spreadA: 2 }), 'US prime rate (Federal Reserve H.15) + 2%');
   assert.equal(fmtRateWithSpread({ rate: 0.07, baseRate: 0.05, spread: 2 }), '5.000% + 2.000% = 7.000%');
 });
+
+test('rate change with interest added to principal: row note and rate description', () => {
+  const change = [{ effective: '1900-01-01', rate: 8, kind: 'fixed' }, { effective: '2025-01-01', rate: 6, kind: 'fixed' }];
+  const r = calculateInterest({
+    principal: 1000000, start: '2024-01-01', end: '2026-01-01', rates: change, basis: 'act/365', capitaliseOn: ['2025-01-01'],
+  });
+  assert.equal(periodNote({ ...r, currency: 'HK$' }, r.periods[1], 1),
+    '+HK$80,219.18 interest added to principal at rate change');
+  const sw = { date: '2025-01-01', source: 'fixed', fixedRate: 6 };
+  assert.equal(rateBasisLabel({ source: 'fixed', fixedRate: 8, switch: { ...sw, capitalise: true } }),
+    'Fixed rate of 8.000% p.a.; from 01-Jan-2025: Fixed rate of 6.000% p.a., charged on principal plus interest to that date');
+  assert.equal(rateBasisLabel({ source: 'fixed', fixedRate: 8, switch: sw }),
+    'Fixed rate of 8.000% p.a.; from 01-Jan-2025: Fixed rate of 6.000% p.a.');
+});
