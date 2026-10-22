@@ -286,7 +286,9 @@ const printInputItems = (r) => [
   ['Rounding', ROUNDINGS[r.rounding]],
   ...(r.rows === 'rate' ? [['Table detail', 'Combined (per rate period)']] : []),
   ...(r.compounding !== 'none' ? [['Compounding', compoundingLabel(r)]] : []),
-  ...(r.switch?.capitalise ? [['Interest before the rate change', `Added to principal on ${fmtDate(r.switch.date)}`]] : []),
+  ...(r.capitalisedAtSwitch > 0
+    ? [['Interest before the rate change', `${r.currency}${money.format(r.capitalisedAtSwitch)} added to principal on ${fmtDate(r.switch.date)}`]]
+    : []),
   ...(r.additions.length || r.ignoredAdditions.length
     ? [['Principal added later', String(r.additions.length + r.ignoredAdditions.length)]]
     : []),
@@ -346,7 +348,7 @@ function render(r) {
   if (r.compounding === 'none' && r.simpleInterest != null) {
     const extra = r.totalInterest - r.simpleInterest;
     $('compareLine').textContent =
-      `Interest to ${fmtDate(r.switch.date)} added to principal at the rate change: ${r.currency}${money.format(r.totalCapitalised)}. ` +
+      `Interest to ${fmtDate(r.switch.date)} added to principal at the rate change: ${r.currency}${money.format(r.capitalisedAtSwitch)}. ` +
       `Total interest ${r.currency}${money.format(r.totalInterest)}, vs ${r.currency}${money.format(r.simpleInterest)} without adding it ` +
       `(${extra >= 0 ? '+' : '−'}${r.currency}${money.format(Math.abs(extra))}).`;
   } else if (r.compounding !== 'none') {
@@ -354,7 +356,12 @@ function render(r) {
     $('compareLine').textContent =
       `Compounded ${compoundingLabel(r).toLowerCase()}: ${r.currency}${money.format(r.totalInterest)} interest, ` +
       `vs ${r.currency}${money.format(r.simpleInterest)} as simple interest (${extra >= 0 ? '+' : '−'}${r.currency}${money.format(Math.abs(extra))}). ` +
-      `Interest added to principal: ${r.currency}${money.format(r.totalCapitalised)}.`;
+      `Interest added to principal: ${r.currency}${money.format(r.totalCapitalised)}.` +
+      // Also added to principal at the rate change: the total without that, so both effects can be told apart
+      (r.withoutSwitchCap != null
+        ? ` Without adding interest to principal at the rate change on ${fmtDate(r.switch.date)}: ` +
+          `${r.currency}${money.format(r.withoutSwitchCap)} interest.`
+        : '');
   }
   $('formulaHead').textContent = ['daily', 'continuous'].includes(r.compounding)
     ? 'Formula'
@@ -537,6 +544,8 @@ function showSourceFields() {
   $('fixed2Field').hidden = currentSource2() !== 'fixed';
   $('compoundType').hidden = !compoundOn();
   $('compoundDatesField').hidden = !PERIOD_NAME[$('compounding').value];
+  // Daily / continuous: interest joins the principal as it accrues, so there is none to add at the rate change
+  $('switchCapField').hidden = ['daily', 'continuous'].includes($('compounding').value);
   if (!currencyChosen) $('currency').value = defaultCurrency(currentSource());
   $('customCur').hidden = $('currency').value !== 'other';
   // Others with nothing typed yet: no symbol at all ("Principal", "Amount")
@@ -750,6 +759,11 @@ $('form').addEventListener('submit', (e) => {
   }
   try {
     const result = calculateInterest({ ...calcInput, compounding, compoundDates });
+    // Interest actually added to principal at the rate change: 0 when the date is outside the period, nothing was
+    // unpaid then, or with daily / continuous compounding
+    const capitalisedAtSwitch = result.periods
+      .filter((p) => p.capitalisedReason === 'rate change')
+      .reduce((n, p) => n + p.capitalised, 0);
     const rows = $('rows').value;
     lastResult = {
       ...result,
@@ -761,9 +775,14 @@ $('form').addEventListener('submit', (e) => {
       shownEnd: inclusive ? end : undefined,
       rows,
       // For the comparison line: the same calculation as simple interest, nothing added to principal
-      simpleInterest: compounding === 'none' && !calcInput.capitaliseOn.length
+      simpleInterest: compounding === 'none' && !capitalisedAtSwitch
         ? null
         : calculateInterest({ ...calcInput, compounding: 'none', capitaliseOn: [] }).totalInterest,
+      // Compounding as well: the same compounding without adding interest to principal at the rate change
+      withoutSwitchCap: compounding !== 'none' && capitalisedAtSwitch
+        ? calculateInterest({ ...calcInput, compounding, compoundDates, capitaliseOn: [] }).totalInterest
+        : null,
+      capitalisedAtSwitch,
       source,
       currency,
       fixedRate,

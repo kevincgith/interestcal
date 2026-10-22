@@ -302,6 +302,58 @@ test('rate change: interest before the change can be added to the principal', as
   await expect(page.locator('#error')).toBeHidden();
 });
 
+// Links and saved calculations made before these changes still open with the same results
+const CHANGE_LINK = '?src=fixed&rate=8&p=1000000&from=2024-01-01&to=2026-01-01&basis=act%2F365&incl=0&sw=2025-01-01&src2=fixed&rate2=6';
+
+test('rate change: older links and saved calculations open with the same results', async ({ page }) => {
+  // From before "Interest before the change" existed: Separate
+  await page.goto(CHANGE_LINK);
+  await expect(page.locator('#switchCapSeg input:checked')).toHaveValue('no');
+  await expect(total(page)).toHaveText('140,219.18');
+  await expect(page.locator('#compareLine')).toBeHidden();
+
+  // Saved (and recent) calculations are their links: both kinds open as before
+  await page.evaluate((q) => {
+    const item = (id, query, name) => ({ id, tab: 'interest', query, name, savedAt: '2026-10-01T00:00:00Z' });
+    localStorage.setItem('interestcal.saved', JSON.stringify([
+      item('2', `${q}&swcap=1`, 'Added to principal'),
+      item('1', q, 'Separate'),
+    ]));
+  }, CHANGE_LINK);
+  // Listed as stored: "Added to principal" first, then "Separate"
+  for (const [at, name, expected, cap] of [[1, 'Separate', '140,219.18', false], [0, 'Added to principal', '145,032.33', true]]) {
+    await page.goto('./');
+    await page.locator('#savedCard summary').click();
+    const row = page.locator('#savedList li').nth(at);
+    await expect(row.locator('.saved-name')).toHaveValue(name);
+    await row.getByRole('link', { name: 'Open' }).click();
+    await expect(total(page)).toHaveText(expected);
+    await expect(page.locator('#switchCap')).toBeChecked({ checked: cap });
+    await expect(page).toHaveURL(cap ? /swcap=1/ : /^(?!.*swcap)/);
+  }
+});
+
+test('rate change: added to principal only claimed when something was added', async ({ page }) => {
+  // Switch date before the start: nothing to add, so no comparison or note; the choice stays in the link
+  await page.goto(CHANGE_LINK.replace('sw=2025-01-01', 'sw=2023-06-01') + '&swcap=1');
+  await expect(total(page)).not.toHaveText('');
+  await expect(page.locator('#compareLine')).toBeHidden();
+  await expect(page.locator('#periods .row-note')).toHaveCount(0);
+  await expect(page).toHaveURL(/swcap=1/);
+
+  // Daily compounding: interest is already in the principal; the choice is hidden but kept in the link
+  await page.goto(`${CHANGE_LINK}&comp=daily&swcap=1`);
+  await expect(total(page)).not.toHaveText('');
+  await expect(page.locator('#switchCapField')).toBeHidden();
+  await expect(page.locator('#compareLine')).not.toContainText('rate change');
+  await expect(page).toHaveURL(/swcap=1/);
+
+  // Monthly compounding as well: the comparison gives the total without adding it at the rate change
+  await page.goto(`${CHANGE_LINK}&comp=monthly&swcap=1`);
+  await expect(page.locator('#switchCapField')).toBeVisible();
+  await expect(page.locator('#compareLine')).toContainText('Without adding interest to principal at the rate change on 01-Jan-2025: HK$');
+});
+
 test('downloads work with compounding and a rate switch', async ({ page }) => {
   await page.goto('?src=prime&p=100000&from=2026-01-01&to=2026-12-31&spread=1&comp=daily&sw=2026-07-01&src2=judgment&incl=0');
   await expect(total(page)).not.toHaveText('');

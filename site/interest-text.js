@@ -25,7 +25,10 @@ export function mergedNote(r, p) {
     else if (x.yearDays !== prev.yearDays) why.add('new year');
     else why.add('same rate republished'); // e.g. the judgment rate published again for a new quarter
   });
-  const start = p.capitalised > 0 ? `${capitalisedNote(r, p)}; ` : '';
+  // All interest added to principal within the combined row, not just at its start
+  const added = p.parts.filter((x) => x.capitalised > 0);
+  const total = added.reduce((n, x) => n + x.capitalised, 0);
+  const start = total > 0 ? `${capitalisedNote(r, { ...added[0], capitalised: total })}; ` : '';
   return `${start}${p.parts.length} rows combined${why.size ? `: ${[...why].join(', ')}` : ''}`;
 }
 // Each period's own principal: it changes after a payment
@@ -153,7 +156,7 @@ export const rateBasisLabel = (r) =>
   kindLabel(r.source, r.spreadA ?? r.spread, r.fixedRate) +
   (r.switch
     ? `; from ${fmtDate(r.switch.date)}: ${kindLabel(r.switch.source, r.switch.spread, r.switch.fixedRate)}` +
-      (r.switch.capitalise ? ', charged on principal plus interest to that date' : '')
+      (r.capitalisedAtSwitch > 0 ? ', charged on principal plus interest to that date' : '')
     : '');
 
 // "HK$219.18 (at 8.000% ÷ 365)", or a dash when no rate applies on the end date

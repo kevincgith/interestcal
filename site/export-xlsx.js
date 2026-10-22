@@ -88,7 +88,7 @@ export function buildWorkbook(XLSX, r, ctx) {
   const withAdditions = additions.length > 0;
   // The principal changes during the calculation (payments, principal added later, or compounding)
   // Interest joins the principal: compounding, or at a rate change (capitaliseOn)
-  const addsInterest = compounding !== 'none' || (r.capitaliseOn?.length ?? 0) > 0;
+  const addsInterest = compounding !== 'none' || r.capitalisedAtSwitch > 0;
   const withEvents = withPayments || withAdditions || addsInterest;
   if (withPayments) rows.push(['Payments applied', ctx.allocation]);
 

@@ -36,8 +36,23 @@ test('rate change with interest added to principal: row note and rate descriptio
   assert.equal(periodNote({ ...r, currency: 'HK$' }, r.periods[1], 1),
     '+HK$80,219.18 interest added to principal at rate change');
   const sw = { date: '2025-01-01', source: 'fixed', fixedRate: 6 };
-  assert.equal(rateBasisLabel({ source: 'fixed', fixedRate: 8, switch: { ...sw, capitalise: true } }),
+  assert.equal(rateBasisLabel({ source: 'fixed', fixedRate: 8, switch: { ...sw, capitalise: true }, capitalisedAtSwitch: 80219.18 }),
     'Fixed rate of 8.000% p.a.; from 01-Jan-2025: Fixed rate of 6.000% p.a., charged on principal plus interest to that date');
+  // Chosen but nothing added (date outside the period, nothing unpaid, or daily compounding): not claimed
+  assert.equal(rateBasisLabel({ source: 'fixed', fixedRate: 8, switch: { ...sw, capitalise: true }, capitalisedAtSwitch: 0 }),
+    'Fixed rate of 8.000% p.a.; from 01-Jan-2025: Fixed rate of 6.000% p.a.');
   assert.equal(rateBasisLabel({ source: 'fixed', fixedRate: 8, switch: sw }),
     'Fixed rate of 8.000% p.a.; from 01-Jan-2025: Fixed rate of 6.000% p.a.');
+});
+
+test('combined row: the note counts all interest compounded within it, not just at its start', () => {
+  const r = calculateInterest({
+    principal: 100000, start: '2025-01-01', end: '2025-07-01', rates, basis: 'act/365', compounding: 'quarterly',
+  });
+  const [merged] = mergeRatePeriods(r.periods);
+  const added = r.periods.reduce((n, x) => n + x.capitalised, 0);
+  assert.ok(added > 0);
+  assert.equal(periodNote({ ...r, currency: 'HK$' }, merged, 0),
+    `+HK$${added.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} interest compounded; ` +
+    '2 rows combined: interest compounded');
 });
