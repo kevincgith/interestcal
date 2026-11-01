@@ -32,10 +32,13 @@ jobs:
           fi
 
       - run: npm test
+      # Browsers are built per Ubuntu release, so a cache from one release must not be restored on another
+      - id: os
+        run: echo "version=$(. /etc/os-release && echo "$ID$VERSION_ID")" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ steps.os.outputs.version }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v7

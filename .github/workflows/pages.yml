@@ -83,10 +83,13 @@ jobs:
       - run: npm ci
       - run: npm test
       # Browser tests (desktop Chrome + iPhone Safari engine) must pass before the page goes live
+      # Browsers are built per Ubuntu release, so a cache from one release must not be restored on another
+      - id: os
+        run: echo "version=$(. /etc/os-release && echo "$ID$VERSION_ID")" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ steps.os.outputs.version }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
       - name: Stamp asset URLs with the commit so browsers fetch fresh CSS/JS after each deploy
